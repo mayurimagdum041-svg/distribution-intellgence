@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>OptiStock AI — Workspace Login</title>
+  <title>OptiStock AI — {% if user_info %}{{ user_info.role_title }} Login{% else %}User Workspace Portal{% endif %}</title>
   <link rel="icon" type="image/svg+xml" href="/static/logo-icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -15,18 +15,19 @@
       --text: #0f172a;
       --text-muted: #64748b;
       --border: #e2e8f0;
-      --primary: #00a884;
-      --primary-hover: #008f70;
-      --hero-bg: #09111e;
-      --font: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      --border-light: #f1f5f9;
+      --radius: 16px;
+      --radius-sm: 10px;
+      --font: 'Inter', system-ui, -apple-system, sans-serif;
+      {% if user_info %}
+      --accent: {{ user_info.color }};
+      {% else %}
+      --accent: #2563eb;
+      {% endif %}
     }
 
-    *, *::before, *::after {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
-
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { font-size: 16px; }
     body {
       font-family: var(--font);
       background: var(--bg);
@@ -34,519 +35,911 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
-      -webkit-font-smoothing: antialiased;
-    }
-
-    .split-layout {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      min-height: 100vh;
-    }
-
-    @media (max-width: 960px) {
-      .split-layout {
-        grid-template-columns: 1fr;
-      }
-      .hero-panel {
-        display: none !important;
-      }
-    }
-
-    /* ────────── LEFT HERO PANEL ────────── */
-    .hero-panel {
-      background: linear-gradient(145deg, #070d18 0%, #0d1726 100%);
-      color: #ffffff;
-      padding: 3.5rem 4rem;
-      display: flex;
-      flex-direction: column;
-      justify-content: space-between;
       position: relative;
-      overflow: hidden;
-      border-right: 1px solid rgba(255, 255, 255, 0.08);
+      overflow-x: hidden;
     }
 
-    .hero-panel::after {
-      content: '';
-      position: absolute;
-      top: -15%;
-      left: -15%;
-      width: 450px;
-      height: 450px;
-      background: radial-gradient(circle, rgba(0, 168, 132, 0.18) 0%, transparent 70%);
-      border-radius: 50%;
+    /* Ambient Background Glow */
+    .ambient-glow {
+      position: fixed;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100vw;
+      height: 480px;
+      background: radial-gradient(circle at 50% 0%, {% if user_info %}{{ user_info.color }}18{% else %}rgba(37,99,235,0.08){% endif %} 0%, transparent 70%);
       pointer-events: none;
+      z-index: 0;
     }
 
-    .hero-top-logo {
+    /* Top Navigation */
+    .portal-nav {
+      position: relative;
+      z-index: 10;
       display: flex;
       align-items: center;
-      gap: 0.85rem;
+      justify-content: space-between;
+      padding: 1.25rem 2.5rem;
+      border-bottom: 1px solid rgba(226, 232, 240, 0.7);
+      background: rgba(255, 255, 255, 0.85);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand-logo {
+      display: flex;
+      align-items: center;
+      gap: .75rem;
       text-decoration: none;
-      position: relative;
-      z-index: 2;
+      color: var(--text);
     }
 
-    .hero-top-logo img {
-      height: 38px;
-      width: auto;
-    }
-
-    .hero-middle-content {
-      position: relative;
-      z-index: 2;
-      max-width: 480px;
-      margin: 2rem 0;
-    }
-
-    .hero-cube-visual {
-      margin-bottom: 2rem;
-      display: inline-block;
-      filter: drop-shadow(0 12px 24px rgba(0, 168, 132, 0.3));
-    }
-
-    .hero-headline {
-      font-size: 2.35rem;
-      font-weight: 800;
-      color: #ffffff;
-      line-height: 1.2;
-      letter-spacing: -0.03em;
-      margin-bottom: 1.5rem;
-    }
-
-    .hero-features-list {
-      list-style: none;
-      display: flex;
-      flex-direction: column;
-      gap: 1rem;
-    }
-
-    .hero-feature-item {
-      display: flex;
-      align-items: center;
-      gap: 0.85rem;
-      font-size: 0.95rem;
-      font-weight: 500;
-      color: #cbd5e1;
-    }
-
-    .feature-check-icon {
-      width: 22px;
-      height: 22px;
-      border-radius: 50%;
-      background: rgba(0, 168, 132, 0.18);
-      color: #00a884;
+    .brand-icon {
+      width: 40px;
+      height: 40px;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      flex-shrink: 0;
+      font-size: 1.4rem;
     }
 
-    .hero-footer {
-      position: relative;
-      z-index: 2;
-      font-size: 0.82rem;
-      color: #64748b;
+    .brand-name {
+      font-size: 1.1rem;
+      font-weight: 800;
+      letter-spacing: -.02em;
+    }
+
+    .brand-badge {
+      font-size: .72rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      padding: .15rem .5rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+    }
+
+    .nav-actions {
       display: flex;
       align-items: center;
-      gap: 0.5rem;
+      gap: 1rem;
     }
 
-    /* ────────── RIGHT AUTH CARD PANEL ────────── */
-    .auth-panel {
-      background: #f8fafc;
+    .nav-link {
+      font-size: .84rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .15s;
+    }
+
+    .nav-link:hover { color: var(--text); }
+
+    .btn-dashboard {
+      background: #0f172a;
+      color: #ffffff;
+      padding: .5rem 1rem;
+      border-radius: 8px;
+      font-size: .84rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all .15s;
+    }
+
+    .btn-dashboard:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+    }
+
+    /* Main Container */
+    .portal-main {
+      position: relative;
+      z-index: 1;
+      flex: 1;
       display: flex;
       align-items: center;
       justify-content: center;
       padding: 2.5rem 1.5rem;
     }
 
-    .auth-card {
-      background: #ffffff;
-      border: 1px solid #e2e8f0;
-      border-radius: 16px;
-      padding: 2.5rem 2.25rem;
+    /* ═══════════════════════════════════════════════════════════
+       VIEW 1: DEDICATED USER LOGIN CARD
+       ═══════════════════════════════════════════════════════════ */
+    .login-card-wrapper {
       width: 100%;
-      max-width: 440px;
-      box-shadow: 0 4px 20px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(0, 0, 0, 0.02);
+      max-width: 460px;
+      animation: scaleFadeIn .25s cubic-bezier(0.16, 1, 0.3, 1);
     }
 
-    .auth-header {
+    /* Role Switcher Pills Bar */
+    .role-nav-pills {
+      display: flex;
+      background: #ffffff;
+      padding: .35rem;
+      border-radius: 9999px;
+      border: 1px solid var(--border);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.03);
+      margin-bottom: 1.5rem;
+      gap: .25rem;
+    }
+
+    .role-nav-pill {
+      flex: 1;
+      text-align: center;
+      padding: .45rem .6rem;
+      border-radius: 9999px;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: all .15s ease;
+      white-space: nowrap;
+    }
+
+    .role-nav-pill:hover {
+      color: var(--text);
+      background: #f1f5f9;
+    }
+
+    .role-nav-pill.active {
+      background: var(--accent);
+      color: #ffffff;
+      box-shadow: 0 2px 8px -1px rgba(0,0,0,0.15);
+    }
+
+    .login-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 2.25rem 2rem;
+      box-shadow: 0 4px 24px -2px rgba(15, 23, 42, 0.06), 0 1px 3px rgba(0, 0, 0, 0.02);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .login-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: var(--accent);
+    }
+
+    .login-header {
+      text-align: center;
       margin-bottom: 1.75rem;
     }
 
-    .auth-card-logo {
-      display: inline-block;
-      margin-bottom: 1.25rem;
+    .role-avatar-badge {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: {{ user_info.color if user_info else '#2563eb' }}15;
+      color: var(--accent);
+      font-size: 1.85rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 1rem;
+      box-shadow: 0 4px 14px -2px {{ user_info.color if user_info else '#2563eb' }}30;
     }
 
-    .auth-title {
-      font-size: 1.6rem;
+    .login-title {
+      font-size: 1.35rem;
       font-weight: 800;
-      color: #0f172a;
-      letter-spacing: -0.025em;
-      margin-bottom: 0.35rem;
+      color: var(--text);
+      letter-spacing: -.02em;
+      margin-bottom: .35rem;
     }
 
-    .auth-subtitle {
-      font-size: 0.86rem;
-      color: #64748b;
+    .login-subtitle {
+      font-size: .84rem;
+      color: var(--text-muted);
       line-height: 1.45;
     }
 
-    .form-group {
-      margin-bottom: 1.15rem;
-    }
-
-    .form-label {
-      display: block;
-      font-size: 0.82rem;
-      font-weight: 600;
-      color: #334155;
-      margin-bottom: 0.4rem;
-    }
-
-    .form-input-wrap {
-      position: relative;
+    /* Role Permissions Preview */
+    .role-feature-tags {
       display: flex;
-      align-items: center;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: .4rem;
+      margin: 1rem 0 1.5rem;
     }
 
-    .form-input {
-      width: 100%;
+    .feature-tag {
+      font-size: .72rem;
+      font-weight: 600;
       background: #f8fafc;
-      border: 1.5px solid #e2e8f0;
-      border-radius: 10px;
-      padding: 0.75rem 1rem;
-      font-size: 0.88rem;
-      color: #0f172a;
-      font-family: inherit;
-      outline: none;
-      transition: all 0.2s;
+      border: 1px solid #e2e8f0;
+      padding: .25rem .6rem;
+      border-radius: 6px;
+      color: #334155;
     }
 
-    .form-input:focus {
-      background: #ffffff;
-      border-color: #00a884;
-      box-shadow: 0 0 0 3px rgba(0, 168, 132, 0.15);
-    }
-
-    .btn-toggle-eye {
-      position: absolute;
-      right: 0.85rem;
-      background: none;
-      border: none;
-      color: #94a3b8;
-      cursor: pointer;
+    /* PIN Display Dots */
+    .pin-display-wrap {
       display: flex;
-      align-items: center;
+      justify-content: center;
+      gap: .85rem;
+      margin-bottom: 1.25rem;
     }
 
-    .btn-toggle-eye:hover { color: #0f172a; }
-
-    .remember-row {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 1.4rem;
-      font-size: 0.82rem;
-    }
-
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 0.45rem;
-      color: #475569;
-      cursor: pointer;
-    }
-
-    .forgot-link {
-      color: #00a884;
-      text-decoration: none;
-      font-weight: 600;
-    }
-
-    .forgot-link:hover { text-decoration: underline; }
-
-    .btn-signin {
-      width: 100%;
-      background: #00a884;
-      color: #ffffff;
-      border: none;
-      border-radius: 10px;
-      padding: 0.82rem;
-      font-size: 0.95rem;
-      font-weight: 700;
-      font-family: inherit;
-      cursor: pointer;
-      box-shadow: 0 4px 12px rgba(0, 168, 132, 0.28);
-      transition: all 0.2s;
+    .pin-box {
+      width: 52px;
+      height: 58px;
+      border: 2px solid #e2e8f0;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      background: #f8fafc;
+      transition: all .15s ease;
     }
 
-    .btn-signin:hover {
-      background: #008f70;
+    .pin-box.active {
+      border-color: var(--accent);
+      background: #ffffff;
+      box-shadow: 0 0 0 4px {{ user_info.color if user_info else '#2563eb' }}18;
+    }
+
+    .pin-box.filled {
+      border-color: #cbd5e1;
+      background: #ffffff;
+      color: var(--accent);
+    }
+
+    /* Demo PIN Hint & Quick Fill */
+    .demo-pin-hint {
+      text-align: center;
+      background: #f8fafc;
+      border: 1px dashed #cbd5e1;
+      border-radius: 10px;
+      padding: .65rem .85rem;
+      margin-bottom: 1.5rem;
+      font-size: .8rem;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .btn-quick-fill {
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      font-size: .72rem;
+      font-weight: 700;
+      padding: .3rem .65rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: opacity .15s;
+    }
+
+    .btn-quick-fill:hover { opacity: 0.9; }
+
+    /* On-Screen Keypad */
+    .numpad-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .65rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .numpad-key {
+      height: 52px;
+      border: 1px solid #e2e8f0;
+      background: #ffffff;
+      border-radius: 12px;
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #0f172a;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all .12s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+    }
+
+    .numpad-key:hover {
+      background: #f8fafc;
+      border-color: #cbd5e1;
       transform: translateY(-1px);
-      box-shadow: 0 6px 16px rgba(0, 168, 132, 0.35);
     }
 
+    .numpad-key:active {
+      transform: translateY(1px);
+      background: #f1f5f9;
+    }
+
+    .numpad-key.key-action {
+      font-size: .85rem;
+      color: var(--text-muted);
+      font-weight: 600;
+    }
+
+    /* Error Message Alert */
     .error-banner {
       background: #fee2e2;
-      border: 1px solid #fecaca;
-      color: #b91c1c;
-      padding: 0.65rem 0.85rem;
+      border: 1px solid #fca5a5;
+      color: #991b1b;
+      padding: .65rem .85rem;
       border-radius: 8px;
-      font-size: 0.82rem;
-      font-weight: 500;
-      margin-bottom: 1.15rem;
+      font-size: .8rem;
+      margin-bottom: 1rem;
       display: none;
+      animation: shake .3s ease;
     }
 
     .error-banner.show { display: block; }
 
-    /* Demo Quick Access */
-    .demo-access-box {
-      margin-top: 1.75rem;
-      padding-top: 1.5rem;
-      border-top: 1px solid #e2e8f0;
-    }
-
-    .demo-access-title {
-      font-size: 0.75rem;
+    /* Submit Button */
+    .btn-submit-unlock {
+      width: 100%;
+      height: 48px;
+      background: var(--accent);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      font-size: .95rem;
       font-weight: 700;
-      color: #64748b;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      margin-bottom: 0.75rem;
-    }
-
-    .demo-pills-row {
-      display: flex;
-      gap: 0.5rem;
-    }
-
-    .btn-demo-pill {
-      flex: 1;
-      background: #f1f5f9;
-      border: 1px solid #e2e8f0;
-      border-radius: 8px;
-      padding: 0.55rem 0.65rem;
-      font-size: 0.76rem;
-      font-weight: 600;
-      color: #1e293b;
       cursor: pointer;
-      transition: all 0.15s;
-      text-align: center;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .5rem;
+      box-shadow: 0 4px 12px {{ user_info.color if user_info else '#2563eb' }}35;
+      transition: all .15s ease;
     }
 
-    .btn-demo-pill:hover {
-      background: #e6f7f3;
-      border-color: #a7f3d0;
-      color: #008f70;
+    .btn-submit-unlock:hover {
+      opacity: 0.95;
       transform: translateY(-1px);
+    }
+
+    .btn-submit-unlock:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .card-footer-links {
+      text-align: center;
+      margin-top: 1.25rem;
+    }
+
+    .card-footer-links a {
+      font-size: .82rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-decoration: none;
+      transition: color .15s;
+    }
+
+    .card-footer-links a:hover { color: var(--text); }
+
+    /* ═══════════════════════════════════════════════════════════
+       VIEW 2: MAIN PORTAL HUB (4 CARDS GRID)
+       ═══════════════════════════════════════════════════════════ */
+    .hub-wrapper {
+      width: 100%;
+      max-width: 1120px;
+      animation: scaleFadeIn .25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .hub-header {
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .hub-badge {
+      display: inline-block;
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      color: #2563eb;
+      font-size: .75rem;
+      font-weight: 700;
+      padding: .25rem .75rem;
+      border-radius: 9999px;
+      text-transform: uppercase;
+      letter-spacing: .05em;
+      margin-bottom: .75rem;
+    }
+
+    .hub-title {
+      font-size: 2rem;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -.03em;
+      margin-bottom: .4rem;
+    }
+
+    .hub-subtitle {
+      font-size: .95rem;
+      color: var(--text-muted);
+      max-width: 540px;
+      margin: 0 auto;
+      line-height: 1.5;
+    }
+
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .role-portal-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 1.75rem 1.5rem;
+      box-shadow: 0 2px 8px -2px rgba(15, 23, 42, 0.04);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all .2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
+      color: inherit;
+    }
+
+    .role-portal-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 28px -4px rgba(15, 23, 42, 0.08);
+      border-color: #cbd5e1;
+    }
+
+    .rpc-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1.15rem;
+    }
+
+    .rpc-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+    }
+
+    .rpc-pin-badge {
+      font-size: .72rem;
+      font-weight: 700;
+      padding: .2rem .55rem;
+      border-radius: 6px;
+    }
+
+    .rpc-title {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: .25rem;
+    }
+
+    .rpc-desc {
+      font-size: .8rem;
+      color: var(--text-muted);
+      line-height: 1.45;
+      margin-bottom: 1.25rem;
+      flex: 1;
+    }
+
+    .rpc-features {
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      margin-bottom: 1.5rem;
+      padding-top: 1rem;
+      border-top: 1px solid #f1f5f9;
+    }
+
+    .rpc-feature-item {
+      font-size: .75rem;
+      color: #334155;
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+    }
+
+    .rpc-btn {
+      width: 100%;
+      padding: .65rem 1rem;
+      border-radius: 9px;
+      font-size: .85rem;
+      font-weight: 700;
+      border: 1px solid transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .4rem;
+      transition: all .15s;
+    }
+
+    @keyframes scaleFadeIn {
+      from { opacity: 0; transform: scale(0.97) translateY(8px); }
+      to   { opacity: 1; transform: scale(1) translateY(0); }
+    }
+
+    @keyframes shake {
+      10%, 90% { transform: translate3d(-2px, 0, 0); }
+      20%, 80% { transform: translate3d(3px, 0, 0); }
+      30%, 50%, 70% { transform: translate3d(-5px, 0, 0); }
+      40%, 60% { transform: translate3d(5px, 0, 0); }
+    }
+
+    @media (max-width: 640px) {
+      .portal-nav { padding: 1rem 1.25rem; }
+      .portal-main { padding: 1.5rem 1rem; }
+      .login-card { padding: 1.75rem 1.25rem; }
+      .pin-box { width: 44px; height: 50px; font-size: 1.3rem; }
     }
   </style>
 </head>
 <body>
 
-  <div class="split-layout">
+  <div class="ambient-glow"></div>
 
-    <!-- ────────── LEFT HERO PANEL ────────── -->
-    <div class="hero-panel">
-      <a href="/login" class="hero-top-logo">
-        <img src="/static/logo.svg" alt="OptiStock AI Logo" />
-      </a>
-
-      <div class="hero-middle-content">
-        <div class="hero-cube-visual">
-          <img src="/static/logo-icon.svg" alt="3D Logistics Cube" style="width:72px;height:72px;" />
-        </div>
-
-        <h1 class="hero-headline">Smarter Inventory.<br>Stronger Supply Chains.</h1>
-
-        <ul class="hero-features-list">
-          <li class="hero-feature-item">
-            <span class="feature-check-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </span>
-            <span>Multi-echelon inventory optimization</span>
-          </li>
-          <li class="hero-feature-item">
-            <span class="feature-check-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </span>
-            <span>Demand forecasting with ML algorithms</span>
-          </li>
-          <li class="hero-feature-item">
-            <span class="feature-check-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </span>
-            <span>Intelligent route dispatch &amp; tracking</span>
-          </li>
-          <li class="hero-feature-item">
-            <span class="feature-check-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"></polyline></svg>
-            </span>
-            <span>Real-time stockout &amp; expiry alerts</span>
-          </li>
-        </ul>
-      </div>
-
-      <div class="hero-footer">
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>
-        <span>Trusted by distribution hubs across Maharashtra</span>
-      </div>
+  <!-- Top Navigation Header -->
+  <header class="portal-nav">
+    <a href="/login" class="brand-logo">
+      <img src="/static/logo.svg" alt="OptiStock AI Logo" style="height:32px;width:auto;" />
+    </a>
+    <div class="nav-actions">
+      <a href="/admin" class="nav-link">Admin Portal</a>
+      <a href="/login" class="nav-link">All Portals</a>
+      <a href="/simple" class="btn-dashboard">Open Dashboard →</a>
     </div>
+  </header>
 
-    <!-- ────────── RIGHT AUTH CARD PANEL ────────── -->
-    <div class="auth-panel">
-      <div class="auth-card">
-        <div class="auth-header">
-          <a href="/login" class="auth-card-logo">
-            <img src="/static/logo.svg" alt="OptiStock AI Logo" style="height:32px;width:auto;" />
-          </a>
-          <h2 class="auth-title">Welcome Back</h2>
-          <p class="auth-subtitle">Sign in to access your inventory optimization dashboard</p>
+  <!-- Main Content View -->
+  <main class="portal-main">
+
+    {% if active_role and user_info %}
+    <!-- ═══════════════════════════════════════════════════════════
+         SPECIFIC USER DEDICATED LOGIN PAGE: /login/<role>
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="login-card-wrapper">
+
+      <!-- Role Navigation Pills -->
+      <nav class="role-nav-pills">
+        <a href="/login/admin" class="role-nav-pill {% if active_role == 'admin' %}active{% endif %}">Admin</a>
+        <a href="/login/warehouse" class="role-nav-pill {% if active_role == 'warehouse' %}active{% endif %}">Warehouse</a>
+        <a href="/login/retail" class="role-nav-pill {% if active_role == 'retail' %}active{% endif %}">Retail</a>
+        <a href="/login/delivery" class="role-nav-pill {% if active_role == 'delivery' %}active{% endif %}">Delivery</a>
+      </nav>
+
+      <div class="login-card">
+        <div class="login-header">
+          <div class="role-avatar-badge">{{ user_info.avatar }}</div>
+          <h1 class="login-title">{{ user_info.name }}</h1>
+          <p class="login-subtitle">{{ user_info.role_title }} Login · Enter 4-Digit Security PIN</p>
+
+          <div class="role-feature-tags">
+            {% if active_role == 'admin' %}
+            <span class="feature-tag">Global Executive KPIs</span>
+            <span class="feature-tag">SciPy MILP Solver</span>
+            <span class="feature-tag">Autonomous Engine</span>
+            {% elif active_role == 'warehouse' %}
+            <span class="feature-tag">Batch Shelf-Life (FEFO)</span>
+            <span class="feature-tag">Cold-Chain Pallets</span>
+            <span class="feature-tag">Expiry Rescue Transfers</span>
+            {% elif active_role == 'retail' %}
+            <span class="feature-tag">Store Health &amp; ROP</span>
+            <span class="feature-tag">Replenishment Requests</span>
+            <span class="feature-tag">ML Demand Forecast</span>
+            {% elif active_role == 'delivery' %}
+            <span class="feature-tag">Road Route Navigation</span>
+            <span class="feature-tag">Pune-Kolhapur Corridor</span>
+            <span class="feature-tag">SLA Delivery Tracker</span>
+            {% endif %}
+          </div>
         </div>
 
         <div id="error-banner" class="error-banner"></div>
 
-        <form onsubmit="handleFormSubmit(event)">
-          <div class="form-group">
-            <label class="form-label" for="email-input">Email Address</label>
-            <div class="form-input-wrap">
-              <input type="email" id="email-input" class="form-input" value="{% if user_info and user_info.role == 'retail' %}store.manager@optistock.ai{% elif user_info and user_info.role == 'warehouse' %}pune.dc@optistock.ai{% elif user_info and user_info.role == 'delivery' %}fleet.logistics@optistock.ai{% else %}amit.sharma@optistock.ai{% endif %}" required />
-            </div>
-          </div>
+        <!-- 4-Digit Display Boxes -->
+        <div class="pin-display-wrap">
+          <div class="pin-box active" id="pin-0"></div>
+          <div class="pin-box" id="pin-1"></div>
+          <div class="pin-box" id="pin-2"></div>
+          <div class="pin-box" id="pin-3"></div>
+        </div>
 
-          <div class="form-group">
-            <label class="form-label" for="password-input">Security PIN / Password</label>
-            <div class="form-input-wrap">
-              <input type="password" id="password-input" class="form-input" placeholder="••••••••••••" value="{% if user_info and user_info.role in user_pins %}{{ user_pins[user_info.role] }}{% else %}1111{% endif %}" required />
-              <button type="button" class="btn-toggle-eye" onclick="togglePasswordVisibility()" title="Toggle PIN visibility">
-                <svg id="eye-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path><circle cx="12" cy="12" r="3"></circle></svg>
-              </button>
-            </div>
-          </div>
+        <!-- Demo PIN Helper with One-Click Autofill -->
+        <div class="demo-pin-hint">
+          <span>Quick Demo PIN: <strong style="color:var(--text);font-family:monospace">{{ user_pins[active_role] }}</strong></span>
+          <button type="button" class="btn-quick-fill" onclick="quickFillPin('{{ user_pins[active_role] }}')">Autofill</button>
+        </div>
 
-          <div class="remember-row">
-            <label class="checkbox-label">
-              <input type="checkbox" checked />
-              <span>Remember me</span>
-            </label>
-            <a href="#" class="forgot-link" onclick="quickFillRole('admin'); return false;">Forgot password?</a>
-          </div>
+        <!-- On-Screen Keypad -->
+        <div class="numpad-grid">
+          <button type="button" class="numpad-key" onclick="pressDigit('1')">1</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('2')">2</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('3')">3</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('4')">4</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('5')">5</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('6')">6</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('7')">7</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('8')">8</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('9')">9</button>
+          <button type="button" class="numpad-key key-action" onclick="clearPin()">Clear</button>
+          <button type="button" class="numpad-key" onclick="pressDigit('0')">0</button>
+          <button type="button" class="numpad-key key-action" onclick="backspacePin()">⌫</button>
+        </div>
 
-          <button type="submit" id="btn-submit" class="btn-signin">
-            <span>Sign In &rarr;</span>
-          </button>
-        </form>
+        <button type="button" id="btn-submit" class="btn-submit-unlock" onclick="submitPin()">
+          <span>Unlock {{ user_info.role_title }}</span>
+        </button>
 
-        <div class="demo-access-box">
-          <div class="demo-access-title">Demo Quick Access</div>
-          <div class="demo-pills-row">
-            <button type="button" class="btn-demo-pill" onclick="quickFillRole('admin')">
-              <strong>Admin Demo</strong> (1111)
-            </button>
-            <button type="button" class="btn-demo-pill" onclick="quickFillRole('retail')">
-              <strong>Store Manager</strong> (3333)
-            </button>
-          </div>
+        <div class="card-footer-links">
+          <a href="/login">← View All 4 User Portals</a>
         </div>
       </div>
     </div>
 
-  </div>
+    {% else %}
+    <!-- ═══════════════════════════════════════════════════════════
+         VIEW 2: MAIN PORTAL HUB (/login) — 4 USER CARDS
+         ═══════════════════════════════════════════════════════════ -->
+    <div class="hub-wrapper">
+      <div class="hub-header">
+        <span class="hub-badge">Role Authentication Gateway</span>
+        <h1 class="hub-title">Select Your User Workspace</h1>
+        <p class="hub-subtitle">Choose your designated workspace portal to authenticate and access your customized supply chain view.</p>
+      </div>
+
+      <div class="roles-grid">
+        <!-- 1. Administrator Card -->
+        <a href="/login/admin" class="role-portal-card" style="border-top:4px solid #2563eb">
+          <div class="rpc-top">
+            <div class="rpc-icon" style="background:#eff6ff;color:#2563eb">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
+            <span class="rpc-pin-badge" style="background:#dbeafe;color:#1e40af">PIN: 1111</span>
+          </div>
+          <h2 class="rpc-title">1. Administrator</h2>
+          <p class="rpc-desc">Executive command tower: global network KPIs, SciPy MILP optimizer, What-If simulation, and complete audit trail.</p>
+          <div class="rpc-features">
+            <span class="rpc-feature-item">• All 6 Modules &amp; Reports</span>
+            <span class="rpc-feature-item">• Autonomous Engine Cockpit</span>
+            <span class="rpc-feature-item">• What-If Scenario Sandbox</span>
+          </div>
+          <div class="rpc-btn" style="background:#2563eb;color:#ffffff">Open Admin Portal →</div>
+        </a>
+
+        <!-- 2. Warehouse Manager Card -->
+        <a href="/login/warehouse" class="role-portal-card" style="border-top:4px solid #d97706">
+          <div class="rpc-top">
+            <div class="rpc-icon" style="background:#fef3c7;color:#d97706">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+            </div>
+            <span class="rpc-pin-badge" style="background:#fef3c7;color:#92400e">PIN: 2222</span>
+          </div>
+          <h2 class="rpc-title">2. Warehouse Manager</h2>
+          <p class="rpc-desc">Regional DC operations: batch shelf-life tracking (FEFO radar), cold-chain pallet storage, and outbound manifests.</p>
+          <div class="rpc-features">
+            <span class="rpc-feature-item">• FEFO Expiry Rescue Radar</span>
+            <span class="rpc-feature-item">• Pallet Valuation &amp; Storage</span>
+            <span class="rpc-feature-item">• Outbound Dispatch Manifests</span>
+          </div>
+          <div class="rpc-btn" style="background:#d97706;color:#ffffff">Open Warehouse Portal →</div>
+        </a>
+
+        <!-- 3. Retail Store Manager Card -->
+        <a href="/login/retail" class="role-portal-card" style="border-top:4px solid #16a34a">
+          <div class="rpc-top">
+            <div class="rpc-icon" style="background:#dcfce7;color:#16a34a">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+            </div>
+            <span class="rpc-pin-badge" style="background:#dcfce7;color:#166534">PIN: 3333</span>
+          </div>
+          <h2 class="rpc-title">3. Retail Store Manager</h2>
+          <p class="rpc-desc">Store-level inventory health, Days of Cover, Reorder Points (ROP), stockout alerts, and ML demand forecasts.</p>
+          <div class="rpc-features">
+            <span class="rpc-feature-item">• Store Stockout Prevention</span>
+            <span class="rpc-feature-item">• Auto-Replenishment Orders</span>
+            <span class="rpc-feature-item">• ML Ridge Demand Forecaster</span>
+          </div>
+          <div class="rpc-btn" style="background:#16a34a;color:#ffffff">Open Retail Portal →</div>
+        </a>
+
+        <!-- 4. Delivery Fleet Card -->
+        <a href="/login/delivery" class="role-portal-card" style="border-top:4px solid #7c3aed">
+          <div class="rpc-top">
+            <div class="rpc-icon" style="background:#f3e8ff;color:#7c3aed">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+            </div>
+            <span class="rpc-pin-badge" style="background:#f3e8ff;color:#6b21a8">PIN: 4444</span>
+          </div>
+          <h2 class="rpc-title">4. Delivery Fleet Partner</h2>
+          <p class="rpc-desc">Corridor transit routes, road manifest checkpoints, driver assignments, and delivery milestones for Maharashtra.</p>
+          <div class="rpc-features">
+            <span class="rpc-feature-item">• Live Route Navigation Map</span>
+            <span class="rpc-feature-item">• Pune-Kolhapur Corridor Stops</span>
+            <span class="rpc-feature-item">• Checkpoint Milestone Audit</span>
+          </div>
+          <div class="rpc-btn" style="background:#7c3aed;color:#ffffff">Open Delivery Portal →</div>
+        </a>
+      </div>
+    </div>
+    {% endif %}
+
+  </main>
 
   <script>
-    const ROLES_MAP = {
-      admin:     { email: 'amit.sharma@optistock.ai', pin: '1111', role: 'admin' },
-      retail:    { email: 'store.manager@optistock.ai', pin: '3333', role: 'retail' },
-      warehouse: { email: 'pune.dc@optistock.ai',      pin: '2222', role: 'warehouse' },
-      delivery:  { email: 'fleet.logistics@optistock.ai', pin: '4444', role: 'delivery' }
-    };
+    const activeRole = "{{ active_role or '' }}";
+    let enteredPin = '';
 
-    let activeRoleKey = '{{ user_info.role if user_info else "admin" }}';
-    const emailInput = document.getElementById('email-input');
-    const passInput = document.getElementById('password-input');
-    const submitBtn = document.getElementById('btn-submit');
-    const errorBanner = document.getElementById('error-banner');
-
-    function quickFillRole(roleKey) {
-      if (!ROLES_MAP[roleKey]) return;
-      activeRoleKey = roleKey;
-      emailInput.value = ROLES_MAP[roleKey].email;
-      passInput.value = ROLES_MAP[roleKey].pin;
-      hideError();
-      setTimeout(executeAuth, 180);
+    function updatePinDisplay() {
+      for (let i = 0; i < 4; i++) {
+        const box = document.getElementById(`pin-${i}`);
+        if (!box) continue;
+        if (i < enteredPin.length) {
+          box.textContent = '●';
+          box.classList.add('filled');
+          box.classList.remove('active');
+        } else if (i === enteredPin.length) {
+          box.textContent = '';
+          box.classList.remove('filled');
+          box.classList.add('active');
+        } else {
+          box.textContent = '';
+          box.classList.remove('filled');
+          box.classList.remove('active');
+        }
+      }
     }
 
-    function togglePasswordVisibility() {
-      const isPass = passInput.type === 'password';
-      passInput.type = isPass ? 'text' : 'password';
+    function pressDigit(digit) {
+      if (enteredPin.length >= 4) return;
+      enteredPin += String(digit);
+      updatePinDisplay();
+      hideError();
+
+      if (enteredPin.length === 4) {
+        setTimeout(submitPin, 180);
+      }
+    }
+
+    function backspacePin() {
+      if (enteredPin.length > 0) {
+        enteredPin = enteredPin.slice(0, -1);
+        updatePinDisplay();
+        hideError();
+      }
+    }
+
+    function clearPin() {
+      enteredPin = '';
+      updatePinDisplay();
+      hideError();
+    }
+
+    function quickFillPin(pin) {
+      enteredPin = String(pin);
+      updatePinDisplay();
+      hideError();
+      setTimeout(submitPin, 200);
     }
 
     function showError(msg) {
-      errorBanner.textContent = msg;
-      errorBanner.classList.add('show');
+      const banner = document.getElementById('error-banner');
+      if (banner) {
+        banner.textContent = msg;
+        banner.classList.add('show');
+      }
+      for (let i = 0; i < 4; i++) {
+        const box = document.getElementById(`pin-${i}`);
+        if (box) {
+          box.style.borderColor = '#dc2626';
+          box.style.background = '#fee2e2';
+        }
+      }
     }
 
     function hideError() {
-      errorBanner.classList.remove('show');
-    }
-
-    function handleFormSubmit(e) {
-      e.preventDefault();
-      executeAuth();
-    }
-
-    async function executeAuth() {
-      const pin = passInput.value.trim();
-      const role = activeRoleKey;
-
-      if (!pin) {
-        showError('Please enter your 4-digit security PIN.');
-        passInput.focus();
-        return;
+      const banner = document.getElementById('error-banner');
+      if (banner) {
+        banner.classList.remove('show');
       }
+      for (let i = 0; i < 4; i++) {
+        const box = document.getElementById(`pin-${i}`);
+        if (box) {
+          box.style.borderColor = '';
+          box.style.background = '';
+        }
+      }
+    }
 
-      submitBtn.disabled = true;
-      submitBtn.innerHTML = '<span>Verifying…</span>';
+    async function submitPin() {
+      if (!activeRole || enteredPin.length !== 4) return;
+
+      const btn = document.getElementById('btn-submit');
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span>Verifying PIN…</span>';
+      }
 
       try {
         const res = await fetch('/api/auth/verify-pin', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ role: role, pin: pin })
+          body: JSON.stringify({ role: activeRole, pin: enteredPin })
         });
         const data = await res.json();
 
         if (res.ok && data.success) {
+          // Success! Save session and redirect
           try {
-            sessionStorage.setItem('optistock_auth_role', role);
-            localStorage.setItem('optistock_user_role', role);
+            sessionStorage.setItem('optistock_auth_role', activeRole);
+            localStorage.setItem('optistock_user_role', activeRole);
           } catch(e) {}
 
-          submitBtn.style.background = '#16a34a';
-          submitBtn.innerHTML = '<span>Access Granted</span>';
+          if (btn) {
+            btn.style.background = '#16a34a';
+            btn.innerHTML = '<span>Access Granted! Redirecting…</span>';
+          }
+
+          for (let i = 0; i < 4; i++) {
+            const box = document.getElementById(`pin-${i}`);
+            if (box) {
+              box.style.borderColor = '#16a34a';
+              box.style.background = '#dcfce7';
+              box.style.color = '#16a34a';
+            }
+          }
 
           setTimeout(() => {
             window.location.href = '/simple';
-          }, 300);
+          }, 350);
         } else {
-          showError(data.error || 'Invalid credentials. Demo PIN is ' + (ROLES_MAP[role] ? ROLES_MAP[role].pin : '1111'));
-          submitBtn.disabled = false;
-          submitBtn.innerHTML = '<span>Sign In &rarr;</span>';
+          showError(data.error || 'Incorrect security PIN. Please try again.');
+          clearPin();
+          if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = `<span>Unlock Portal</span>`;
+          }
         }
       } catch (err) {
-        showError('Connection error. Please try again.');
-        submitBtn.disabled = false;
-        submitBtn.innerHTML = '<span>Sign In &rarr;</span>';
+        showError('Network error connecting to verification gateway.');
+        if (btn) {
+          btn.disabled = false;
+          btn.innerHTML = `<span>Unlock Portal</span>`;
+        }
       }
     }
+
+    // Physical Keyboard Listener
+    document.addEventListener('keydown', (e) => {
+      if (!activeRole) return;
+      if (e.key >= '0' && e.key <= '9') {
+        e.preventDefault();
+        pressDigit(e.key);
+      } else if (e.key === 'Backspace') {
+        e.preventDefault();
+        backspacePin();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        submitPin();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        clearPin();
+      }
+    });
   </script>
 </body>
 </html>

@@ -25,64 +25,34 @@
         </a>
       </div>
 
-            <nav class="sidebar-nav">
-        <div class="nav-section-label" data-nav-group="main">MAIN</div>
+      <nav class="sidebar-nav">
+        <div class="nav-section-label" data-nav-group="core">OPERATIONS</div>
         <a href="#" class="nav-link active" data-nav="overview" data-roles="admin" onclick="navigate('overview', this)">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
           </span>
           <span>Overview</span>
         </a>
-
-        <div class="nav-section-label" data-nav-group="opt">OPTIMIZATION</div>
+        <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          </span>
+          <span>Distribution</span>
+        </a>
+        <a href="#" class="nav-link" data-nav="inventory" data-roles="admin,warehouse,retail" onclick="navigate('inventory', this)">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </span>
+          <span>Inventory</span>
+        </a>
         <a href="#" class="nav-link" data-nav="forecast" data-roles="admin,retail" onclick="navigate('forecast', this)">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
           </span>
           <span>Demand Forecast</span>
         </a>
-        <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-          </span>
-          <span>Inventory Plan</span>
-        </a>
-        <a href="#" class="nav-link" data-nav="map" data-roles="admin,warehouse,delivery,retail" onclick="navigate('map', this)">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
-          </span>
-          <span>Route Dispatch</span>
-        </a>
-        <a href="#" class="nav-link" data-nav="whatif" data-roles="admin" onclick="navigate('whatif', this)">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
-          </span>
-          <span>Scenario Simulator</span>
-        </a>
 
-        <div class="nav-section-label" data-nav-group="mgmt">MANAGEMENT</div>
-        <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-          </span>
-          <span>Stockout Risk</span>
-          <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
-        </a>
-        <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this); if(typeof switchApprovalTab==='function') switchApprovalTab('rescue');">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
-          </span>
-          <span>Expiry Rescue</span>
-          <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
-        </a>
-        <a href="#" class="nav-link" data-nav="inventory" data-roles="admin,warehouse,retail" onclick="navigate('inventory', this)">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-          </span>
-          <span>Stores &amp; Warehouses</span>
-        </a>
-
-        <div class="nav-section-label" data-nav-group="sys">SYSTEM</div>
+        <div class="nav-section-label" data-nav-group="auto">AUTOMATION</div>
         <a href="#" class="nav-link" data-nav="automation" data-roles="admin" onclick="navigate('automation', this)">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
@@ -91,24 +61,40 @@
         </a>
         <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this)">
           <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
           </span>
           <span>Decision Inbox</span>
+          <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
         </a>
         <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
           </span>
           <span>Alert Center</span>
+          <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
+        </a>
+
+        <div class="nav-section-label" data-nav-group="lab">INTELLIGENCE</div>
+        <a href="#" class="nav-link" data-nav="whatif" data-roles="admin" onclick="navigate('whatif', this)">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+          </span>
+          <span>What-If Sandbox</span>
+        </a>
+        <a href="#" class="nav-link" data-nav="map" data-roles="admin,warehouse,delivery,retail" onclick="navigate('map', this)">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+          </span>
+          <span>Shipment Map</span>
         </a>
       </nav>
 
       <!-- Sidebar User Profile Card -->
       <div class="sidebar-user" id="sidebar-user-card">
-        <div class="user-avatar" id="sidebar-user-avatar">AM</div>
+        <div class="user-avatar" id="sidebar-user-avatar">AD</div>
         <div class="user-info">
-          <div class="user-name" id="sidebar-user-name">Amit Sharma</div>
-          <div class="user-role-badge" id="sidebar-user-badge">Admin</div>
+          <div class="user-name" id="sidebar-user-name">System Administrator</div>
+          <div class="user-role-badge" id="sidebar-user-badge">Administrator</div>
         </div>
         <a href="/logout" class="user-switch-btn" title="Sign Out">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
@@ -123,13 +109,11 @@
     <!-- ═══════════════════════ MAIN ═══════════════════════ -->
     <main class="main">
 
-            <!-- Global Header -->
+      <!-- Global Header -->
       <header class="topbar">
         <div class="topbar-left">
-          <div class="topbar-search-wrapper">
-            <svg class="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
-            <input type="text" id="global-search-input" class="topbar-search-input" placeholder="Search products, warehouses, stores..." oninput="handleGlobalSearch(this.value)">
-          </div>
+          <h1 class="page-title" id="page-title">Overview</h1>
+          <span class="page-subtitle" id="page-subtitle">Key performance indicators at a glance</span>
         </div>
         <div class="topbar-right">
           <!-- Horizon Selector -->
@@ -137,28 +121,15 @@
             <label class="horizon-label" for="horizon-select">Planning Horizon:</label>
             <select id="horizon-select" class="select-control horizon-select" onchange="onHorizonChange()">
               <option value="1">1 Day</option>
-              <option value="3">3 Days</option>
-              <option value="7" selected>7 Days</option>
+              <option value="3" selected>3 Days</option>
+              <option value="7">7 Days</option>
               <option value="14">14 Days</option>
             </select>
           </div>
 
-          <!-- Date Badge Pill -->
-          <div class="topbar-date-pill" id="topbar-live-date">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
-            <span id="live-date-text">Mon, 28 Apr 2025</span>
-          </div>
-
-          <!-- Notification Bell -->
-          <button class="topbar-icon-btn" title="View Notifications" onclick="navigate('alerts')">
-            <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
-            <span class="notification-indicator"></span>
-          </button>
-
-          <!-- Refresh Button -->
           <button class="btn btn-primary btn-refresh" id="btn-global-refresh" onclick="refreshCurrentSection()" title="Refresh live data">
             <span class="refresh-icon">
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
             </span>
             <span class="refresh-text">Refresh</span>
           </button>
@@ -166,13 +137,9 @@
           <div class="topbar-divider"></div>
 
           <!-- Active User Badge -->
-          <div class="user-active-badge user-profile-pill" onclick="openRoleModal()" title="Switch Workspace">
-            <div class="avatar-circle-sm" id="topbar-user-avatar">AM</div>
-            <div class="user-pill-meta">
-              <span class="user-pill-name" id="topbar-user-name">Amit Sharma</span>
-              <span class="user-pill-role" id="topbar-user-badge">Admin</span>
-            </div>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          <div class="user-active-badge">
+            <span class="user-status-dot"></span>
+            <span id="topbar-user-badge">Administrator</span>
           </div>
 
           <!-- Sign Out Link -->
@@ -194,285 +161,8 @@
         </div>
       </div>
 
-            <!-- ─────────── SECTION: OVERVIEW ─────────── -->
+      <!-- ─────────── SECTION: OVERVIEW ─────────── -->
       <section id="section-overview" class="section active">
-
-        <!-- Welcome Banner Header -->
-        <div class="welcome-header">
-          <div class="welcome-text-wrap">
-            <div class="welcome-title-row">
-              <h1 class="welcome-title">Good Morning, Amit</h1>
-              <span class="welcome-sun-icon" title="Clear Day">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>
-              </span>
-            </div>
-            <p class="welcome-subtitle">Here's what's happening with your supply chain today. <span class="highlight-alert-text">3 stores require urgent attention.</span></p>
-          </div>
-        </div>
-
-        <!-- Top 5 KPI Metric Cards Grid -->
-        <div class="kpi-grid-5">
-          <!-- Card 1: Total Inventory -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-icon-box bg-blue-subtle text-blue">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
-              </div>
-              <span class="trend-badge trend-up">+12% vs last mo</span>
-            </div>
-            <div class="metric-value" id="kpi-5-inventory">1,248,500</div>
-            <div class="metric-label">Total Units in Stock</div>
-          </div>
-
-          <!-- Card 2: Active Warehouses -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-icon-box bg-indigo-subtle text-indigo">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
-              </div>
-              <span class="trend-badge trend-neutral">100% eff</span>
-            </div>
-            <div class="metric-value" id="kpi-5-warehouses">5</div>
-            <div class="metric-label">All Operational</div>
-          </div>
-
-          <!-- Card 3: Retail Stores -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-icon-box bg-amber-subtle text-amber">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3h18v18H3z"></path><path d="M3 9h18"></path><path d="M9 21V9"></path></svg>
-              </div>
-              <span class="trend-badge trend-warning" id="kpi-5-stores-badge">2 low stock</span>
-            </div>
-            <div class="metric-value" id="kpi-5-stores">32</div>
-            <div class="metric-label">Connected Stores</div>
-          </div>
-
-          <!-- Card 4: Pending Shipments -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-icon-box bg-teal-subtle text-teal">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
-              </div>
-              <span class="trend-badge trend-success">On Schedule</span>
-            </div>
-            <div class="metric-value" id="kpi-5-shipments">8</div>
-            <div class="metric-label">In Transit Today</div>
-          </div>
-
-          <!-- Card 5: Stockout Risks -->
-          <div class="metric-card">
-            <div class="metric-card-top">
-              <div class="metric-icon-box bg-rose-subtle text-rose">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-              </div>
-              <span class="trend-badge trend-danger">High Priority</span>
-            </div>
-            <div class="metric-value" id="kpi-5-stockouts">3</div>
-            <div class="metric-label">Need Attention</div>
-          </div>
-        </div>
-
-        <!-- Overview Row 1: Split 65% / 35% -->
-        <div class="overview-row-1">
-          <!-- Left: Distribution Network Card -->
-          <div class="card dist-network-card">
-            <div class="card-header dist-network-header">
-              <div class="dist-header-title-wrap">
-                <h2 class="card-title">Distribution Network</h2>
-                <span class="live-pill"><span class="pulse-dot"></span> LIVE</span>
-              </div>
-              <span class="card-subtitle">Real-time dispatch optimization &amp; corridor tracking</span>
-            </div>
-
-            <div class="dist-content-grid">
-              <!-- Left Column: Interactive Map Preview -->
-              <div class="dist-map-preview-wrap">
-                <div id="overview-mini-map" class="overview-mini-map"></div>
-              </div>
-
-              <!-- Right Column: Route Recommendation Inset Panel -->
-              <div class="route-rec-inset">
-                <div class="route-rec-top">
-                  <div class="route-rec-tag">Recommended Route</div>
-                  <span class="badge-optimal">OPTIMAL</span>
-                </div>
-
-                <div class="route-corridor-heading">
-                  <div class="route-node">WH-1 (Pune)</div>
-                  <div class="route-arrow">
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
-                  </div>
-                  <div class="route-node">S-12 (Kolhapur)</div>
-                </div>
-
-                <!-- Product Manifest Table -->
-                <div class="manifest-table-wrap">
-                  <table class="manifest-table">
-                    <thead>
-                      <tr>
-                        <th>Product</th>
-                        <th style="text-align:right;">Qty</th>
-                        <th style="text-align:right;">Priority</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      <tr>
-                        <td class="font-medium">Paracetamol 500mg</td>
-                        <td style="text-align:right;">1,200 units</td>
-                        <td style="text-align:right;"><span class="priority-pill priority-high">High</span></td>
-                      </tr>
-                      <tr>
-                        <td class="font-medium">Amoxicillin 250mg</td>
-                        <td style="text-align:right;">800 units</td>
-                        <td style="text-align:right;"><span class="priority-pill priority-med">Med</span></td>
-                      </tr>
-                      <tr>
-                        <td class="font-medium">Vitamin C 1000mg</td>
-                        <td style="text-align:right;">500 units</td>
-                        <td style="text-align:right;"><span class="priority-pill priority-med">Med</span></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-
-                <!-- Route Stats 3-Pill Bar -->
-                <div class="route-stats-bar">
-                  <div class="stat-pill-item">
-                    <span class="spi-label">Distance</span>
-                    <strong class="spi-val">248 km</strong>
-                  </div>
-                  <div class="stat-pill-item">
-                    <span class="spi-label">Est. Time</span>
-                    <strong class="spi-val">5h 30m</strong>
-                  </div>
-                  <div class="stat-pill-item">
-                    <span class="spi-label">Est. Cost</span>
-                    <strong class="spi-val">₹5,200</strong>
-                  </div>
-                </div>
-
-                <!-- Full Details Button -->
-                <button class="btn btn-teal-full" onclick="switchSection('map')">
-                  View Full Route Details &rarr;
-                </button>
-
-                <div class="alternative-sources-footer">
-                  <span class="as-label">Alternative Sources:</span>
-                  <span class="as-links">WH-3 (Thane) • WH-5 (Nashik)</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Right: AI Copilot Insights Card -->
-          <div class="card ai-insights-card">
-            <div class="card-header ai-insights-header">
-              <div class="card-title-icon-row">
-                <div class="ai-sparkle-icon">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
-                </div>
-                <h2 class="card-title">AI Copilot Insights</h2>
-              </div>
-              <span class="chip-realtime">Real-time</span>
-            </div>
-
-            <div class="insights-body">
-              <!-- 4 Bullet items -->
-              <div class="insight-item">
-                <span class="insight-bullet bullet-amber"></span>
-                <div class="insight-content">
-                  <strong>Near Expiry Stock:</strong> 2,400 units of Paracetamol expiring in 15 days at WH-2.
-                </div>
-              </div>
-              <div class="insight-item">
-                <span class="insight-bullet bullet-teal"></span>
-                <div class="insight-content">
-                  <strong>Best Warehouse:</strong> WH-1 (Pune) has highest throughput efficiency (94.2%).
-                </div>
-              </div>
-              <div class="insight-item">
-                <span class="insight-bullet bullet-blue"></span>
-                <div class="insight-content">
-                  <strong>Demand Forecast:</strong> Weekend demand surge expected in Mumbai (+28%).
-                </div>
-              </div>
-              <div class="insight-item">
-                <span class="insight-bullet bullet-rose"></span>
-                <div class="insight-content">
-                  <strong>Potential Stockout:</strong> S-14 (Satara) will stockout of ORS in 48 hours.
-                </div>
-              </div>
-
-              <!-- Quick What-If Simulation Box -->
-              <div class="whatif-quick-box">
-                <div class="whatif-quick-title">Quick What-If Simulation</div>
-                <div class="whatif-quick-pills">
-                  <button class="btn-quick-pill" onclick="triggerQuickScenario('surge')">⚡ Demand Surge +20%</button>
-                  <button class="btn-quick-pill" onclick="triggerQuickScenario('wh_down')">🏭 WH-2 Down</button>
-                  <button class="btn-quick-pill" onclick="triggerQuickScenario('fuel')">⛽ Fuel Cost +15%</button>
-                </div>
-              </div>
-
-              <!-- Expiry Rescue CTA Banner -->
-              <div class="expiry-rescue-cta-banner">
-                <div class="erc-icon">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
-                </div>
-                <div class="erc-content">
-                  <div class="erc-text"><strong>2,400 units</strong> at risk of expiry (₹48,000 value). Reallocate now?</div>
-                  <button class="btn-rescue-action" onclick="goToExpiryRescue()">Go to Expiry Rescue Engine &rarr;</button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Overview Row 2: 3 Columns -->
-        <div class="overview-row-2">
-          <!-- Col 1: Inventory Trend Chart -->
-          <div class="card inventory-trend-card">
-            <div class="card-header flex-between">
-              <div>
-                <h2 class="card-title">Inventory Trend</h2>
-                <span class="card-subtitle">Stock vs demand projection</span>
-              </div>
-              <div class="trend-filter-wrap">
-                <select id="trend-time-range" class="select-control-sm" onchange="updateInventoryTrendChart(this.value)">
-                  <option value="7" selected>Last 7 Days</option>
-                  <option value="14">Last 14 Days</option>
-                  <option value="30">Last 30 Days</option>
-                </select>
-              </div>
-            </div>
-            <div class="chart-wrapper-trend">
-              <canvas id="overview-trend-chart" height="210"></canvas>
-            </div>
-          </div>
-
-          <!-- Col 2: Top Products by Demand -->
-          <div class="card top-products-card">
-            <div class="card-header">
-              <h2 class="card-title">Top Products by Demand</h2>
-              <span class="card-subtitle">By volume (units)</span>
-            </div>
-            <div class="product-demand-list" id="top-products-demand-list">
-              <!-- Progress bars rendered by JS -->
-            </div>
-          </div>
-
-          <!-- Col 3: Recent Activity Feed -->
-          <div class="card recent-activity-card">
-            <div class="card-header">
-              <h2 class="card-title">Recent Activity</h2>
-              <span class="card-subtitle">Live automated event stream</span>
-            </div>
-            <div class="activity-timeline-list" id="overview-activity-feed">
-              <!-- Activity items rendered by JS -->
-            </div>
-          </div>
-        </div>
-
         <!-- Interconnected Supply Chain Closed-Loop Pipeline Widget -->
         <div class="pipeline-container card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
           <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
@@ -544,7 +234,7 @@
           </div>
         </div>
 
-        <div id="kpi-grid" class="kpi-grid" style="display:none;">
+        <div id="kpi-grid" class="kpi-grid">
           <!-- KPI cards injected by JS -->
           <div class="kpi-skeleton"></div>
           <div class="kpi-skeleton"></div>
@@ -1411,7 +1101,19 @@
       </div>
     </div>
   </div>
-
+      <div class="prompt-modal-body">
+        <div id="action-dialog-message" class="prompt-message-box"></div>
+        <div class="control-group" id="action-dialog-input-group" style="margin-top:1rem;">
+          <label class="control-label" id="action-dialog-input-label" for="action-dialog-input">Manager Notes / Rationale:</label>
+          <input type="text" id="action-dialog-input" class="search-input" style="width:100%" placeholder="Enter audit notes..." />
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.65rem;padding:1rem 1.5rem;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline" onclick="closeActionDialog(false)">Cancel</button>
+        <button type="button" class="btn btn-primary" id="action-dialog-confirm-btn" onclick="closeActionDialog(true)">Confirm Decision</button>
+      </div>
+    </div>
+  </div>
 
   <!-- ═══════════════════════ FLOATING TOAST NOTIFICATIONS ═══════════════════════ -->
   <div id="toast-container" class="toast-container"></div>
