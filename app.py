@@ -893,5 +893,109 @@ def reports():
     )
 
 
+# ─────────────────────────────────────────────────────────────
+# PROBLEM STATEMENT 2: DISTRIBUTION INTELLIGENCE & INVENTORY OPTIMIZATION ENGINE
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/distribution-engine", methods=["GET"])
+@login_required
+def distribution_engine():
+    """
+    Problem Statement 2: AI-Powered Distribution Intelligence & Inventory Optimization Engine
+    Multi-constraint allocation balancing demand, proximity, freight costs, and FEFO perishable shelf life.
+    """
+    user_id = session["user_id"]
+    plan = database.get_distribution_optimization_plan(user_id)
+    all_locations = database.get_locations(user_id)
+    products = database.get_user_products(user_id)
+    metrics = database.get_fmcg_dashboard_metrics(user_id)
+
+    return render_template(
+        "distribution_engine.html",
+        recommendations=plan["recommendations"],
+        summary=plan["summary"],
+        efficiency_metrics=plan["efficiency_metrics"],
+        assumptions=plan["assumptions"],
+        all_locations=all_locations,
+        products=products,
+        metrics=metrics,
+        page="distribution_engine"
+    )
+
+
+@app.route("/api/distribution/execute", methods=["POST"])
+@login_required
+def api_distribution_execute():
+    """Executes a single recommended distribution allocation as an active shipment."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
+
+    source_id = data.get("source_id")
+    dest_id = data.get("dest_id")
+    product_id = data.get("product_id")
+    quantity = data.get("quantity")
+    notes = data.get("notes")
+
+    if not source_id or not dest_id or not product_id or not quantity:
+        if request.is_json:
+            return jsonify({"success": False, "error": "Missing required allocation parameters."}), 400
+        flash("Missing required allocation parameters.", "error")
+        return redirect(url_for("distribution_engine"))
+
+    try:
+        s_id = int(source_id)
+        d_id = int(dest_id)
+        p_id = int(product_id)
+        qty = int(quantity)
+    except (ValueError, TypeError):
+        if request.is_json:
+            return jsonify({"success": False, "error": "Invalid numerical parameters."}), 400
+        flash("Invalid numerical parameters.", "error")
+        return redirect(url_for("distribution_engine"))
+
+    success, msg = database.execute_distribution_recommendation(user_id, s_id, d_id, p_id, qty, notes=notes)
+
+    if success:
+        if request.is_json:
+            return jsonify({"success": True, "message": msg})
+        flash(f"AI Allocation Dispatched: {msg}", "success")
+    else:
+        if request.is_json:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(f"Dispatch failed: {msg}", "error")
+
+    return redirect(url_for("distribution_engine"))
+
+
+@app.route("/api/distribution/batch-execute", methods=["POST"])
+@login_required
+def api_distribution_batch_execute():
+    """Batch-executes all high-confidence AI distribution recommendations."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
+    min_score = float(data.get("min_score", 70.0))
+
+    result = database.batch_execute_distribution_plan(user_id, min_score=min_score)
+
+    msg = f"Dispatched {result['dispatched_count']} optimized shipments ({result['units_moved']} units, ₹{result['value_moved']:,.2f} inventory allocated)!"
+    if result["errors"]:
+        msg += f" ({len(result['errors'])} skipped due to source capacity)."
+
+    if request.is_json:
+        return jsonify({"success": True, "result": result, "message": msg})
+    flash(msg, "success")
+    return redirect(url_for("distribution_engine"))
+
+
+@app.route("/api/distribution/plan", methods=["GET"])
+@login_required
+def api_distribution_plan():
+    """Returns complete JSON optimization plan for charts, simulation, or third-party callers."""
+    user_id = session["user_id"]
+    plan = database.get_distribution_optimization_plan(user_id)
+    return jsonify({"success": True, "plan": plan})
+
+
+
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

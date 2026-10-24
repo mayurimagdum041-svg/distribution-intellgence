@@ -1,0 +1,365 @@
+{% extends "base.html" %}
+
+{% block title %}Distribution Intelligence & Optimization Engine{% endblock %}
+{% block header_title %}Distribution Intelligence & Inventory Optimization Engine{% endblock %}
+
+{% block topbar_actions %}
+<div style="display: flex; gap: 0.65rem; align-items: center;">
+  <a href="{{ url_for('inventory') }}" class="btn btn-outline btn-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+      <circle cx="12" cy="10" r="3"></circle>
+    </svg>
+    <span>Live Telemetry Map</span>
+  </a>
+  <form method="POST" action="{{ url_for('api_distribution_batch_execute') }}" style="margin: 0;">
+    <input type="hidden" name="min_score" value="70.0" />
+    <button type="submit" class="btn btn-primary btn-sm" onclick="return confirm('Execute batch optimization and dispatch all high-confidence recommendations?');">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      </svg>
+      <span>⚡ Auto-Dispatch High-Score Allocations</span>
+    </button>
+  </form>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- ── 1. Problem Statement 2 Hero Banner ───────────────────── -->
+<div class="card" style="margin-bottom: 2rem; background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 60%, #312e81 100%); color: #ffffff; border: 1px solid rgba(255, 255, 255, 0.1); padding: 1.75rem 2rem; border-radius: 24px; position: relative; overflow: hidden;">
+  <div style="display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 1.5rem; position: relative; z-index: 2;">
+    <div style="max-width: 820px;">
+      <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.65rem;">
+        <span class="badge" style="background: rgba(99, 102, 241, 0.3); color: #c7d2fe; border: 1px solid rgba(165, 180, 252, 0.4); font-weight: 700; letter-spacing: 0.05em;">
+          PROBLEM STATEMENT 2 ENGINE
+        </span>
+        <span style="font-size: 0.8rem; color: #94a3b8;">Multi-Constraint Decision Matrix Active</span>
+      </div>
+      <h2 style="font-size: 1.65rem; font-weight: 800; color: #ffffff; letter-spacing: -0.02em; margin-bottom: 0.5rem; line-height: 1.25;">
+        Distribution Intelligence & Inventory Optimization Engine
+      </h2>
+      <p style="color: #cbd5e1; font-size: 0.92rem; line-height: 1.55; margin: 0;">
+        Synthesizes real-time inventory availability across central warehouses, regional demand velocity at retail outlets, freight transportation costs, and perishable shelf-life (FEFO) to generate optimal product allocation decisions.
+      </p>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.65rem; align-items: flex-end;">
+      <form method="POST" action="{{ url_for('api_distribution_batch_execute') }}" style="margin: 0;">
+        <input type="hidden" name="min_score" value="70.0" />
+        <button type="submit" class="btn btn-primary" style="background: #ffffff; color: #0f172a; font-weight: 700; box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);" onclick="return confirm('Execute batch optimization and dispatch all high-confidence recommendations?');">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="20 6 9 17 4 12"></polyline>
+          </svg>
+          <span>Batch Dispatch Plan ({{ summary.total_recommendations }} Actions)</span>
+        </button>
+      </form>
+      <span style="font-size: 0.74rem; color: #94a3b8;">Updates active vehicle telemetry on interactive map</span>
+    </div>
+  </div>
+
+  <!-- Key Summary Metrics Bar -->
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem; margin-top: 1.75rem; padding-top: 1.5rem; border-top: 1px solid rgba(255, 255, 255, 0.12); position: relative; z-index: 2;">
+    <div>
+      <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Actionable Allocations</div>
+      <div style="font-size: 1.45rem; font-weight: 800; color: #38bdf8; margin-top: 2px;">{{ summary.total_recommendations }} Dispatches</div>
+      <div style="font-size: 0.72rem; color: #cbd5e1;">Targeting stockout deficits</div>
+    </div>
+    <div>
+      <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Stock Units to Allocate</div>
+      <div style="font-size: 1.45rem; font-weight: 800; color: #c084fc; margin-top: 2px;">{{ "{:,}".format(summary.total_units_to_allocate) }} units</div>
+      <div style="font-size: 0.72rem; color: #cbd5e1;">Valued at ₹{{ "{:,.2f}".format(summary.total_inventory_value_allocated) }}</div>
+    </div>
+    <div>
+      <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Freight Cost Optimized</div>
+      <div style="font-size: 1.45rem; font-weight: 800; color: #34d399; margin-top: 2px;">₹{{ "{:,.2f}".format(summary.total_freight_cost_optimized) }}</div>
+      <div style="font-size: 0.72rem; color: #34d399;">₹{{ "{:,.2f}".format(summary.total_freight_savings) }} saved vs unoptimized</div>
+    </div>
+    <div>
+      <div style="font-size: 0.74rem; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Total Net Economic Value</div>
+      <div style="font-size: 1.45rem; font-weight: 800; color: #fbbf24; margin-top: 2px;">₹{{ "{:,.2f}".format(summary.total_net_economic_benefit) }}</div>
+      <div style="font-size: 0.72rem; color: #cbd5e1;">Revenue + Savings + Spoilage</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 2. Supply Chain Efficiency Demonstration Dashboard ─────── -->
+<div style="margin-bottom: 2rem;">
+  <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+    <div>
+      <h3 style="font-size: 1.25rem; font-weight: 800; color: var(--text-dark); margin: 0;">Supply Chain Efficiency Impact</h3>
+      <p style="font-size: 0.82rem; color: var(--text-muted); margin: 2px 0 0;">Demonstration of measurable operational gains before and after AI multi-constraint allocation</p>
+    </div>
+    <span class="badge" style="background: #ecfdf5; color: #059669; font-weight: 700;">PROVEN OPTIMIZATION IMPACT</span>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.25rem;">
+    <!-- Metric 1: Stockout Reduction -->
+    <div class="card" style="padding: 1.25rem; border-radius: 18px; border-left: 4px solid #ef4444;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Stockout Incidence Rate</span>
+        <span class="badge" style="background: #fef2f2; color: #dc2626; font-weight: 700;">{{ efficiency_metrics.stockout_reduction_pct }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.35rem;">
+        <span style="font-size: 1.15rem; color: #94a3b8; text-decoration: line-through;">{{ efficiency_metrics.stockout_rate_before }}</span>
+        <span style="font-size: 1.65rem; font-weight: 800; color: #059669;">{{ efficiency_metrics.stockout_rate_after }}</span>
+      </div>
+      <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">
+        Proactive 7-day velocity allocation eliminates impending stockouts across retail outlets.
+      </p>
+    </div>
+
+    <!-- Metric 2: Transportation Cost Savings -->
+    <div class="card" style="padding: 1.25rem; border-radius: 18px; border-left: 4px solid #3b82f6;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Transport Cost / Unit</span>
+        <span class="badge" style="background: #eff6ff; color: #2563eb; font-weight: 700;">{{ efficiency_metrics.transport_savings_pct }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.35rem;">
+        <span style="font-size: 1.05rem; color: #94a3b8; text-decoration: line-through;">{{ efficiency_metrics.avg_transport_cost_before }}</span>
+        <span style="font-size: 1.65rem; font-weight: 800; color: #2563eb;">{{ efficiency_metrics.avg_transport_cost_after }}</span>
+      </div>
+      <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">
+        Proximity routing selects the closest stock-ready warehouse, cutting unnecessary freight kilometers.
+      </p>
+    </div>
+
+    <!-- Metric 3: Perishable Wastage Prevention -->
+    <div class="card" style="padding: 1.25rem; border-radius: 18px; border-left: 4px solid #f59e0b;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Perishable Spoilage Risk</span>
+        <span class="badge" style="background: #fffbeb; color: #d97706; font-weight: 700;">{{ efficiency_metrics.wastage_reduction_pct }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.35rem;">
+        <span style="font-size: 1.05rem; color: #94a3b8; text-decoration: line-through;">{{ efficiency_metrics.at_risk_wastage_before }}</span>
+        <span style="font-size: 1.65rem; font-weight: 800; color: #d97706;">{{ efficiency_metrics.at_risk_wastage_after }}</span>
+      </div>
+      <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">
+        FEFO allocation prioritizes short-life dairy and bread to high-turnover stores before expiration.
+      </p>
+    </div>
+
+    <!-- Metric 4: Order Fill Rate -->
+    <div class="card" style="padding: 1.25rem; border-radius: 18px; border-left: 4px solid #8b5cf6;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+        <span style="font-size: 0.76rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase;">Network Order Fill Rate</span>
+        <span class="badge" style="background: #faf5ff; color: #7c3aed; font-weight: 700;">{{ efficiency_metrics.fill_rate_gain }}</span>
+      </div>
+      <div style="display: flex; align-items: baseline; gap: 0.5rem; margin-top: 0.35rem;">
+        <span style="font-size: 1.05rem; color: #94a3b8; text-decoration: line-through;">{{ efficiency_metrics.order_fill_rate_before }}</span>
+        <span style="font-size: 1.65rem; font-weight: 800; color: #7c3aed;">{{ efficiency_metrics.order_fill_rate_after }}</span>
+      </div>
+      <p style="font-size: 0.74rem; color: var(--text-muted); margin-top: 0.5rem; line-height: 1.4;">
+        Consistent on-time stock availability elevates consumer fulfillment across all network nodes.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. Explicitly Stated Assumptions & Model Parameters ────── -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header" style="cursor: pointer;" onclick="toggleAssumptionsPanel();">
+    <div>
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <h4 class="card-title" style="margin: 0;">Optimization Model Assumptions & Operational Parameters</h4>
+        <span class="badge" style="background: #f1f5f9; color: #475569;">Stated Assumptions</span>
+      </div>
+      <p class="card-subtitle">Transparent mathematical and logistical constraints governing the distribution decision engine</p>
+    </div>
+    <button type="button" class="btn btn-outline btn-sm" id="toggleAssumptionsBtn">
+      <span>Hide Details</span>
+    </button>
+  </div>
+
+  <div id="assumptionsContent" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.5rem;">
+    {% for a in assumptions %}
+      <div style="padding: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 14px;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+          <span style="font-size: 0.7rem; font-weight: 700; color: #6366f1; text-transform: uppercase;">{{ a.category }}</span>
+          <span style="font-family: var(--font-mono); font-size: 0.72rem; color: var(--text-dark); font-weight: 700;">{{ a.value }}</span>
+        </div>
+        <div style="font-weight: 700; color: var(--text-dark); font-size: 0.88rem; margin-bottom: 0.25rem;">{{ a.parameter }}</div>
+        <div style="font-size: 0.74rem; color: var(--text-muted); line-height: 1.45;">{{ a.description }}</div>
+      </div>
+    {% endfor %}
+  </div>
+</div>
+
+<!-- ── 4. Actionable Optimization Recommendations Feed ────────── -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Actionable Product Allocation Recommendations</h3>
+      <p class="card-subtitle">
+        Prescriptive distribution actions specifying which products, which destinations, what quantities, and from which warehouses
+      </p>
+    </div>
+
+    <!-- Filter Buttons -->
+    <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+      <button type="button" class="btn btn-outline btn-sm active-tab" onclick="filterRecs('all', this)">All ({{ recommendations|length }})</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="filterRecs('perishable', this)">Urgent FEFO Perishables</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="filterRecs('proximity', this)">Local Proximity (&lt; 30km)</button>
+      <button type="button" class="btn btn-outline btn-sm" onclick="filterRecs('highscore', this)">High Score (≥ 95%)</button>
+    </div>
+  </div>
+
+  <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;" id="recommendationsList">
+    {% for r in recommendations %}
+      <div 
+        class="rec-card" 
+        style="padding: 1.5rem; border: 1px solid var(--border-light); border-radius: 18px; background: #ffffff; box-shadow: 0 2px 10px rgba(0,0,0,0.02); transition: all 0.2s ease;"
+        data-perishable="{{ 'true' if r.shelf_life_days <= 14 else 'false' }}"
+        data-distance="{{ r.distance_km }}"
+        data-score="{{ r.optimization_score }}"
+      >
+        <!-- Top Row: SKU Header & Optimization Score -->
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; flex-wrap: wrap; gap: 0.75rem;">
+          <div style="display: flex; align-items: center; gap: 0.85rem;">
+            <div style="width: 44px; height: 44px; border-radius: 12px; background: #faf5ff; border: 1px solid #f3e8ff; display: flex; align-items: center; justify-content: center; color: #7c3aed;">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+              </svg>
+            </div>
+            <div>
+              <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <span style="font-size: 1.05rem; font-weight: 700; color: var(--text-dark);">{{ r.product_name }}</span>
+                <span style="font-family: var(--font-mono); font-size: 0.75rem; background: #f1f5f9; padding: 0.15rem 0.45rem; border-radius: 6px; font-weight: 600;">
+                  {{ r.product_sku }}
+                </span>
+                <span class="badge {{ r.shelf_badge }}">
+                  {{ r.shelf_life_days }}d Shelf-Life ({{ r.perishability_tier }})
+                </span>
+              </div>
+              <div style="font-size: 0.78rem; color: var(--text-muted); margin-top: 2px;">
+                {{ r.category }} &bull; Unit Price: ₹{{ "{:,.2f}".format(r.price) }} &bull; Unit Weight: {{ r.weight_kg }} kg
+              </div>
+            </div>
+          </div>
+
+          <div style="text-align: right;">
+            <div class="badge" style="background: linear-gradient(135deg, #059669 0%, #10b981 100%); color: #ffffff; padding: 0.35rem 0.75rem; font-size: 0.82rem; font-weight: 800; box-shadow: 0 2px 8px rgba(16, 185, 129, 0.25);">
+              {{ r.optimization_score }}% AI Match
+            </div>
+          </div>
+        </div>
+
+        <!-- 3-Box Flow Grid: Origin -> Route -> Destination -->
+        <div style="display: grid; grid-template-columns: 1.1fr 1fr 1.1fr; gap: 1rem; padding: 1.25rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 14px; margin-bottom: 1rem;">
+          <!-- Origin: Source Warehouse -->
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #2563eb; text-transform: uppercase; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.3rem;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #2563eb;"></span>
+              <span>FROM SOURCE WAREHOUSE</span>
+            </div>
+            <div style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ r.source_name }}</div>
+            <div style="font-size: 0.76rem; color: var(--text-muted);">{{ r.source_code }} &bull; {{ r.source_city }} Hub</div>
+            <div style="font-size: 0.78rem; color: #059669; font-weight: 600; margin-top: 0.35rem;">
+              On-Hand Available: <strong>{{ "{:,}".format(r.source_available) }} units</strong>
+            </div>
+          </div>
+
+          <!-- Middle: Geodesic Corridor & Freight -->
+          <div style="border-left: 1px dashed var(--border-light); border-right: 1px dashed var(--border-light); padding: 0 0.85rem; text-align: center; display: flex; flex-direction: column; justify-content: center;">
+            <div style="font-size: 0.74rem; color: var(--text-muted); font-weight: 600;">Optimal Freight Corridor</div>
+            <div style="font-size: 1.15rem; font-weight: 800; color: var(--text-dark); margin: 2px 0;">{{ r.distance_km }} km</div>
+            <div style="font-size: 0.74rem; color: #6366f1; font-weight: 600;">
+              Est. Transit: {{ r.estimated_transit_hours }} hrs &bull; Freight: ₹{{ "{:,.2f}".format(r.freight_cost) }}
+            </div>
+          </div>
+
+          <!-- Destination: Outlet in Deficit -->
+          <div>
+            <div style="font-size: 0.72rem; font-weight: 700; color: #d97706; text-transform: uppercase; margin-bottom: 0.35rem; display: flex; align-items: center; gap: 0.3rem;">
+              <span style="width: 7px; height: 7px; border-radius: 50%; background: #d97706;"></span>
+              <span>TO DESTINATION OUTLET</span>
+            </div>
+            <div style="font-weight: 700; color: var(--text-dark); font-size: 0.95rem;">{{ r.dest_name }}</div>
+            <div style="font-size: 0.76rem; color: var(--text-muted);">{{ r.dest_code }} &bull; {{ r.dest_city }} ({{ r.dest_type }})</div>
+            <div style="font-size: 0.78rem; color: #dc2626; font-weight: 600; margin-top: 0.35rem;">
+              Stock: {{ r.current_stock }} units &bull; Sales: {{ r.daily_velocity }}/d &bull; Runway: <strong>{{ r.runway_days }} days</strong>
+            </div>
+          </div>
+        </div>
+
+        <!-- Bottom Row: Primary Driver, Financial Impact & Action Button -->
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+          <div style="max-width: 65%;">
+            <div style="font-size: 0.78rem; font-weight: 600; color: var(--text-dark); margin-bottom: 0.25rem;">
+              Optimization Rationale: <span style="font-weight: 400; color: var(--text-body);">{{ r.primary_driver }}</span>
+            </div>
+            <div style="display: flex; gap: 1rem; font-size: 0.74rem; color: var(--text-muted);">
+              <span>Revenue Protected: <strong style="color: #059669;">₹{{ "{:,.2f}".format(r.lost_sales_prevented) }}</strong></span>
+              <span>Freight Saved: <strong style="color: #2563eb;">₹{{ "{:,.2f}".format(r.freight_savings) }}</strong></span>
+              <span>Spoilage Prevented: <strong style="color: #d97706;">₹{{ "{:,.2f}".format(r.spoilage_prevented) }}</strong></span>
+            </div>
+          </div>
+
+          <!-- 1-Click Action Dispatch Form -->
+          <form method="POST" action="{{ url_for('api_distribution_execute') }}" style="margin: 0;">
+            <input type="hidden" name="source_id" value="{{ r.source_id }}" />
+            <input type="hidden" name="dest_id" value="{{ r.dest_id }}" />
+            <input type="hidden" name="product_id" value="{{ r.product_id }}" />
+            <input type="hidden" name="quantity" value="{{ r.recommended_quantity }}" />
+            <input type="hidden" name="notes" value="AI Optimized Dispatch: {{ r.recommended_quantity }} units from {{ r.source_code }} to {{ r.dest_code }}" />
+            <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.55rem 1.15rem; font-weight: 600;">
+              <span>Dispatch {{ r.recommended_quantity }} Units &rarr;</span>
+            </button>
+          </form>
+        </div>
+      </div>
+    {% else %}
+      <div style="text-align: center; padding: 4rem 1rem; color: var(--text-muted);">
+        All distribution channels are currently optimized with zero stockout deficits!
+      </div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  function toggleAssumptionsPanel() {
+    const panel = document.getElementById('assumptionsContent');
+    const btn = document.getElementById('toggleAssumptionsBtn');
+    if (!panel) return;
+    if (panel.style.display === 'none') {
+      panel.style.display = 'grid';
+      if (btn) btn.innerHTML = '<span>Hide Details</span>';
+    } else {
+      panel.style.display = 'none';
+      if (btn) btn.innerHTML = '<span>Show Details</span>';
+    }
+  }
+
+  function filterRecs(filterType, btn) {
+    document.querySelectorAll('.btn-outline.btn-sm').forEach(b => b.classList.remove('active-tab'));
+    if (btn) btn.classList.add('active-tab');
+
+    const cards = document.querySelectorAll('.rec-card');
+    cards.forEach(card => {
+      const isPerishable = card.getAttribute('data-perishable') === 'true';
+      const distance = parseFloat(card.getAttribute('data-distance')) || 0;
+      const score = parseFloat(card.getAttribute('data-score')) || 0;
+
+      if (filterType === 'all') {
+        card.style.display = '';
+      } else if (filterType === 'perishable') {
+        card.style.display = isPerishable ? '' : 'none';
+      } else if (filterType === 'proximity') {
+        card.style.display = distance <= 30.0 ? '' : 'none';
+      } else if (filterType === 'highscore') {
+        card.style.display = score >= 95.0 ? '' : 'none';
+      }
+    });
+  }
+</script>
+<style>
+  .active-tab {
+    background: #0f172a !important;
+    color: #ffffff !important;
+    border-color: #0f172a !important;
+  }
+</style>
+{% endblock %}
