@@ -46,3 +46,6 @@ desktop.ini
 *.sqlite3
 *.db-wal
 *.db-shm
+
+# Scratch files
+scratch/
