@@ -1,0 +1,973 @@
+{% extends "base.html" %}
+
+{% block title %}FMCG Distribution Intelligence & Live Map{% endblock %}
+{% block header_title %}FMCG Distribution Intelligence & Inventory Movement Map{% endblock %}
+
+{% block topbar_actions %}
+<div style="display: flex; gap: 0.65rem; align-items: center; flex-wrap: wrap;">
+  <!-- Demo Mode Pill -->
+  <span class="badge" style="background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.35); font-size: 0.76rem;">
+    DEMO DATA ACTIVE
+  </span>
+
+  <!-- Reset Demo Data Form -->
+  <form method="POST" action="{{ url_for('api_reset_demo') }}" style="display: inline;" onsubmit="return confirm('Reset demo dataset? Your custom user-created records will be preserved.');">
+    <button type="submit" class="btn btn-outline btn-sm" title="Restore sample FMCG network">
+      Reset Demo Data
+    </button>
+  </form>
+
+  <!-- Add Location Button -->
+  <button type="button" class="btn btn-outline btn-sm" onclick="openModal('addLocationModal')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+      <circle cx="12" cy="10" r="3"></circle>
+    </svg>
+    <span>+ Location</span>
+  </button>
+
+  <!-- Dispatch Shipment Button -->
+  <button type="button" class="btn btn-primary btn-sm" onclick="openModal('dispatchShipmentModal')">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="17 1 21 5 17 9"></polyline>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+      <polyline points="7 23 3 19 7 15"></polyline>
+      <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+    </svg>
+    <span>Dispatch Shipment</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- 10 KPI Metrics Cards Grid -->
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+  <!-- 1. Total Inventory -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Total Stock</span>
+      <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">Catalog</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem;">{{ "{:,}".format(metrics.total_inventory) }}</div>
+    <div style="font-size: 0.72rem; color: #c084fc; font-weight: 600;">₹{{ "{:,.0f}".format(metrics.total_inventory_value) }} Value</div>
+  </div>
+
+  <!-- 2. Warehouses -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Warehouses</span>
+      <span class="legend-icon-dot" style="background: #3b82f6;"></span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #60a5fa;">{{ metrics.total_warehouses }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Central Distribution Hubs</div>
+  </div>
+
+  <!-- 3. Active Distributors -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Distributors</span>
+      <span class="legend-icon-dot" style="background: #a855f7;"></span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #c084fc;">{{ metrics.active_distributors }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Regional Transit Stockists</div>
+  </div>
+
+  <!-- 4. Retailers Served -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Retail Outlets</span>
+      <span class="legend-icon-dot" style="background: #f97316;"></span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #fb923c;">{{ metrics.retailers_served }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">POS Stores & Marts</div>
+  </div>
+
+  <!-- 5. Shipments In Transit -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">In Transit</span>
+      <span class="badge" style="background: rgba(59, 130, 246, 0.2); color: #38bdf8;">Moving</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #38bdf8;">{{ metrics.shipments_in_transit }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Active Road Shipments</div>
+  </div>
+</div>
+
+<div style="display: grid; grid-template-columns: repeat(5, 1fr); gap: 1rem; margin-bottom: 1.5rem;">
+  <!-- 6. Delivered Shipments -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Delivered</span>
+      <span class="badge status-healthy">Completed</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #34d399;">{{ metrics.delivered_shipments }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">{{ metrics.success_rate }}% Success Rate</div>
+  </div>
+
+  <!-- 7. Delayed Shipments -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Delayed Shipments</span>
+      <span class="badge {% if metrics.delayed_shipments > 0 %}status-critical{% else %}status-healthy{% endif %}">
+        {% if metrics.delayed_shipments > 0 %}Alert{% else %}On Time{% endif %}
+      </span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: {% if metrics.delayed_shipments > 0 %}#f87171{% else %}#34d399{% endif %};">
+      {{ metrics.delayed_shipments }}
+    </div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Corridor Exceptions</div>
+  </div>
+
+  <!-- 8. Low Stock SKUs -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Low Stock Alerts</span>
+      <span class="badge status-low">Threshold</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #fbbf24;">{{ metrics.low_stock_products }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Facilities Needing Restock</div>
+  </div>
+
+  <!-- 9. Total Dispatched Units -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Dispatched Units</span>
+      <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">Outflow</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem;">{{ "{:,}".format(metrics.total_dispatched_units) }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Units Dispatched</div>
+  </div>
+
+  <!-- 10. Total Delivered Units -->
+  <div class="metric-card" style="padding: 1rem 1.15rem;">
+    <div class="metric-top-row" style="margin-bottom: 0.4rem;">
+      <span class="metric-lbl">Delivered Units</span>
+      <span class="badge" style="background: rgba(16, 185, 129, 0.15); color: #34d399;">Inflow</span>
+    </div>
+    <div class="metric-val" style="font-size: 1.45rem; color: #34d399;">{{ "{:,}".format(metrics.total_delivered_units) }}</div>
+    <div style="font-size: 0.72rem; color: var(--text-dim);">Units Received at Stores</div>
+  </div>
+</div>
+
+<!-- Search & Filtering Controls Bar -->
+<div class="card" style="padding: 1rem 1.25rem; margin-bottom: 1.25rem;">
+  <form method="GET" action="{{ url_for('inventory') }}" id="filterForm" style="display: flex; flex-wrap: wrap; gap: 0.85rem; align-items: center; justify-content: space-between;">
+    <!-- Global Search -->
+    <div style="position: relative; flex: 1; min-width: 250px;">
+      <div style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--text-dim); display: flex;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+      </div>
+      <input
+        type="text"
+        id="globalSearchInput"
+        name="search"
+        class="form-control"
+        placeholder="Global Search: location name, SKU, product, or shipment code..."
+        value="{{ search or '' }}"
+        style="padding-left: 2.35rem;"
+      />
+    </div>
+
+    <!-- Facility Filter -->
+    <select name="type" class="form-control" style="width: auto; min-width: 170px;" onchange="document.getElementById('filterForm').submit()">
+      <option value="">All Facility Types</option>
+      <option value="Warehouse" {% if selected_type == 'Warehouse' %}selected{% endif %}>Warehouses Only (Blue)</option>
+      <option value="Distributor" {% if selected_type == 'Distributor' %}selected{% endif %}>Distributors Only (Purple)</option>
+      <option value="Retailer" {% if selected_type == 'Retailer' %}selected{% endif %}>Retailers Only (Orange)</option>
+    </select>
+
+    <!-- Shipment Status Filter -->
+    <select name="status" class="form-control" style="width: auto; min-width: 170px;" onchange="document.getElementById('filterForm').submit()">
+      <option value="">All Shipment Statuses</option>
+      <option value="In Transit" {% if selected_status == 'In Transit' %}selected{% endif %}>In Transit (Blue Animated)</option>
+      <option value="Delivered" {% if selected_status == 'Delivered' %}selected{% endif %}>Delivered (Green)</option>
+      <option value="Delayed" {% if selected_status == 'Delayed' %}selected{% endif %}>Delayed (Red)</option>
+      <option value="Planned" {% if selected_status == 'Planned' %}selected{% endif %}>Planned (Dashed)</option>
+    </select>
+
+    <!-- Clear Filters -->
+    {% if search or selected_type or selected_status %}
+      <a href="{{ url_for('inventory') }}" class="btn btn-outline btn-sm" style="color: #94a3b8;">
+        Reset Filters
+      </a>
+    {% endif %}
+  </form>
+</div>
+
+<!-- Smart Inventory & Delivery Alerts Notification Bar -->
+{% if alerts %}
+<div style="margin-bottom: 1.25rem; display: flex; flex-direction: column; gap: 0.5rem;">
+  {% for alert in alerts %}
+    <div class="alert {% if alert.severity == 'CRITICAL' %}alert-error{% else %}alert-warning{% endif %}" style="padding: 0.65rem 1rem; display: flex; justify-content: space-between; align-items: center; border-radius: var(--radius-sm);">
+      <div style="display: flex; align-items: center; gap: 0.65rem; font-size: 0.84rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0;">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+          <line x1="12" y1="16" x2="12.01" y2="16"></line>
+        </svg>
+        <div>
+          <strong style="color: #fff;">{{ alert.title }}:</strong> {{ alert.message }}
+        </div>
+      </div>
+      <button
+        type="button"
+        class="btn btn-sm btn-outline"
+        style="padding: 0.2rem 0.6rem; font-size: 0.74rem;"
+        onclick="panToMapLocation({{ alert.lat }}, {{ alert.lng }}, '{{ alert.location_code }}')"
+      >
+        Locate on Map &rarr;
+      </button>
+    </div>
+  {% endfor %}
+</div>
+{% endif %}
+
+<!-- Large Interactive Leaflet.js Map -->
+<div class="map-card-wrapper">
+  <!-- Map Floating Toolbar -->
+  <div class="map-floating-overlay">
+    <div class="map-floating-panel">
+      <span style="font-size: 0.78rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 0.05em;">
+        Corridor: Maharashtra & Gujarat
+      </span>
+      <button type="button" class="btn btn-outline btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="resetMapCorridorView()">
+        Fit Corridor
+      </button>
+    </div>
+
+    <div class="map-floating-panel" style="gap: 0.5rem;">
+      <span style="font-size: 0.74rem; color: #94a3b8;">Click map when adding to set pin</span>
+    </div>
+  </div>
+
+  <!-- Map DOM Element -->
+  <div id="fmcgMap"></div>
+
+  <!-- Map Legend -->
+  <div class="map-legend-bar">
+    <div class="legend-item">
+      <span class="legend-icon-dot" style="background: #3b82f6;"></span>
+      <span>Warehouse (CDC/RDC)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-icon-dot" style="background: #a855f7;"></span>
+      <span>Distributor (Stockist)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-icon-dot" style="background: #f97316;"></span>
+      <span>Retailer (Store/POS)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line-sample" style="background: #3b82f6; border-top: 1px dashed #fff;"></span>
+      <span>In Transit (Animated)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line-sample" style="background: #10b981;"></span>
+      <span>Delivered (Completed)</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-line-sample" style="background: #ef4444;"></span>
+      <span>Delayed Route</span>
+    </div>
+    <div class="legend-item">
+      <span style="color: #38bdf8; font-weight: 800;">🚚</span>
+      <span>Moving Vehicle</span>
+    </div>
+  </div>
+</div>
+
+<!-- Active Shipments & Real-Time Tracking Ledger -->
+<div class="card" style="margin-bottom: 2rem;">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Real-Time Stock Movement & Delivery Ledger</h3>
+      <p class="card-subtitle">Live status tracking, road distance, delivery confirmations, and audit reconciliation</p>
+    </div>
+    <span class="badge" style="background: rgba(255, 255, 255, 0.06); color: #fff;">{{ shipments | length }} Shipments</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Shipment Code</th>
+          <th>Status</th>
+          <th>Product / SKU</th>
+          <th>Origin (Source)</th>
+          <th>Destination (Target)</th>
+          <th>Quantity</th>
+          <th>Distance</th>
+          <th>ETA / Delivery</th>
+          <th>Progress</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in shipments %}
+          <tr>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #38bdf8;">
+              <a href="javascript:void(0)" onclick="focusOnShipment({{ s.id }}, {{ s.source_lat }}, {{ s.source_lng }}, {{ s.dest_lat }}, {{ s.dest_lng }})" style="color: inherit; text-decoration: underline;">
+                {{ s.shipment_code }}
+              </a>
+            </td>
+            <td>
+              <span class="badge {{ s.status_badge }}">{{ s.status }}</span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: #fff;">{{ s.product_name }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #94a3b8;">{{ s.product_sku }}</div>
+            </td>
+            <td>
+              <span class="badge {% if s.source_type == 'Warehouse' %}badge-warehouse{% elif s.source_type == 'Distributor' %}badge-store{% else %}badge-store{% endif %}">
+                {{ s.source_name }} ({{ s.source_city }})
+              </span>
+            </td>
+            <td>
+              <span class="badge {% if s.dest_type == 'Warehouse' %}badge-warehouse{% elif s.dest_type == 'Distributor' %}badge-store{% else %}badge-store{% endif %}">
+                {{ s.dest_name }} ({{ s.dest_city }})
+              </span>
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #fff;">
+              {{ s.quantity }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #94a3b8;">
+              {{ s.distance_km }} km
+            </td>
+            <td style="font-size: 0.8rem; color: var(--text-dim);">
+              {% if s.status == 'Delivered' %}
+                Delivered: {{ s.actual_delivery_date[:16] if s.actual_delivery_date else 'Completed' }}
+              {% else %}
+                Expected: {{ s.expected_delivery_date[:16] if s.expected_delivery_date else 'TBD' }}
+              {% endif %}
+            </td>
+            <td style="min-width: 100px;">
+              <div style="display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem;">
+                <div style="flex: 1; height: 6px; background: rgba(255,255,255,0.1); border-radius: 999px; overflow: hidden;">
+                  <div style="width: {{ s.progress_pct }}%; height: 100%; background: {{ s.route_color }};"></div>
+                </div>
+                <span>{{ s.progress_pct }}%</span>
+              </div>
+            </td>
+            <td style="text-align: right;">
+              <div style="display: inline-flex; gap: 0.4rem;">
+                {% if s.status in ['In Transit', 'Delayed'] %}
+                  <form method="POST" action="{{ url_for('api_shipment_deliver', shipment_id=s.id) }}" style="display: inline;">
+                    <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;" title="Confirm Delivery and Credit Destination Stock">
+                      Confirm Delivery
+                    </button>
+                  </form>
+                  <form method="POST" action="{{ url_for('api_shipment_cancel', shipment_id=s.id) }}" style="display: inline;" onsubmit="return confirm('Cancel shipment {{ s.shipment_code }}? Dispatched stock will be safely restored to source inventory.');">
+                    <button type="submit" class="btn btn-danger btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;" title="Cancel and Restore Stock">
+                      Cancel
+                    </button>
+                  </form>
+                {% elif s.status == 'Delivered' %}
+                  <span style="font-size: 0.74rem; color: #34d399; font-weight: 600;">Reconciled</span>
+                {% else %}
+                  <span style="font-size: 0.74rem; color: var(--text-dim);">Archived</span>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="10" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+              No shipments matching the filter criteria.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Slide-Out Telemetry Drawer -->
+<div class="telemetry-drawer" id="detailsDrawer">
+  <div class="drawer-header">
+    <div>
+      <span class="badge" id="drwTypeBadge">Warehouse</span>
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-top: 0.25rem;" id="drwTitle">
+        Facility Telemetry
+      </h3>
+    </div>
+    <button type="button" class="btn-close-alert" onclick="closeTelemetryDrawer()">&times;</button>
+  </div>
+
+  <div class="drawer-body">
+    <div style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 1.25rem;" id="drwAddress">
+      Plot 12, Industrial Area
+    </div>
+
+    <!-- Utilization Meter -->
+    <div style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1rem; margin-bottom: 1.25rem;">
+      <div style="display: flex; justify-content: space-between; font-size: 0.8rem; margin-bottom: 0.35rem;">
+        <span style="color: var(--text-muted);">Capacity Utilization</span>
+        <strong id="drwUtilizationVal" style="color: #38bdf8;">0%</strong>
+      </div>
+      <div class="capacity-meter">
+        <div class="capacity-meter-fill" id="drwUtilizationBar" style="width: 50%; background: #3b82f6;"></div>
+      </div>
+      <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-dim); margin-top: 0.4rem;">
+        <span>On-Hand: <strong id="drwOnHand" style="color: #fff;">0</strong></span>
+        <span>Capacity: <strong id="drwCapacity" style="color: #fff;">0</strong> units</span>
+      </div>
+    </div>
+
+    <!-- Incoming / Outgoing Stock Counters -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; margin-bottom: 1.25rem;">
+      <div style="padding: 0.75rem; background: rgba(59, 130, 246, 0.08); border: 1px solid rgba(59, 130, 246, 0.25); border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 0.7rem; color: #93c5fd; text-transform: uppercase;">Incoming Stock</div>
+        <div style="font-size: 1.2rem; font-weight: 800; color: #fff;" id="drwIncoming">0</div>
+      </div>
+      <div style="padding: 0.75rem; background: rgba(168, 85, 247, 0.08); border: 1px solid rgba(168, 85, 247, 0.25); border-radius: var(--radius-sm); text-align: center;">
+        <div style="font-size: 0.7rem; color: #c084fc; text-transform: uppercase;">Outgoing Stock</div>
+        <div style="font-size: 1.2rem; font-weight: 800; color: #fff;" id="drwOutgoing">0</div>
+      </div>
+    </div>
+
+    <!-- Stored Products Breakdown -->
+    <h4 style="font-size: 0.85rem; font-weight: 700; color: #cbd5e1; text-transform: uppercase; margin-bottom: 0.75rem;">
+      Stored Products Breakdown
+    </h4>
+    <div id="drwProductsList" style="display: flex; flex-direction: column; gap: 0.5rem; margin-bottom: 1.5rem;">
+      <!-- Dynamic list populated via JS -->
+    </div>
+  </div>
+
+  <div class="drawer-footer">
+    <button type="button" class="btn btn-primary btn-full" id="drwActionBtn" onclick="openDispatchWithSource()">
+      Dispatch Shipment from Here
+    </button>
+  </div>
+</div>
+
+<!-- Modal 1: Add New Location with Geocoding and Map Click Pinning -->
+<div class="modal-backdrop" id="addLocationModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff;">Register Facility on Map</h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">Add Warehouse, Distributor, or Retailer with GPS coordinates</p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeModal('addLocationModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('api_location_add') }}" id="addLocationForm">
+      <div class="form-group">
+        <label class="form-label" for="loc_name">Facility Name <span style="color: #f87171;">*</span></label>
+        <input type="text" id="loc_name" name="name" class="form-control" placeholder="e.g. Pune Central Distribution Hub" required />
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="loc_code">Unique ID / Code <span style="color: #f87171;">*</span></label>
+          <input type="text" id="loc_code" name="code" class="form-control" placeholder="e.g. WH-PUN-02" style="text-transform: uppercase;" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loc_type">Facility Type <span style="color: #f87171;">*</span></label>
+          <select id="loc_type" name="type" class="form-control" required>
+            <option value="Warehouse">Warehouse (Blue Marker)</option>
+            <option value="Distributor">Distributor (Purple Marker)</option>
+            <option value="Retailer">Retailer (Orange Marker)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="loc_address">Street Address <span style="color: #f87171;">*</span></label>
+        <div style="display: flex; gap: 0.5rem;">
+          <input type="text" id="loc_address" name="address" class="form-control" placeholder="e.g. Chakan MIDC Phase 2" required />
+          <button type="button" class="btn btn-outline" style="white-space: nowrap;" onclick="geocodeAddressField()">
+            Geocode
+          </button>
+        </div>
+        <div id="geocodeStatus" style="font-size: 0.74rem; color: #38bdf8; margin-top: 0.25rem;"></div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label" for="loc_city">City <span style="color: #f87171;">*</span></label>
+          <input type="text" id="loc_city" name="city" class="form-control" placeholder="e.g. Pune" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loc_state">State <span style="color: #f87171;">*</span></label>
+          <input type="text" id="loc_state" name="state" class="form-control" value="Maharashtra" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loc_pincode">PIN Code</label>
+          <input type="text" id="loc_pincode" name="pincode" class="form-control" placeholder="e.g. 410501" value="410501" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.75rem;">
+        <div class="form-group">
+          <label class="form-label" for="loc_lat">Latitude</label>
+          <input type="number" id="loc_lat" name="lat" step="any" class="form-control" value="18.5204" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loc_lng">Longitude</label>
+          <input type="number" id="loc_lng" name="lng" step="any" class="form-control" value="73.8567" required />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="loc_cap">Capacity (Units)</label>
+          <input type="number" id="loc_cap" name="capacity_units" class="form-control" value="10000" min="100" />
+        </div>
+      </div>
+
+      <div style="padding: 0.6rem 0.85rem; background: rgba(59, 130, 246, 0.08); border-radius: var(--radius-sm); font-size: 0.76rem; color: #93c5fd; margin-bottom: 1rem;">
+        <strong>Map Click Picker:</strong> You can also click anywhere on the background map to automatically set Latitude and Longitude!
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('addLocationModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save & Pin to Map</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Modal 2: Create & Dispatch Shipment -->
+<div class="modal-backdrop" id="dispatchShipmentModal">
+  <div class="modal-box">
+    <div class="modal-header">
+      <div>
+        <h3 style="font-size: 1.2rem; font-weight: 700; color: #fff;">Dispatch FMCG Shipment</h3>
+        <p style="font-size: 0.78rem; color: var(--text-muted); margin-top: 0.2rem;">Atomic stock deduction & live route drawing on map</p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeModal('dispatchShipmentModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('api_shipment_create') }}" id="dispatchShipmentForm" onsubmit="return validateShipmentForm();">
+      <!-- Origin -->
+      <div class="form-group">
+        <label class="form-label" for="disp_source_id">Source Facility (Origin) <span style="color: #f87171;">*</span></label>
+        <select id="disp_source_id" name="source_location_id" class="form-control" required onchange="checkSourceStock()">
+          <option value="">-- Select Origin Location --</option>
+          {% for loc in all_locations %}
+            <option value="{{ loc.id }}">[{{ loc.type }}] {{ loc.name }} ({{ loc.code }} - {{ loc.city }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Destination -->
+      <div class="form-group">
+        <label class="form-label" for="disp_dest_id">Destination Facility (Target) <span style="color: #f87171;">*</span></label>
+        <select id="disp_dest_id" name="dest_location_id" class="form-control" required>
+          <option value="">-- Select Destination Location --</option>
+          {% for loc in all_locations %}
+            <option value="{{ loc.id }}">[{{ loc.type }}] {{ loc.name }} ({{ loc.code }} - {{ loc.city }})</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Product SKU -->
+      <div class="form-group">
+        <label class="form-label" for="disp_product_id">Product / SKU <span style="color: #f87171;">*</span></label>
+        <select id="disp_product_id" name="product_id" class="form-control" required onchange="checkSourceStock()">
+          <option value="">-- Choose Product --</option>
+          {% for p in products %}
+            <option value="{{ p.id }}">{{ p.name }} ({{ p.sku }}) - ₹{{ p.price }}</option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Quantity -->
+      <div class="form-group">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem;">
+          <label class="form-label" for="disp_qty" style="margin-bottom: 0;">Shipment Quantity <span style="color: #f87171;">*</span></label>
+          <span id="sourceStockNotice" style="font-size: 0.74rem; color: #94a3b8;">Select source to verify stock</span>
+        </div>
+        <input type="number" id="disp_qty" name="quantity" class="form-control" min="1" step="1" placeholder="e.g. 200" required />
+      </div>
+
+      <!-- Dates -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="disp_status">Initial Status</label>
+          <select id="disp_status" name="status" class="form-control">
+            <option value="In Transit" selected>In Transit (Active Blue Route)</option>
+            <option value="Planned">Planned (Dashed Route)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="disp_notes">Notes (Optional)</label>
+          <input type="text" id="disp_notes" name="notes" class="form-control" placeholder="e.g. Priority Cold Chain Transit" />
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('dispatchShipmentModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Dispatch & Draw Route</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  let mapInstance = null;
+  let markersLayer = null;
+  let routesLayer = null;
+  let vehiclesLayer = null;
+  let selectedLocationSourceId = null;
+
+  document.addEventListener('DOMContentLoaded', () => {
+    initFmcgMap();
+  });
+
+  function initFmcgMap() {
+    // 1. Initialize Leaflet Map centered on Maharashtra & Gujarat corridor
+    mapInstance = L.map('fmcgMap', {
+      zoomControl: true,
+      scrollWheelZoom: true,
+    }).setView([19.2, 73.8], 7);
+
+    // Dark sleek OpenStreetMap tiles (CartoDB Dark Matter)
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+      subdomains: 'abcd',
+      maxZoom: 19,
+    }).addTo(mapInstance);
+
+    markersLayer = L.layerGroup().addTo(mapInstance);
+    routesLayer = L.layerGroup().addTo(mapInstance);
+    vehiclesLayer = L.layerGroup().addTo(mapInstance);
+
+    // Map Click Listener to pick coordinates for Add Location Modal!
+    mapInstance.on('click', (e) => {
+      const lat = e.latlng.lat.toFixed(4);
+      const lng = e.latlng.lng.toFixed(4);
+      const latInput = document.getElementById('loc_lat');
+      const lngInput = document.getElementById('loc_lng');
+      if (latInput && lngInput) {
+        latInput.value = lat;
+        lngInput.value = lng;
+        const statusEl = document.getElementById('geocodeStatus');
+        if (statusEl) statusEl.textContent = `Coordinates set from map click: [${lat}, ${lng}]`;
+      }
+    });
+
+    // Load Geo Data from API
+    loadMapGeoData();
+  }
+
+  async function loadMapGeoData() {
+    try {
+      const res = await fetch('/api/map-data');
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      renderLocations(data.locations);
+      renderShipmentRoutes(data.shipments);
+    } catch (e) {
+      console.error("Map load error:", e);
+    }
+  }
+
+  function renderLocations(locations) {
+    markersLayer.clearLayers();
+
+    locations.forEach(loc => {
+      // Custom colored icons: Warehouse=Blue, Distributor=Purple, Retailer=Orange
+      let markerClass = 'marker-wh';
+      let iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M3 21V9l9-6 9 6v12H3Z"></path></svg>';
+
+      if (loc.type === 'Distributor') {
+        markerClass = 'marker-dist';
+        iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path><path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path></svg>';
+      } else if (loc.type === 'Retailer') {
+        markerClass = 'marker-ret';
+        iconSvg = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="9" cy="21" r="1"></circle><circle cx="20" cy="21" r="1"></circle><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"></path></svg>';
+      }
+
+      const customIcon = L.divIcon({
+        className: 'custom-map-icon-wrapper',
+        html: `<div class="custom-map-marker ${markerClass}" style="width: 32px; height: 32px;" title="${loc.name}">${iconSvg}</div>`,
+        iconSize: [32, 32],
+        iconAnchor: [16, 16],
+      });
+
+      const marker = L.marker([loc.lat, loc.lng], { icon: customIcon });
+
+      // Click to open rich popup & drawer
+      marker.on('click', () => {
+        openLocationDetails(loc.id);
+      });
+
+      // Bind initial informative tooltip / popup
+      const popupHtml = `
+        <div style="font-size: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <span class="badge ${loc.type === 'Warehouse' ? 'badge-warehouse' : (loc.type === 'Distributor' ? 'badge-store' : 'badge-store')}">${loc.type}</span>
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #38bdf8;">${loc.code}</span>
+          </div>
+          <strong style="font-size: 1rem; color: #fff; display: block; margin-bottom: 0.2rem;">${loc.name}</strong>
+          <div style="font-size: 0.78rem; color: #94a3b8; margin-bottom: 0.5rem;">${loc.address}, ${loc.city}</div>
+          <div style="display: flex; justify-content: space-between; border-top: 1px solid rgba(255,255,255,0.08); padding-top: 0.4rem; font-size: 0.8rem;">
+            <span>Stock: <strong style="color: #34d399;">${loc.total_stock} units</strong></span>
+            <span>Capacity: <strong style="color: #38bdf8;">${loc.utilization_pct}%</strong></span>
+          </div>
+          <div style="margin-top: 0.65rem; text-align: right;">
+            <button class="btn btn-primary btn-sm" style="padding: 0.2rem 0.55rem; font-size: 0.72rem;" onclick="openLocationDetails(${loc.id})">
+              Inspect Telemetry &rarr;
+            </button>
+          </div>
+        </div>
+      `;
+      marker.bindPopup(popupHtml);
+      markersLayer.addLayer(marker);
+    });
+  }
+
+  function renderShipmentRoutes(shipments) {
+    routesLayer.clearLayers();
+    vehiclesLayer.clearLayers();
+
+    shipments.forEach(s => {
+      if (!s.geometry || s.geometry.length < 2) return;
+
+      let color = s.route_color || '#3b82f6';
+      let dashArray = null;
+      let className = '';
+
+      if (s.status === 'In Transit') {
+        color = '#3b82f6';
+        className = 'animated-route-transit';
+      } else if (s.status === 'Delivered') {
+        color = '#10b981';
+      } else if (s.status === 'Delayed') {
+        color = '#ef4444';
+      } else {
+        color = '#a855f7';
+        dashArray = '6, 8';
+      }
+
+      // Draw polyline
+      const polyline = L.polyline(s.geometry, {
+        color: color,
+        weight: 3.5,
+        opacity: 0.85,
+        dashArray: dashArray,
+        className: className,
+      });
+
+      polyline.bindTooltip(`
+        <strong>${s.shipment_code}</strong>: ${s.product_name} (${s.quantity} units)<br/>
+        From: ${s.source_name} &rarr; To: ${s.dest_name}<br/>
+        Status: <span style="font-weight:700;">${s.status}</span>
+      `, { sticky: true });
+
+      routesLayer.addLayer(polyline);
+
+      // Render Moving Truck Marker for In Transit or Delayed shipments
+      if (s.status === 'In Transit' || s.status === 'Delayed') {
+        const truckIcon = L.divIcon({
+          className: 'custom-truck-wrapper',
+          html: `
+            <div class="custom-map-marker marker-truck" style="width: 28px; height: 28px; font-size: 14px;" title="${s.shipment_code} In Transit">
+              🚚
+            </div>
+          `,
+          iconSize: [28, 28],
+          iconAnchor: [14, 14],
+        });
+
+        const truckMarker = L.marker([s.vehicle_lat, s.vehicle_lng], { icon: truckIcon });
+        truckMarker.bindPopup(`
+          <div style="font-size: 0.82rem;">
+            <strong style="color: #38bdf8; font-size: 0.95rem;">🚚 ${s.shipment_code}</strong>
+            <div style="color: #fff; font-weight:600; margin: 0.25rem 0;">${s.product_name} (${s.quantity} units)</div>
+            <div style="color: #94a3b8; font-size: 0.76rem;">${s.source_name} &rarr; ${s.dest_name}</div>
+            <div style="margin-top: 0.4rem; color: #34d399; font-weight: 700;">Progression: ${s.progress_pct}%</div>
+          </div>
+        `);
+        vehiclesLayer.addLayer(truckMarker);
+      }
+    });
+  }
+
+  async function openLocationDetails(locationId) {
+    selectedLocationSourceId = locationId;
+    const drawer = document.getElementById('detailsDrawer');
+    if (!drawer) return;
+
+    try {
+      const res = await fetch(`/api/location/${locationId}/popup`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (!data.success) return;
+
+      const loc = data.location;
+      document.getElementById('drwTitle').textContent = loc.name;
+      document.getElementById('drwTypeBadge').textContent = loc.type;
+      document.getElementById('drwTypeBadge').className = `badge ${loc.type === 'Warehouse' ? 'badge-warehouse' : 'badge-store'}`;
+      document.getElementById('drwAddress').textContent = `${loc.address}, ${loc.city}, ${loc.state} - PIN ${loc.pincode}`;
+      document.getElementById('drwOnHand').textContent = loc.total_stock;
+      document.getElementById('drwCapacity').textContent = loc.capacity_units;
+      document.getElementById('drwUtilizationVal').textContent = `${loc.utilization_pct}%`;
+      document.getElementById('drwUtilizationBar').style.width = `${Math.min(100, loc.utilization_pct)}%`;
+      document.getElementById('drwUtilizationBar').style.background = loc.utilization_pct > 85 ? '#ef4444' : '#3b82f6';
+      document.getElementById('drwIncoming').textContent = loc.incoming_stock;
+      document.getElementById('drwOutgoing').textContent = loc.outgoing_stock;
+
+      // Populate Stored Products
+      const prodList = document.getElementById('drwProductsList');
+      prodList.innerHTML = '';
+
+      if (loc.products_stored && loc.products_stored.length) {
+        loc.products_stored.forEach(p => {
+          const itemDiv = document.createElement('div');
+          itemDiv.style.cssText = 'padding: 0.6rem 0.75rem; background: rgba(255,255,255,0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-sm); display: flex; justify-content: space-between; align-items: center;';
+          itemDiv.innerHTML = `
+            <div>
+              <div style="font-weight: 600; color: #fff; font-size: 0.84rem;">${p.name}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #94a3b8;">${p.sku} &bull; ₹${p.price}</div>
+            </div>
+            <div style="text-align: right;">
+              <div style="font-weight: 700; color: #34d399; font-size: 0.95rem;">${p.current_stock}</div>
+              <div style="font-size: 0.7rem; color: var(--text-dim);">units on hand</div>
+            </div>
+          `;
+          prodList.appendChild(itemDiv);
+        });
+      } else {
+        prodList.innerHTML = '<div style="color: var(--text-dim); font-size: 0.8rem; text-align: center; padding: 1rem;">No SKUs currently stocked here.</div>';
+      }
+
+      drawer.classList.add('open');
+    } catch (e) {
+      console.error(e);
+    }
+  }
+
+  function closeTelemetryDrawer() {
+    const drawer = document.getElementById('detailsDrawer');
+    if (drawer) drawer.classList.remove('open');
+  }
+
+  function openDispatchWithSource() {
+    closeTelemetryDrawer();
+    const sourceSelect = document.getElementById('disp_source_id');
+    if (sourceSelect && selectedLocationSourceId) {
+      sourceSelect.value = selectedLocationSourceId;
+      checkSourceStock();
+    }
+    openModal('dispatchShipmentModal');
+  }
+
+  function resetMapCorridorView() {
+    if (mapInstance) {
+      mapInstance.flyTo([19.2, 73.8], 7, { duration: 1.2 });
+    }
+  }
+
+  function panToMapLocation(lat, lng, code) {
+    if (mapInstance) {
+      mapInstance.flyTo([lat, lng], 14, { duration: 1.4 });
+      // Add visual pulse effect
+      const pulseDiv = L.circleMarker([lat, lng], {
+        radius: 25,
+        color: '#ef4444',
+        fillColor: '#ef4444',
+        fillOpacity: 0.35,
+      }).addTo(mapInstance);
+      setTimeout(() => mapInstance.removeLayer(pulseDiv), 4000);
+    }
+  }
+
+  function focusOnShipment(id, sLat, sLng, dLat, dLng) {
+    if (mapInstance) {
+      const bounds = L.latLngBounds([sLat, sLng], [dLat, dLng]);
+      mapInstance.fitBounds(bounds, { padding: [50, 50] });
+    }
+  }
+
+  async function geocodeAddressField() {
+    const address = document.getElementById('loc_address').value.trim();
+    const city = document.getElementById('loc_city').value.trim();
+    const statusEl = document.getElementById('geocodeStatus');
+    const q = `${address}, ${city}, Maharashtra, India`;
+
+    if (!address && !city) {
+      statusEl.textContent = 'Please enter an address or city first.';
+      statusEl.style.color = '#f87171';
+      return;
+    }
+
+    statusEl.textContent = 'Contacting geocoding service...';
+    try {
+      const res = await fetch(`/api/geocode?q=${encodeURIComponent(q)}`);
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('loc_lat').value = data.lat;
+        document.getElementById('loc_lng').value = data.lng;
+        statusEl.textContent = `Geocoded: [${data.lat}, ${data.lng}] (${data.display_name})`;
+        statusEl.style.color = '#34d399';
+        // center map temporarily to preview
+        if (mapInstance) mapInstance.setView([data.lat, data.lng], 12);
+      } else {
+        statusEl.textContent = 'Geocoding unavailable. Click directly on map to set coordinates.';
+        statusEl.style.color = '#fbbf24';
+      }
+    } catch (e) {
+      statusEl.textContent = 'Click map directly to pin location.';
+      statusEl.style.color = '#fbbf24';
+    }
+  }
+
+  async function checkSourceStock() {
+    const srcId = document.getElementById('disp_source_id').value;
+    const prodId = document.getElementById('disp_product_id').value;
+    const notice = document.getElementById('sourceStockNotice');
+
+    if (!srcId || !prodId) {
+      notice.textContent = 'Select source to verify stock';
+      notice.style.color = '#94a3b8';
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/store-sku-info?store_id=${srcId}&product_id=${prodId}`);
+      const data = await res.json();
+      if (data.success) {
+        notice.textContent = `Available: ${data.current_stock} units`;
+        notice.style.color = data.current_stock > 0 ? '#34d399' : '#f87171';
+      } else {
+        notice.textContent = 'Available: 0 units';
+        notice.style.color = '#f87171';
+      }
+    } catch (e) {
+      // silent
+    }
+  }
+
+  function validateShipmentForm() {
+    const src = document.getElementById('disp_source_id').value;
+    const dst = document.getElementById('disp_dest_id').value;
+    const qty = parseInt(document.getElementById('disp_qty').value, 10);
+
+    if (src && dst && src === dst) {
+      alert("Error: Origin and Destination facilities cannot be identical.");
+      return false;
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+      alert("Error: Shipment quantity must be greater than zero.");
+      return false;
+    }
+
+    return true;
+  }
+</script>
+{% endblock %}

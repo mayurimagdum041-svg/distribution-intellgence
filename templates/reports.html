@@ -1,0 +1,190 @@
+{% extends "base.html" %}
+
+{% block title %}Operational Reports{% endblock %}
+{% block header_title %}Inventory & Distribution Analytics Reports{% endblock %}
+
+{% block topbar_actions %}
+<button type="button" class="btn btn-outline btn-sm" onclick="window.print()">
+  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <polyline points="6 9 6 2 18 2 18 9"></polyline>
+    <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path>
+    <rect x="6" y="14" width="12" height="8"></rect>
+  </svg>
+  <span>Print Report</span>
+</button>
+{% endblock %}
+
+{% block content %}
+<!-- Executive Capital & Valuation Summary Cards -->
+<div class="kpi-grid" style="margin-bottom: 1.75rem;">
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h12"></path>
+          <path d="M6 8h12"></path>
+          <path d="m6 13 8.5 8"></path>
+          <path d="M6 13h3a4 4 0 0 0 0-8"></path>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">Total</span>
+    </div>
+    <div class="metric-val">₹{{ "{:,.2f}".format(metrics.total_inventory_value) }}</div>
+    <div class="metric-lbl">Total Network Capital</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21V9l9-6 9 6v12H3Z"></path>
+        </svg>
+      </div>
+      <span class="badge badge-warehouse">Warehouses</span>
+    </div>
+    <div class="metric-val">₹{{ "{:,.2f}".format(metrics.location_type_valuation.get('Warehouse', 0)) }}</div>
+    <div class="metric-lbl">Warehouse Depot Assets</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-blue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+        </svg>
+      </div>
+      <span class="badge badge-store">Retail Outlets</span>
+    </div>
+    <div class="metric-val">₹{{ "{:,.2f}".format(metrics.location_type_valuation.get('Retail Store', 0)) }}</div>
+    <div class="metric-lbl">Store Shelf Assets</div>
+  </div>
+
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-amber">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+        </svg>
+      </div>
+      <span class="badge status-low">Replenishment</span>
+    </div>
+    <div class="metric-val" style="color: #fbbf24;">{{ replenishment_manifest | length }}</div>
+    <div class="metric-lbl">SKUs Requiring Restock</div>
+  </div>
+</div>
+
+<!-- Restocking Requirement Manifest -->
+<div class="card" style="margin-bottom: 1.75rem;">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Automated Restocking Manifest</h3>
+      <p class="card-subtitle">Retail outlets where projected consumption demands immediate replenishment</p>
+    </div>
+    <a href="{{ url_for('transfers') }}" class="btn btn-primary btn-sm">Initiate Inter-Facility Transfer</a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Store Name</th>
+          <th>Location Code</th>
+          <th>Product / SKU</th>
+          <th>Unit Price</th>
+          <th>Current On-Hand</th>
+          <th>Units Sold / Day</th>
+          <th>7-Day Demand</th>
+          <th>Projected Remaining</th>
+          <th>Restock Order</th>
+          <th>Estimated Order Value</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in replenishment_manifest %}
+          <tr>
+            <td style="font-weight: 700; color: #fff;">{{ item.location_name }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-size: 0.74rem; color: #38bdf8;">{{ item.location_code }}</td>
+            <td>
+              <div style="font-weight: 600; color: #cbd5e1;">{{ item.product_name }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--text-dim);">{{ item.product_sku }}</div>
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace;">₹{{ "{:,.2f}".format(item.product_price) }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">{{ item.current_stock }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #94a3b8;">{{ item.units_sold_per_day }}/d</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #38bdf8;">{{ item.predicted_demand }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {% if item.projected_stock < 0 %}#f87171{% else %}#fbbf24{% endif %};">
+              {{ item.projected_stock }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 800; color: #c084fc; font-size: 1rem;">
+              +{{ item.recommended_replenishment }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #34d399;">
+              ₹{{ "{:,.2f}".format(item.recommended_replenishment * item.product_price) }}
+            </td>
+            <td>
+              <span class="badge {{ item.status_badge }}">{{ item.status }}</span>
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="11" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+              All retail store locations currently hold optimal inventory levels.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- Master Inventory Valuation Ledger -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Comprehensive Inventory Ledger</h3>
+      <p class="card-subtitle">Audited unit breakdown across all warehouses and retail points of sale</p>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Facility</th>
+          <th>Type</th>
+          <th>City</th>
+          <th>Product / SKU</th>
+          <th>Category</th>
+          <th>Unit Price</th>
+          <th>Stock Quantity</th>
+          <th>Total Valuation (₹)</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for item in inventory_items %}
+          <tr>
+            <td style="font-weight: 700; color: #fff;">{{ item.location_name }}</td>
+            <td>
+              <span class="badge {% if item.location_type == 'Warehouse' %}badge-warehouse{% else %}badge-store{% endif %}">
+                {{ item.location_type }}
+              </span>
+            </td>
+            <td>{{ item.location_city }}</td>
+            <td>
+              <div style="font-weight: 600; color: #cbd5e1;">{{ item.product_name }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #38bdf8;">{{ item.product_sku }}</div>
+            </td>
+            <td>{{ item.product_category }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace;">₹{{ "{:,.2f}".format(item.product_price) }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #fff;">{{ item.current_stock }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #c084fc; font-weight: 700;">₹{{ "{:,.2f}".format(item.inventory_value) }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,727 +1,848 @@
 """
-OptiStock AI - Distribution Intelligence & Inventory Optimization Engine
-Flask Application & RESTful API Gateway
+OptiStock AI — Smart Inventory & Warehouse Management System
+FMCG Distribution Intelligence, Interactive Real-Time Map, and Logistics Gateway
 """
 
-import json
 import os
-from flask import Flask, render_template, jsonify, request, redirect, url_for, session
-from engine.data_loader import (
-    PRODUCTS,
-    WAREHOUSES,
-    STORES,
-    INITIAL_BATCHES,
-    DISTANCE_KM,
-    calculate_transport_cost_per_unit,
-    get_transit_time_days,
+import json
+import urllib.request
+import urllib.parse
+from functools import wraps
+from flask import (
+    Flask,
+    render_template,
+    request,
+    redirect,
+    url_for,
+    flash,
+    session,
+    jsonify,
 )
-from engine.forecaster import forecaster
-from engine.inventory_optimizer import (
-    analyze_store_inventory_health,
-    analyze_warehouse_batches,
-    calculate_safety_stock,
-)
-from engine.allocator import allocator
-from engine.simulator import simulator
-from engine.automation_db import init_db, get_db_connection
-from engine.automation_engine import (
-    execute_workflow,
-    approve_replenishment,
-    reject_replenishment,
-    approve_expiry_rescue,
-    reject_expiry_rescue,
-    resolve_alert,
-    acknowledge_alert,
-    complete_delivery_and_restock,
-    get_pipeline_summary,
-)
-from engine.automation_scheduler import start_in_process_scheduler
+from werkzeug.security import generate_password_hash, check_password_hash
+import database
 
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY", "optistock-secret-key-2026")
+app.secret_key = os.environ.get("SECRET_KEY", "optistock-ai-secret-key-2026-secure")
 
-# Initialize database on startup
-init_db()
+# Initialize database on application start
+database.init_db()
 
-# Auto-start in-process background scheduler (if enabled and not disabled for testing)
-if os.environ.get("SCHEDULER_AUTOSTART", "1").lower() in ("1", "true", "yes"):
-    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
-        try:
-            start_in_process_scheduler()
-        except Exception as _e:
-            app.logger.warning("Could not auto-start in-process scheduler: %s", _e)
 
+def login_required(f):
+    """Protects routes requiring user authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "user_id" not in session:
+            flash("Please sign in to access your OptiStock AI workspace.", "warning")
+            return redirect(url_for("login", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.context_processor
+def inject_user_context():
+    """Provides user session info to all Jinja templates."""
+    user = None
+    if "user_id" in session:
+        user = database.get_user_by_id(session["user_id"])
+    return {"current_user": user}
+
+
+# ─────────────────────────────────────────────────────────────
+# AUTHENTICATION ROUTES
+# ─────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
-    return render_template("simple.html")
+    if "user_id" in session:
+        return redirect(url_for("inventory"))
+    return redirect(url_for("login"))
 
 
-# 4 User Roles & Profiles
-USERS = {
-    "admin": {
-        "username": "admin",
-        "name": "System Administrator",
-        "role": "admin",
-        "role_title": "Executive Administrator",
-        "badge": "Administrator",
-        "avatar": "AD",
-        "color": "#2563eb",
-        "allowed_sections": ["overview", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
-        "description": "Executive command tower: global network KPIs, SciPy HiGHS MILP optimizer, What-If simulator, and complete audit trail."
-    },
-    "warehouse": {
-        "username": "warehouse",
-        "name": "Pune Regional DC Head",
-        "role": "warehouse",
-        "role_title": "Warehouse Manager",
-        "badge": "Warehouse Manager",
-        "avatar": "WH",
-        "color": "#d97706",
-        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "map"],
-        "description": "Batch shelf-life tracking (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests."
-    },
-    "retail": {
-        "username": "retail",
-        "name": "Store Operations Head",
-        "role": "retail",
-        "role_title": "Retail Store Manager",
-        "badge": "Retail Store Manager",
-        "avatar": "RT",
-        "color": "#16a34a",
-        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast", "map"],
-        "description": "Store stock levels, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts."
-    },
-    "delivery": {
-        "username": "delivery",
-        "name": "Maharashtra Corridor Fleet",
-        "role": "delivery",
-        "role_title": "Delivery Partner & Driver",
-        "badge": "Delivery Fleet",
-        "avatar": "DL",
-        "color": "#7c3aed",
-        "allowed_sections": ["map", "alerts", "distribution"],
-        "description": "Dispatch manifests, road transit routes, and delivery milestones for Pune, Satara, Kolhapur, Sangli, Karad."
-    }
-}
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if "user_id" in session:
+        return redirect(url_for("inventory"))
 
-# 4-Digit Security PINs for Each Role
-USER_PINS = {
-    "admin": "1111",
-    "warehouse": "2222",
-    "retail": "3333",
-    "delivery": "4444"
-}
+    if request.method == "POST":
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
 
-# Live in-memory delivery status tracker for stops
-DELIVERY_STOPS = {
-    "LOC-PUNE": {"city": "Pune", "status": "In Transit", "eta": "45 mins", "driver": "Rajesh Shinde", "vehicle": "MH-12-Q-4021"},
-    "LOC-SATARA": {"city": "Satara", "status": "Dispatched", "eta": "2 hrs 10 mins", "driver": "Sachin Kadam", "vehicle": "MH-11-V-8812"},
-    "LOC-KOLHAPUR": {"city": "Kolhapur", "status": "Out for Delivery", "eta": "3 hrs 30 mins", "driver": "Amit Patil", "vehicle": "MH-09-AA-1004"},
-    "LOC-SANGLI": {"city": "Sangli", "status": "In Transit", "eta": "3 hrs 45 mins", "driver": "Sunil More", "vehicle": "MH-10-CX-9421"},
-    "LOC-KARAD": {"city": "Karad", "status": "Scheduled", "eta": "2 hrs 40 mins", "driver": "Nitin Sawant", "vehicle": "MH-50-B-3100"},
-}
+        if not email or not password:
+            flash("Please enter both email and password.", "error")
+            return render_template("login.html", email=email)
 
-@app.route("/admin")
-def admin_view():
-    """Square-inspired high-end Executive Administrator authentication and command portal."""
-    return render_template(
-        "admin.html",
-        user_info=USERS["admin"],
-        user_pins=USER_PINS,
-    )
+        user = database.get_user_by_email(email)
+        if not user or not check_password_hash(user["password_hash"], password):
+            flash("Invalid email or password. Please try again.", "error")
+            return render_template("login.html", email=email)
 
-@app.route("/login")
-@app.route("/login/<role>")
-def login_view(role=None):
-    """Separate dedicated login page for each user role and login portal hub."""
-    if role == "admin":
-        return redirect(url_for("admin_view"))
+        session.clear()
+        session["user_id"] = user["id"]
+        session["user_name"] = user["name"]
+        session["user_email"] = user["email"]
 
-    if role and role not in USERS:
-        return redirect(url_for("login_view"))
+        flash(f"Welcome back, {user['name']}! Successfully signed in.", "success")
+        next_page = request.args.get("next")
+        if next_page and next_page.startswith("/"):
+            return redirect(next_page)
+        return redirect(url_for("dashboard"))
 
-    user_info = USERS.get(role) if role else None
-    return render_template(
-        "login.html",
-        active_role=role,
-        user_info=user_info,
-        users=USERS,
-        user_pins=USER_PINS,
-    )
+    return render_template("login.html")
+
+
+@app.route("/demo-login", methods=["POST"])
+def demo_login():
+    """1-Click Demo Login for immediate reviewer testing."""
+    demo_user = database.get_user_by_email("demo@optistock.ai")
+    if not demo_user:
+        database.init_db()
+        demo_user = database.get_user_by_email("demo@optistock.ai")
+
+    if demo_user:
+        session.clear()
+        session["user_id"] = demo_user["id"]
+        session["user_name"] = demo_user["name"]
+        session["user_email"] = demo_user["email"]
+        flash("Logged in with Demo Account! Welcome to OptiStock AI.", "success")
+        return redirect(url_for("dashboard"))
+
+    flash("Could not initialize demo account.", "error")
+    return redirect(url_for("login"))
+
+
+@app.route("/register", methods=["GET", "POST"])
+def register():
+    if "user_id" in session:
+        return redirect(url_for("dashboard"))
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        email = request.form.get("email", "").strip()
+        password = request.form.get("password", "")
+        confirm_password = request.form.get("confirm_password", "")
+
+        errors = []
+        if not name:
+            errors.append("Full Name is required.")
+        if not email or "@" not in email:
+            errors.append("A valid email address is required.")
+        if not password or len(password) < 6:
+            errors.append("Password must be at least 6 characters long.")
+        if password != confirm_password:
+            errors.append("Passwords do not match.")
+
+        existing = database.get_user_by_email(email)
+        if existing:
+            errors.append("An account with this email already exists. Please log in.")
+
+        if errors:
+            for err in errors:
+                flash(err, "error")
+            return render_template("register.html", name=name, email=email)
+
+        pw_hash = generate_password_hash(password)
+        new_id = database.create_user(name, email, pw_hash)
+
+        if new_id:
+            session.clear()
+            session["user_id"] = new_id
+            session["user_name"] = name
+            session["user_email"] = email
+            flash("Account registered successfully! Welcome to OptiStock AI.", "success")
+            return redirect(url_for("dashboard"))
+        else:
+            flash("Registration failed. Please try again.", "error")
+            return render_template("register.html", name=name, email=email)
+
+    return render_template("register.html")
+
 
 @app.route("/logout")
-def logout_view():
-    """Logs out and redirects to the login portal."""
+def logout():
     session.clear()
-    return redirect(url_for("login_view"))
-
-@app.route("/simple")
-def simple():
-    """Light-theme, simplified dashboard for presentations and quick reviews."""
-    return render_template("simple.html")
-
-@app.route("/api/auth/verify-pin", methods=["POST"])
-def api_verify_pin():
-    """Validates the 4-digit PIN for the requested user role."""
-    data = request.get_json(silent=True) or {}
-    role = data.get("role")
-    pin = str(data.get("pin", "")).strip()
-
-    if role in USER_PINS and USER_PINS[role] == pin:
-        user_info = dict(USERS[role])
-        session["user_role"] = role
-        session["user_name"] = user_info["name"]
-        return jsonify({"success": True, "user": user_info})
-
-    return jsonify({"success": False, "error": f"Invalid PIN for {role.capitalize() if role else 'user'}."}), 401
+    flash("You have been signed out successfully.", "info")
+    return redirect(url_for("login"))
 
 
-@app.route("/api/users")
-def api_users():
-    """Returns available user roles and profiles."""
-    return jsonify({"users": list(USERS.values())})
+# ─────────────────────────────────────────────────────────────
+# FMCG DISTRIBUTION INTELLIGENCE & INTERACTIVE MAP CONSOLE
+# ─────────────────────────────────────────────────────────────
 
+@app.route("/inventory", methods=["GET"])
+@login_required
+def inventory():
+    """Main interactive geographical map for real-time inventory movement & delivery tracking."""
+    user_id = session["user_id"]
 
-@app.route("/api/delivery/stops", methods=["GET", "POST"])
-def api_delivery_stops():
-    """Get or update active delivery stops and their shipment progress with closed-loop restocking."""
-    if request.method == "POST":
-        data = request.get_json(silent=True) or {}
-        loc_id = data.get("loc_id")
-        new_status = data.get("status")
-        if loc_id in DELIVERY_STOPS and new_status:
-            DELIVERY_STOPS[loc_id]["status"] = new_status
-            restock_res = None
-            if new_status.lower() == "delivered":
-                DELIVERY_STOPS[loc_id]["eta"] = "Completed"
-                restock_res = complete_delivery_and_restock(loc_id=loc_id, user_name="Corridor Fleet / Dock")
-            return jsonify({"success": True, "stop": DELIVERY_STOPS[loc_id], "restock": restock_res})
-        return jsonify({"error": "Invalid location or status"}), 400
-    return jsonify(DELIVERY_STOPS)
+    # Filter parameters
+    loc_type = request.args.get("type", "").strip()
+    status_filter = request.args.get("status", "").strip()
+    search = request.args.get("search", "").strip()
 
+    locations = database.get_locations(user_id, loc_type=loc_type or None, search=search or None)
+    shipments = database.get_shipments(user_id, status=status_filter or None, search=search or None)
+    products = database.get_user_products(user_id)
+    fmcg_metrics = database.get_fmcg_dashboard_metrics(user_id)
+    alerts = database.get_smart_alerts(user_id)
 
-@app.route("/api/delivery/complete", methods=["POST"])
-def api_delivery_complete():
-    """Marks a delivery shipment as delivered and triggers closed-loop restocking."""
-    body = request.get_json(silent=True) or {}
-    shipment_code = body.get("shipment_code")
-    loc_id = body.get("loc_id")
-    user_name = body.get("user_name") or session.get("user_name") or "Corridor Fleet Lead"
+    # All locations for dropdown pickers
+    all_locations = database.get_locations(user_id)
 
-    if not shipment_code and not loc_id:
-        return jsonify({"error": "shipment_code or loc_id is required"}), 400
-
-    result = complete_delivery_and_restock(
-        shipment_code=shipment_code,
-        loc_id=loc_id,
-        user_name=user_name
+    return render_template(
+        "inventory.html",
+        locations=locations,
+        all_locations=all_locations,
+        shipments=shipments,
+        products=products,
+        metrics=fmcg_metrics,
+        alerts=alerts,
+        selected_type=loc_type,
+        selected_status=status_filter,
+        search=search,
+        page="inventory"
     )
 
-    # Sync with in-memory corridor stops if applicable
-    matched_loc = loc_id or (result.get("destination_store_id") if result else None)
-    if matched_loc:
-        for k, v in DELIVERY_STOPS.items():
-            if k == matched_loc or matched_loc in k or (result and result.get("destination_store_id") and result["destination_store_id"] in k):
-                v["status"] = "Delivered"
-                v["eta"] = "Completed"
 
-    return jsonify(result)
+# ─────────────────────────────────────────────────────────────
+# REST APIS FOR REAL-TIME MAP & INVENTORY WORKFLOWS
+# ─────────────────────────────────────────────────────────────
 
+@app.route("/api/map-data")
+@login_required
+def api_map_data():
+    """Provides complete real-time JSON for Leaflet.js markers, routes, and vehicle locations."""
+    user_id = session["user_id"]
+    status_filter = request.args.get("status")
+    loc_type = request.args.get("type")
+    search = request.args.get("search")
 
-@app.route("/api/pipeline/status")
-def api_pipeline_status():
-    """Returns real-time interconnected pipeline status across all 5 supply chain stages."""
-    summary = get_pipeline_summary()
-    return jsonify(summary)
+    locations = database.get_locations(user_id, loc_type=loc_type or None, search=search or None)
+    shipments = database.get_shipments(user_id, status=status_filter or None, search=search or None)
+    metrics = database.get_fmcg_dashboard_metrics(user_id)
+    alerts = database.get_smart_alerts(user_id)
 
-
-
-@app.route("/api/meta")
-def api_meta():
-    """Returns static metadata: products, warehouses, stores, and model assumptions."""
     return jsonify({
-        "products": PRODUCTS,
-        "warehouses": WAREHOUSES,
-        "stores": STORES,
-        "assumptions": {
-            "planning_horizons": [1, 3, 7, 14],
-            "solver": "SciPy HiGHS Mixed-Integer Linear Programming (MILP)",
-            "service_levels": [90.0, 95.0, 98.0, 99.0],
-            "forecasting_model": "Autoregressive Ridge Regression with Lag & Promotion Features",
-            "stockout_penalty_multiplier": "2.2x Retail Selling Price",
-            "fefo_priority_window_days": 4,
-            "transport_cost_structure": "Distance (km) * Fleet Rate (Cold-Chain Rs. 0.024/kg-km vs Ambient Rs. 0.014/kg-km) * Weight + Fixed Handling",
-        }
+        "success": True,
+        "locations": locations,
+        "shipments": shipments,
+        "metrics": metrics,
+        "alerts": alerts
     })
 
 
-@app.route("/api/summary")
-def api_summary():
-    """Returns executive KPIs and financial summary for the default 3-day horizon."""
+@app.route("/api/location/<int:loc_id>/popup")
+@login_required
+def api_location_popup(loc_id):
+    """Provides detailed telemetry when a user clicks any map marker."""
+    user_id = session["user_id"]
+    popup_data = database.get_location_popup_data(loc_id, user_id)
+    if not popup_data:
+        return jsonify({"success": False, "error": "Location not found"}), 404
+    return jsonify({"success": True, "location": popup_data})
+
+
+@app.route("/api/geocode")
+@login_required
+def api_geocode():
+    """Geocodes an address using OpenStreetMap Nominatim with fallback coordinates."""
+    query = request.args.get("q", "").strip()
+    if not query:
+        return jsonify({"success": False, "error": "Query required"}), 400
+
+    # Clean query
+    encoded_q = urllib.parse.quote(query)
+    url = f"https://nominatim.openstreetmap.org/search?format=json&q={encoded_q}&countrycodes=in&limit=1"
+
+    req = urllib.request.Request(url, headers={"User-Agent": "OptiStockAI-FMCG-Platform/2.0"})
     try:
-        horizon = int(request.args.get("days", 3))
-    except (ValueError, TypeError):
-        horizon = 3
+        with urllib.request.urlopen(req, timeout=3.5) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            if data and len(data) > 0:
+                return jsonify({
+                    "success": True,
+                    "lat": float(data[0]["lat"]),
+                    "lng": float(data[0]["lon"]),
+                    "display_name": data[0]["display_name"]
+                })
+    except Exception:
+        pass
 
-    plan = allocator.solve(horizon_days=horizon)
-    batches = analyze_warehouse_batches()
-    stores = analyze_store_inventory_health(horizon_days=horizon)
+    # City-based heuristic fallback if network/geocoding blocks
+    fallback_map = {
+        "mumbai": (19.0760, 72.8777),
+        "pune": (18.5204, 73.8567),
+        "thane": (19.2183, 72.9781),
+        "nashik": (19.9975, 73.7898),
+        "kolhapur": (16.7050, 74.2433),
+        "ahmedabad": (23.0225, 72.5714),
+        "surat": (21.1702, 72.8311),
+        "vadodara": (22.3072, 73.1812),
+        "nagpur": (21.1458, 79.0882),
+        "satara": (17.6805, 74.0183),
+        "aurangabad": (19.8762, 75.3433),
+    }
 
-    total_inventory_units = sum(b["quantity"] for b in batches)
-    total_inventory_value = round(sum(b["inventory_value"] for b in batches), 2)
-    critical_stockouts = sum(1 for s in stores if s["risk_status"] == "Critical")
-    warning_stockouts = sum(1 for s in stores if s["risk_status"] == "Warning")
-    urgent_batches = sum(1 for b in batches if b["status"] == "Urgent")
-
-    b_mark = plan["benchmark"]
-
-    return jsonify({
-        "horizon_days": horizon,
-        "total_inventory_units": total_inventory_units,
-        "total_inventory_value": total_inventory_value,
-        "warehouse_count": len(WAREHOUSES),
-        "store_count": len(STORES),
-        "product_count": len(PRODUCTS),
-        "critical_stockouts": critical_stockouts,
-        "warning_stockouts": warning_stockouts,
-        "urgent_expiry_batches": urgent_batches,
-        "shipment_count": plan["shipment_count"],
-        "units_shipped": plan["units_shipped"],
-        "total_unmet_units": plan["total_unmet_units"],
-        "total_transport_cost": plan["total_transport_cost"],
-        "baseline_transport_cost": b_mark["baseline_transport_cost"],
-        "transport_savings": b_mark["transport_savings"],
-        "transport_savings_pct": b_mark["transport_savings_pct"],
-        "spoilage_averted_savings": b_mark["spoilage_averted_savings"],
-        "total_economic_benefit": b_mark["total_economic_benefit"],
-        "fulfillment_rate_ai": b_mark["fulfillment_rate_ai"],
-        "fulfillment_rate_baseline": b_mark["fulfillment_rate_baseline"],
-        "stockouts_prevented_units": b_mark["stockouts_prevented_units"],
-    })
-
-
-@app.route("/api/plan")
-def api_plan():
-    """Calculates and returns the optimized MILP distribution plan with explainable rationales."""
-    try:
-        horizon = int(request.args.get("days", 3))
-    except (ValueError, TypeError):
-        horizon = 3
-
-    try:
-        fuel_multiplier = float(request.args.get("fuel", 1.0))
-    except (ValueError, TypeError):
-        fuel_multiplier = 1.0
-
-    try:
-        demand_shock = float(request.args.get("shock", 0.0))
-    except (ValueError, TypeError):
-        demand_shock = 0.0
-
-    disabled_raw = request.args.get("disabled", "")
-    disabled_warehouses = [x.strip() for x in disabled_raw.split(",") if x.strip()]
-
-    plan = allocator.solve(
-        horizon_days=horizon,
-        fuel_multiplier=fuel_multiplier,
-        demand_shock_pct=demand_shock,
-        disabled_warehouses=disabled_warehouses,
-    )
-    return jsonify(plan)
-
-
-@app.route("/api/inventory/stores")
-def api_store_inventory():
-    """Returns store-level inventory health, safety stocks, ROP, and stockout risk."""
-    try:
-        horizon = int(request.args.get("days", 3))
-    except (ValueError, TypeError):
-        horizon = 3
-
-    try:
-        service_level = float(request.args.get("service_level", 95.0))
-    except (ValueError, TypeError):
-        service_level = 95.0
-
-    try:
-        demand_shock = float(request.args.get("shock", 0.0))
-    except (ValueError, TypeError):
-        demand_shock = 0.0
-
-    records = analyze_store_inventory_health(
-        horizon_days=horizon,
-        service_level_pct=service_level,
-        demand_shock_pct=demand_shock,
-    )
-    return jsonify(records)
-
-
-@app.route("/api/inventory/warehouses")
-def api_warehouse_inventory():
-    """Returns warehouse batch inventory, shelf-life tracker, and spoilage risk."""
-    records = analyze_warehouse_batches()
-    return jsonify(records)
-
-
-@app.route("/api/forecast")
-def api_forecast():
-    """Returns ML demand forecast, confidence intervals, and metrics for a store-SKU."""
-    store_id = request.args.get("store_id", "ST-MUM-S")
-    try:
-        product_id = int(request.args.get("product_id", 1))
-    except (ValueError, TypeError):
-        product_id = 1
-
-    try:
-        horizon = int(request.args.get("days", 7))
-    except (ValueError, TypeError):
-        horizon = 7
-
-    try:
-        data = forecaster.forecast_store_sku(
-            store_id=store_id,
-            product_id=product_id,
-            horizon_days=horizon,
-        )
-        return jsonify(data)
-    except Exception as e:
-        return jsonify({"error": str(e)}), 400
-
-
-@app.route("/api/scenario", methods=["POST"])
-def api_scenario():
-    """Runs a What-If scenario simulation with custom operational shocks."""
-    body = request.get_json(silent=True) or {}
-    horizon = int(body.get("horizon_days", 3))
-    demand_shock = float(body.get("demand_shock_pct", 0.0))
-    fuel_multiplier = float(body.get("fuel_multiplier", 1.0))
-    disabled = body.get("disabled_warehouses", [])
-
-    result = simulator.run_scenario(
-        horizon_days=horizon,
-        demand_shock_pct=demand_shock,
-        fuel_multiplier=fuel_multiplier,
-        disabled_warehouses=disabled,
-    )
-    return jsonify(result)
-
-
-@app.route("/api/network")
-def api_network():
-    """Returns network nodes and connection topology with distances and transit times."""
-    nodes = []
-    for w in WAREHOUSES:
-        nodes.append({
-            "id": w["id"],
-            "name": w["name"],
-            "type": "warehouse",
-            "city": w["city"],
-            "lat": w["lat"],
-            "lng": w["lng"],
-            "capacity": w["capacity_pallets"],
-            "cold_chain": w["has_cold_chain"],
-        })
-
-    for s in STORES:
-        nodes.append({
-            "id": s["id"],
-            "name": s["name"],
-            "type": "store",
-            "city": s["city"],
-            "lat": s["lat"],
-            "lng": s["lng"],
-            "tier": s["tier"],
-            "store_type": s["type"],
-        })
-
-    links = []
-    for (w_id, s_id), dist in DISTANCE_KM.items():
-        links.append({
-            "source": w_id,
-            "target": s_id,
-            "distance_km": dist,
-            "transit_days": get_transit_time_days(w_id, s_id),
-        })
-
-    return jsonify({"nodes": nodes, "links": links})
-
-
-# ===========================================================================
-# AUTOMATION CONTROL PANEL & WORKFLOW API GATEWAYS
-# ===========================================================================
-
-@app.route("/api/automation/status")
-def api_automation_status():
-    """Returns status, run statistics and configs for all automated workflows."""
-    conn = get_db_connection()
-    try:
-        workflows = conn.execute("SELECT * FROM automation_configs ORDER BY id;").fetchall()
-        wf_list = []
-        for w in workflows:
-            wf_list.append({
-                "id": w["id"],
-                "name": w["name"],
-                "description": w["description"],
-                "enabled": bool(w["enabled"]),
-                "interval_seconds": w["interval_seconds"],
-                "last_run_at": w["last_run_at"],
-                "next_run_at": w["next_run_at"],
-                "last_status": w["last_status"],
-                "last_error": w["last_error"],
-                "actions_count": w["actions_count"],
-                "config": json.loads(w["config_json"] or "{}"),
+    q_lower = query.lower()
+    for city, coords in fallback_map.items():
+        if city in q_lower:
+            return jsonify({
+                "success": True,
+                "lat": coords[0],
+                "lng": coords[1],
+                "display_name": f"{query} (Estimated {city.title()})"
             })
 
-        # Summary statistics
-        total_alerts = conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED');").fetchone()["c"]
-        pending_replenish = conn.execute("SELECT COUNT(*) as c FROM replenishment_requests WHERE status = 'PENDING_APPROVAL';").fetchone()["c"]
-        pending_rescue = conn.execute("SELECT COUNT(*) as c FROM expiry_rescue_transfers WHERE status = 'PENDING_APPROVAL';").fetchone()["c"]
-        delayed_deliveries = conn.execute("SELECT COUNT(*) as c FROM delivery_shipments WHERE status = 'DELAYED';").fetchone()["c"]
-
-        return jsonify({
-            "workflows": wf_list,
-            "metrics": {
-                "active_alerts": total_alerts,
-                "pending_replenishments": pending_replenish,
-                "pending_expiry_rescues": pending_rescue,
-                "delayed_shipments": delayed_deliveries,
-            }
-        })
-    finally:
-        conn.close()
+    # Default Maharashtra center
+    return jsonify({
+        "success": True,
+        "lat": 18.5204,
+        "lng": 73.8567,
+        "display_name": f"{query} (Default Regional Center)"
+    })
 
 
-@app.route("/api/automation/toggle", methods=["POST"])
-def api_automation_toggle():
-    """Enables or disables an automation workflow."""
-    body = request.get_json(silent=True) or {}
-    workflow_id = body.get("workflow_id")
-    enabled = int(bool(body.get("enabled", True)))
+@app.route("/api/shipments/create", methods=["POST"])
+@login_required
+def api_shipment_create():
+    """Dispatches a new shipment with atomic stock deduction and route drawing."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
 
-    if not workflow_id:
-        return jsonify({"error": "workflow_id is required"}), 400
+    source_id = data.get("source_location_id")
+    dest_id = data.get("dest_location_id")
+    product_id = data.get("product_id")
+    quantity = data.get("quantity")
+    status = data.get("status", "In Transit")
+    dispatch_date = data.get("dispatch_date")
+    expected_date = data.get("expected_delivery_date")
+    notes = data.get("notes")
 
-    conn = get_db_connection()
     try:
-        with conn:
-            cur = conn.execute("UPDATE automation_configs SET enabled = ?, updated_at = datetime('now') WHERE id = ?;", (enabled, workflow_id))
-            if cur.rowcount == 0:
-                return jsonify({"error": "Workflow not found"}), 404
-        return jsonify({"success": True, "workflow_id": workflow_id, "enabled": bool(enabled)})
-    finally:
-        conn.close()
+        s_id = int(source_id)
+        d_id = int(dest_id)
+        p_id = int(product_id)
+        qty = int(quantity)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Invalid numerical parameters"}), 400
 
+    success, msg = database.create_shipment(
+        user_id, s_id, d_id, p_id, qty,
+        status=status, dispatch_date=dispatch_date,
+        expected_date=expected_date, notes=notes
+    )
 
-@app.route("/api/automation/run", methods=["POST"])
-def api_automation_run():
-    """Triggers immediate execution of a workflow (supports dry_run mode)."""
-    body = request.get_json(silent=True) or {}
-    workflow_id = body.get("workflow_id")
-    dry_run = bool(body.get("dry_run", False))
-
-    if not workflow_id:
-        return jsonify({"error": "workflow_id is required"}), 400
-
-    result = execute_workflow(workflow_id=workflow_id, dry_run=dry_run)
-    return jsonify(result)
-
-
-@app.route("/api/automation/history")
-def api_automation_history():
-    """Returns execution history logs for workflows."""
-    wf_id = request.args.get("workflow_id")
-    limit = int(request.args.get("limit", 30))
-
-    conn = get_db_connection()
-    try:
-        if wf_id:
-            rows = conn.execute("""
-            SELECT * FROM automation_execution_logs 
-            WHERE workflow_id = ? 
-            ORDER BY started_at DESC LIMIT ?;
-            """, (wf_id, limit)).fetchall()
-        else:
-            rows = conn.execute("""
-            SELECT * FROM automation_execution_logs 
-            ORDER BY started_at DESC LIMIT ?;
-            """, (limit,)).fetchall()
-
-        history = [dict(r) for r in rows]
-        return jsonify({"history": history})
-    finally:
-        conn.close()
-
-
-@app.route("/api/automation/replenishment")
-def api_automation_replenishment():
-    """Returns replenishment recommendations with status filter."""
-    status = request.args.get("status", "PENDING_APPROVAL")
-    conn = get_db_connection()
-    try:
-        if status and status != "all":
-            rows = conn.execute("SELECT * FROM replenishment_requests WHERE status = ? ORDER BY id DESC;", (status,)).fetchall()
-        else:
-            rows = conn.execute("SELECT * FROM replenishment_requests ORDER BY id DESC LIMIT 100;").fetchall()
-        return jsonify({"requests": [dict(r) for r in rows]})
-    finally:
-        conn.close()
-
-
-@app.route("/api/automation/replenishment/action", methods=["POST"])
-def api_automation_replenishment_action():
-    """Approves or rejects a replenishment recommendation (Manager action)."""
-    body = request.get_json(silent=True) or {}
-    request_id = body.get("request_id")
-    action = (body.get("action") or "").lower()
-    manager_name = body.get("manager_name") or "Supply Chain Manager"
-    notes = body.get("notes")
-
-    if not request_id or action not in ("approve", "reject"):
-        return jsonify({"error": "request_id and valid action ('approve'|'reject') required"}), 400
-
-    if action == "approve":
-        result = approve_replenishment(request_id=request_id, manager_name=manager_name, notes=notes)
+    if request.is_json:
+        return jsonify({"success": success, "message": msg})
     else:
-        result = reject_replenishment(request_id=request_id, manager_name=manager_name, reason=notes)
-
-    status_code = 200 if result.get("success") else 400
-    return jsonify(result), status_code
+        flash(msg, "success" if success else "error")
+        return redirect(url_for("inventory"))
 
 
-@app.route("/api/automation/expiry-rescue")
-def api_automation_expiry_rescue():
-    """Returns expiry rescue recommendations."""
-    status = request.args.get("status", "PENDING_APPROVAL")
-    conn = get_db_connection()
+@app.route("/api/shipments/<int:shipment_id>/deliver", methods=["POST"])
+@login_required
+def api_shipment_deliver(shipment_id):
+    """Confirms shipment delivery and adds stock to destination inventory."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
+    confirmed_qty = data.get("confirmed_quantity")
+
+    qty_val = None
+    if confirmed_qty:
+        try:
+            qty_val = int(confirmed_qty)
+        except ValueError:
+            qty_val = None
+
+    success, msg = database.confirm_delivery(shipment_id, user_id, confirmed_quantity=qty_val)
+    if request.is_json:
+        return jsonify({"success": success, "message": msg})
+    else:
+        flash(msg, "success" if success else "error")
+        return redirect(url_for("inventory"))
+
+
+@app.route("/api/shipments/<int:shipment_id>/cancel", methods=["POST"])
+@login_required
+def api_shipment_cancel(shipment_id):
+    """Cancels a shipment and safely restores stock to source inventory."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
+    reason = data.get("reason", "Cancelled by operator")
+
+    success, msg = database.cancel_shipment(shipment_id, user_id, reason=reason)
+    if request.is_json:
+        return jsonify({"success": success, "message": msg})
+    else:
+        flash(msg, "info" if success else "error")
+        return redirect(url_for("inventory"))
+
+
+@app.route("/api/locations/add", methods=["POST"])
+@login_required
+def api_location_add():
+    """Adds a new Warehouse, Distributor, or Retailer with GPS coordinates."""
+    user_id = session["user_id"]
+    data = request.get_json(silent=True) or request.form
+
+    name = data.get("name", "").strip()
+    code = data.get("code", "").strip().upper()
+    loc_type = data.get("type", "Warehouse").strip()
+    address = data.get("address", "").strip()
+    city = data.get("city", "").strip()
+    state = data.get("state", "Maharashtra").strip()
+    pincode = data.get("pincode", "400001").strip()
+    lat = data.get("lat", 18.5204)
+    lng = data.get("lng", 73.8567)
+    capacity = data.get("capacity_units", 10000)
+
+    if not name or not code or not city:
+        if request.is_json:
+            return jsonify({"success": False, "error": "Name, Code, and City are required"}), 400
+        flash("Name, ID Code, and City are required.", "error")
+        return redirect(url_for("inventory"))
+
     try:
-        if status and status != "all":
-            rows = conn.execute("SELECT * FROM expiry_rescue_transfers WHERE status = ? ORDER BY batch_expiry_days ASC;", (status,)).fetchall()
+        lat_val = float(lat)
+        lng_val = float(lng)
+        cap_val = int(capacity)
+    except ValueError:
+        lat_val, lng_val, cap_val = 18.5204, 73.8567, 10000
+
+    new_id = database.add_location(
+        user_id, code, name, loc_type, address, city, state, pincode,
+        lat=lat_val, lng=lng_val, capacity=cap_val
+    )
+
+    if new_id:
+        msg = f"{loc_type} '{name}' ({code}) pinned to map successfully!"
+        if request.is_json:
+            return jsonify({"success": True, "location_id": new_id, "message": msg})
+        flash(msg, "success")
+    else:
+        msg = f"Failed to register facility. Code '{code}' may already exist."
+        if request.is_json:
+            return jsonify({"success": False, "error": msg}), 400
+        flash(msg, "error")
+
+    return redirect(url_for("inventory"))
+
+
+@app.route("/api/reset-demo", methods=["POST"])
+@login_required
+def api_reset_demo():
+    """Resets FMCG demo data without deleting user-created items."""
+    user_id = session["user_id"]
+    database.reset_demo_data(user_id)
+    flash("FMCG Demo Data reset to default baseline! User records preserved.", "info")
+    return redirect(url_for("inventory"))
+
+
+@app.route("/api/fmcg-stats")
+@login_required
+def api_fmcg_stats():
+    """Returns analytics data for Recharts / Chart.js graphs."""
+    user_id = session["user_id"]
+    return jsonify(database.get_fmcg_dashboard_metrics(user_id))
+
+
+@app.route("/api/chart-data")
+@login_required
+def api_chart_data():
+    """Provides Chart.js payload for Dashboard category & status graphs."""
+    user_id = session["user_id"]
+    return jsonify(database.get_chart_data(user_id))
+
+
+@app.route("/inventory/set-stock", methods=["POST"])
+@login_required
+def inventory_set_stock():
+    """Allocates or updates stock levels and sales velocity at a specific location."""
+    user_id = session["user_id"]
+    product_id = request.form.get("product_id")
+    location_id = request.form.get("location_id")
+    current_stock = request.form.get("current_stock", "0").strip()
+    units_sold_per_day = request.form.get("units_sold_per_day", "0").strip()
+
+    try:
+        p_id = int(product_id)
+        l_id = int(location_id)
+        stock_val = int(current_stock)
+        vel_val = int(units_sold_per_day)
+    except (ValueError, TypeError):
+        flash("Invalid numerical values for stock allocation.", "error")
+        return redirect(url_for("inventory"))
+
+    database.set_inventory_stock(user_id, p_id, l_id, stock_val, vel_val)
+    flash("Stock level and velocity updated successfully!", "success")
+    return redirect(url_for("inventory"))
+
+
+# ─────────────────────────────────────────────────────────────
+# PRESERVED WORKING MODULES
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/dashboard")
+@login_required
+def dashboard():
+    user_id = session["user_id"]
+    metrics = database.get_fmcg_dashboard_metrics(user_id)
+    recent_shipments = database.get_shipments(user_id)[:5]
+    alerts = database.get_smart_alerts(user_id)
+    return render_template("dashboard.html", metrics=metrics, recent_shipments=recent_shipments, alerts=alerts, page="dashboard")
+
+
+@app.route("/products", methods=["GET"])
+@login_required
+def products():
+    user_id = session["user_id"]
+    search = request.args.get("search", "").strip()
+    category = request.args.get("category", "").strip()
+
+    all_products = database.get_user_products(user_id, search=search or None, category=category or None)
+    categories = sorted(list(set(p["category"] for p in database.get_user_products(user_id))))
+
+    return render_template(
+        "products.html",
+        products=all_products,
+        categories=categories,
+        search=search,
+        selected_category=category,
+        page="products"
+    )
+
+
+@app.route("/products/add", methods=["POST"])
+@login_required
+def add_product():
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    sku = request.form.get("sku", "").strip().upper()
+    category = request.form.get("category", "").strip()
+    price = request.form.get("price", "0").strip()
+    min_stock_level = request.form.get("min_stock_level", "0").strip()
+    description = request.form.get("description", "").strip()
+
+    try:
+        price_val = float(price)
+        min_stock_val = int(min_stock_level)
+    except ValueError:
+        flash("Invalid numerical values.", "error")
+        return redirect(url_for("products"))
+
+    new_id = database.add_product(user_id, name, sku, category, price_val, min_stock_val, description)
+    if new_id:
+        flash(f"Product '{name}' ({sku}) registered!", "success")
+    else:
+        flash(f"Failed to add product. SKU '{sku}' may already exist.", "error")
+    return redirect(url_for("products"))
+
+
+@app.route("/products/edit/<int:product_id>", methods=["POST"])
+@login_required
+def edit_product(product_id):
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    sku = request.form.get("sku", "").strip().upper()
+    category = request.form.get("category", "").strip()
+    price = request.form.get("price", "0").strip()
+    min_stock_level = request.form.get("min_stock_level", "0").strip()
+    description = request.form.get("description", "").strip()
+
+    try:
+        price_val = float(price)
+        min_stock_val = int(min_stock_level)
+    except ValueError:
+        flash("Invalid numbers.", "error")
+        return redirect(url_for("products"))
+
+    database.update_product(product_id, user_id, name, sku, category, price_val, min_stock_val, description)
+    flash(f"Product '{name}' updated!", "success")
+    return redirect(url_for("products"))
+
+
+@app.route("/products/delete/<int:product_id>", methods=["POST"])
+@login_required
+def delete_product(product_id):
+    user_id = session["user_id"]
+    database.delete_product(product_id, user_id)
+    flash("Product removed.", "info")
+    return redirect(url_for("products"))
+
+
+@app.route("/warehouses")
+@login_required
+def warehouses():
+    user_id = session["user_id"]
+    all_warehouses = database.get_locations(user_id, loc_type="Warehouse")
+    wh_id = request.args.get("id")
+    selected_warehouse = None
+    stored_inventory = []
+
+    if wh_id:
+        try:
+            selected_warehouse = database.get_location_by_id(int(wh_id), user_id)
+            if selected_warehouse:
+                stored_inventory = database.get_location_inventory(int(wh_id), user_id)
+        except (ValueError, TypeError):
+            pass
+
+    if not selected_warehouse and all_warehouses:
+        selected_warehouse = all_warehouses[0]
+        stored_inventory = database.get_location_inventory(selected_warehouse["id"], user_id)
+
+    return render_template(
+        "warehouses.html",
+        warehouses=all_warehouses,
+        selected_warehouse=selected_warehouse,
+        stored_inventory=stored_inventory,
+        page="warehouses"
+    )
+
+
+@app.route("/warehouses/add", methods=["POST"])
+@login_required
+def add_warehouse():
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    code = request.form.get("code", "").strip().upper()
+    address = request.form.get("address", "").strip()
+    city = request.form.get("city", "").strip()
+    state = request.form.get("state", "Maharashtra").strip()
+    pincode = request.form.get("pincode", "").strip()
+
+    if not name or not code or not city:
+        flash("Name, ID Code, and City are required.", "error")
+        return redirect(url_for("warehouses"))
+
+    new_id = database.add_location(user_id, code, name, "Warehouse", address, city, state, pincode)
+    if new_id:
+        flash(f"Warehouse '{name}' ({code}) registered successfully!", "success")
+    else:
+        flash(f"Failed to add warehouse. Code '{code}' may already exist.", "error")
+    return redirect(url_for("warehouses"))
+
+
+@app.route("/warehouses/edit/<int:warehouse_id>", methods=["POST"])
+@login_required
+def edit_warehouse(warehouse_id):
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    code = request.form.get("code", "").strip().upper()
+    address = request.form.get("address", "").strip()
+    city = request.form.get("city", "").strip()
+    state = request.form.get("state", "Maharashtra").strip()
+    pincode = request.form.get("pincode", "").strip()
+
+    success = database.update_location(warehouse_id, user_id, code, name, "Warehouse", address, city, state, pincode)
+    if success:
+        flash(f"Warehouse '{name}' updated successfully!", "success")
+    else:
+        flash("Failed to update warehouse.", "error")
+    return redirect(url_for("warehouses"))
+
+
+@app.route("/warehouses/delete/<int:warehouse_id>", methods=["POST"])
+@login_required
+def delete_warehouse(warehouse_id):
+    user_id = session["user_id"]
+    database.delete_location(warehouse_id, user_id)
+    flash("Warehouse removed successfully.", "info")
+    return redirect(url_for("warehouses"))
+
+
+@app.route("/retail-stores")
+@login_required
+def retail_stores():
+    user_id = session["user_id"]
+    all_stores = database.get_locations(user_id, loc_type="Retailer")
+    store_id = request.args.get("id")
+    selected_store = None
+    store_inventory = []
+
+    if store_id:
+        try:
+            selected_store = database.get_location_by_id(int(store_id), user_id)
+            if selected_store:
+                store_inventory = database.get_location_inventory(int(store_id), user_id)
+        except (ValueError, TypeError):
+            pass
+
+    if not selected_store and all_stores:
+        selected_store = all_stores[0]
+        store_inventory = database.get_location_inventory(selected_store["id"], user_id)
+
+    return render_template(
+        "retail_stores.html",
+        stores=all_stores,
+        selected_store=selected_store,
+        store_inventory=store_inventory,
+        page="retail_stores"
+    )
+
+
+@app.route("/retail-stores/add", methods=["POST"])
+@login_required
+def add_retail_store():
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    code = request.form.get("code", "").strip().upper()
+    address = request.form.get("address", "").strip()
+    city = request.form.get("city", "").strip()
+    state = request.form.get("state", "Maharashtra").strip()
+    pincode = request.form.get("pincode", "").strip()
+
+    if not name or not code or not city:
+        flash("Name, ID Code, and City are required.", "error")
+        return redirect(url_for("retail_stores"))
+
+    new_id = database.add_location(user_id, code, name, "Retailer", address, city, state, pincode)
+    if new_id:
+        flash(f"Retail store '{name}' ({code}) registered successfully!", "success")
+    else:
+        flash(f"Failed to add retail store. Code '{code}' may already exist.", "error")
+    return redirect(url_for("retail_stores"))
+
+
+@app.route("/retail-stores/edit/<int:store_id>", methods=["POST"])
+@login_required
+def edit_retail_store(store_id):
+    user_id = session["user_id"]
+    name = request.form.get("name", "").strip()
+    code = request.form.get("code", "").strip().upper()
+    address = request.form.get("address", "").strip()
+    city = request.form.get("city", "").strip()
+    state = request.form.get("state", "Maharashtra").strip()
+    pincode = request.form.get("pincode", "").strip()
+
+    success = database.update_location(store_id, user_id, code, name, "Retailer", address, city, state, pincode)
+    if success:
+        flash(f"Retail store '{name}' updated successfully!", "success")
+    else:
+        flash("Failed to update retail store.", "error")
+    return redirect(url_for("retail_stores"))
+
+
+@app.route("/retail-stores/delete/<int:store_id>", methods=["POST"])
+@login_required
+def delete_retail_store(store_id):
+    user_id = session["user_id"]
+    database.delete_location(store_id, user_id)
+    flash("Retail store removed successfully.", "info")
+    return redirect(url_for("retail_stores"))
+
+
+@app.route("/transfers", methods=["GET", "POST"])
+@login_required
+def transfers():
+    user_id = session["user_id"]
+
+    if request.method == "POST":
+        source_id = request.form.get("source_location_id")
+        dest_id = request.form.get("dest_location_id")
+        product_id = request.form.get("product_id")
+        quantity = request.form.get("quantity", "0").strip()
+        notes = request.form.get("notes", "").strip()
+
+        success, msg = database.transfer_stock(user_id, source_id, dest_id, product_id, quantity, notes)
+        if success:
+            flash(msg, "success")
         else:
-            rows = conn.execute("SELECT * FROM expiry_rescue_transfers ORDER BY id DESC LIMIT 100;").fetchall()
-        return jsonify({"transfers": [dict(r) for r in rows]})
-    finally:
-        conn.close()
+            flash(msg, "error")
+        return redirect(url_for("transfers"))
+
+    shipments = database.get_shipments(user_id)
+    locations = database.get_locations(user_id)
+    products = database.get_user_products(user_id)
+    return render_template("transfers.html", transfers=shipments, locations=locations, products=products, page="transfers")
 
 
-@app.route("/api/automation/expiry-rescue/action", methods=["POST"])
-def api_automation_expiry_rescue_action():
-    """Approves or rejects an expiry rescue transfer (Manager action)."""
-    body = request.get_json(silent=True) or {}
-    transfer_id = body.get("transfer_id")
-    action = (body.get("action") or "").lower()
-    manager_name = body.get("manager_name") or "Warehouse Operations Lead"
-    notes = body.get("notes")
+@app.route("/predictions", methods=["GET", "POST"])
+@login_required
+def predictions():
+    user_id = session["user_id"]
+    stores = database.get_locations(user_id, loc_type="Retailer")
+    products = database.get_user_products(user_id)
+    recent_predictions = database.get_recent_predictions(user_id)
 
-    if not transfer_id or action not in ("approve", "reject"):
-        return jsonify({"error": "transfer_id and valid action ('approve'|'reject') required"}), 400
+    prediction_result = None
+    warehouse_suggestion = None
+    selected_store_id = None
+    selected_product_id = None
+    input_stock = 60
+    input_velocity = 20
+    input_min_stock = 50
+    input_period = 7
 
-    if action == "approve":
-        result = approve_expiry_rescue(transfer_id=transfer_id, manager_name=manager_name, notes=notes)
-    else:
-        result = reject_expiry_rescue(transfer_id=transfer_id, manager_name=manager_name, reason=notes)
+    if request.method == "POST":
+        store_id = request.form.get("store_id")
+        product_id = request.form.get("product_id")
+        current_stock = request.form.get("current_stock", "0").strip()
+        units_sold_per_day = request.form.get("units_sold_per_day", "0").strip()
+        min_stock_level = request.form.get("min_stock_level", "0").strip()
+        prediction_period = request.form.get("prediction_period", "7").strip()
 
-    status_code = 200 if result.get("success") else 400
-    return jsonify(result), status_code
+        try:
+            s_id = int(store_id)
+            p_id = int(product_id)
+            stock_val = int(current_stock)
+            vel_val = int(units_sold_per_day)
+            min_val = int(min_stock_level)
+            period_val = int(prediction_period)
+        except (ValueError, TypeError):
+            flash("Invalid input values.", "error")
+            return redirect(url_for("predictions"))
 
+        pred_res = database.calculate_prediction(stock_val, vel_val, period_val, min_val)
+        wh_res = database.find_suggested_warehouse(user_id, p_id, pred_res["recommended_replenishment"])
 
-@app.route("/api/automation/distribution-options")
-def api_automation_distribution_options():
-    """Returns ranked candidate warehouses for stores needing inventory."""
-    conn = get_db_connection()
-    try:
-        rows = conn.execute("""
-        SELECT * FROM distribution_recommendations 
-        WHERE status = 'ACTIVE' 
-        ORDER BY store_name, product_name, warehouse_rank ASC;
-        """).fetchall()
-        return jsonify({
-            "recommendations": [dict(r) for r in rows],
-            "data_classification": "SIMULATED_SAMPLE",
-            "note": "Warehouse rankings are calculated from road distances, cold-chain rate models, and simulated batch availability."
-        })
-    finally:
-        conn.close()
+        database.save_prediction(user_id, p_id, s_id, stock_val, vel_val, min_val, period_val, pred_res, wh_res)
 
+        prediction_result = pred_res
+        warehouse_suggestion = wh_res
+        selected_store_id = s_id
+        selected_product_id = p_id
+        input_stock = stock_val
+        input_velocity = vel_val
+        input_min_stock = min_val
+        input_period = period_val
+        flash("AI Demand Prediction calculated!", "success")
+        recent_predictions = database.get_recent_predictions(user_id)
 
-@app.route("/api/automation/deliveries")
-def api_automation_deliveries():
-    """Returns active delivery shipments and delay monitoring status."""
-    conn = get_db_connection()
-    try:
-        rows = conn.execute("SELECT * FROM delivery_shipments ORDER BY dispatched_at DESC;").fetchall()
-        return jsonify({
-            "shipments": [dict(r) for r in rows],
-            "note": "Shipment milestones are logged via checkpoint manifest status. No live GPS hardware claimed."
-        })
-    finally:
-        conn.close()
-
-
-@app.route("/api/automation/alerts")
-def api_automation_alerts():
-    """Returns database-backed alerts with optional filtering."""
-    status = request.args.get("status")
-    severity = request.args.get("severity")
-    alert_type = request.args.get("type")
-
-    query = "SELECT * FROM alerts WHERE 1=1"
-    params = []
-
-    if status and status != "all":
-        query += " AND status = ?"
-        params.append(status)
-    elif not status:
-        query += " AND status IN ('OPEN', 'ACKNOWLEDGED')"
-
-    if severity and severity != "all":
-        query += " AND severity = ?"
-        params.append(severity)
-
-    if alert_type and alert_type != "all":
-        query += " AND alert_type = ?"
-        params.append(alert_type)
-
-    query += " ORDER BY CASE severity WHEN 'CRITICAL' THEN 1 WHEN 'WARNING' THEN 2 ELSE 3 END, created_at DESC LIMIT 100;"
-
-    conn = get_db_connection()
-    try:
-        rows = conn.execute(query, params).fetchall()
-        counts = {
-            "critical": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED') AND severity = 'CRITICAL';").fetchone()["c"],
-            "warning": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED') AND severity = 'WARNING';").fetchone()["c"],
-            "total_open": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED');").fetchone()["c"],
-        }
-        return jsonify({
-            "alerts": [dict(r) for r in rows],
-            "counts": counts
-        })
-    finally:
-        conn.close()
+    return render_template(
+        "predictions.html",
+        stores=stores,
+        products=products,
+        recent_predictions=recent_predictions,
+        prediction_result=prediction_result,
+        warehouse_suggestion=warehouse_suggestion,
+        selected_store_id=selected_store_id,
+        selected_product_id=selected_product_id,
+        input_stock=input_stock,
+        input_velocity=input_velocity,
+        input_min_stock=input_min_stock,
+        input_period=input_period,
+        page="predictions"
+    )
 
 
-@app.route("/api/automation/alerts/action", methods=["POST"])
-def api_automation_alerts_action():
-    """Acknowledges or resolves an alert."""
-    body = request.get_json(silent=True) or {}
-    alert_id = body.get("alert_id")
-    action = (body.get("action") or "").lower()
-    user_name = body.get("user_name") or "Duty Manager"
-
-    if not alert_id or action not in ("acknowledge", "resolve"):
-        return jsonify({"error": "alert_id and valid action ('acknowledge'|'resolve') required"}), 400
-
-    if action == "acknowledge":
-        result = acknowledge_alert(alert_id=alert_id, user_name=user_name)
-    else:
-        result = resolve_alert(alert_id=alert_id, user_name=user_name)
-
-    return jsonify(result)
+@app.route("/reports")
+@login_required
+def reports():
+    user_id = session["user_id"]
+    metrics = database.get_fmcg_dashboard_metrics(user_id)
+    inventory_items = database.get_all_inventory_records(user_id)
+    shipments = database.get_shipments(user_id)
+    replenishment_manifest = database.get_replenishment_manifest(user_id)
+    return render_template(
+        "reports.html",
+        metrics=metrics,
+        inventory_items=inventory_items,
+        replenishment_manifest=replenishment_manifest,
+        shipments=shipments,
+        page="reports"
+    )
 
 
 if __name__ == "__main__":
-    print("=" * 70)
-    print("OptiStock AI - Distribution Intelligence & Inventory Optimization Engine")
-    print("Local Server starting at: http://127.0.0.1:5000")
-    print("=" * 70)
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    app.run(host="127.0.0.1", port=5000, debug=True)

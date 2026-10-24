@@ -1,0 +1,389 @@
+{% extends "base.html" %}
+
+{% block title %}AI Demand Predictions{% endblock %}
+{% block header_title %}OptiStock AI Demand Prediction Engine{% endblock %}
+
+{% block content %}
+<div style="display: grid; grid-template-columns: 1.05fr 0.95fr; gap: 1.75rem; align-items: start; margin-bottom: 2rem;">
+  <!-- Left Column: Manual Input Prediction Form -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Demand Prediction Parameters</h3>
+        <p class="card-subtitle">Configure store consumption parameters to run the predictive replenishment algorithm</p>
+      </div>
+      <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">Forecast Studio</span>
+    </div>
+
+    <form method="POST" action="{{ url_for('predictions') }}" id="predictionForm">
+      <!-- Retail Store Selection -->
+      <div class="form-group">
+        <label class="form-label" for="pred_store_id">
+          Retail Store Outlet <span style="color: #f87171;">*</span>
+        </label>
+        <select name="store_id" id="pred_store_id" class="form-control" required onchange="fetchStoreSkuParams();">
+          <option value="">-- Select Retail Store --</option>
+          {% for st in stores %}
+            <option value="{{ st.id }}" {% if selected_store_id == st.id %}selected{% endif %}>
+              {{ st.name }} ({{ st.code }} - {{ st.city }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Product SKU Selection -->
+      <div class="form-group">
+        <label class="form-label" for="pred_product_id">
+          Product / SKU to Forecast <span style="color: #f87171;">*</span>
+        </label>
+        <select name="product_id" id="pred_product_id" class="form-control" required onchange="fetchStoreSkuParams();">
+          <option value="">-- Select Product / SKU --</option>
+          {% for p in products %}
+            <option value="{{ p.id }}" data-sku="{{ p.sku }}" data-min="{{ p.min_stock_level }}" {% if selected_product_id == p.id %}selected{% endif %}>
+              {{ p.name }} ({{ p.sku }}) - Floor: {{ p.min_stock_level }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <!-- Current Stock -->
+        <div class="form-group">
+          <label class="form-label" for="pred_current_stock">
+            Current Stock at Store <span style="color: #f87171;">*</span>
+          </label>
+          <input
+            type="number"
+            id="pred_current_stock"
+            name="current_stock"
+            class="form-control"
+            min="0"
+            step="1"
+            value="{{ input_stock if prediction_result else '60' }}"
+            required
+            oninput="triggerLivePreview();"
+          />
+        </div>
+
+        <!-- Units Sold Per Day -->
+        <div class="form-group">
+          <label class="form-label" for="pred_velocity">
+            Units Sold Per Day (Sales Velocity) <span style="color: #f87171;">*</span>
+          </label>
+          <input
+            type="number"
+            id="pred_velocity"
+            name="units_sold_per_day"
+            class="form-control"
+            min="0"
+            step="1"
+            value="{{ input_velocity if prediction_result else '20' }}"
+            required
+            oninput="triggerLivePreview();"
+          />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <!-- Minimum Stock Level -->
+        <div class="form-group">
+          <label class="form-label" for="pred_min_stock">
+            Minimum Safety Stock Level <span style="color: #f87171;">*</span>
+          </label>
+          <input
+            type="number"
+            id="pred_min_stock"
+            name="min_stock_level"
+            class="form-control"
+            min="0"
+            step="1"
+            value="{{ input_min_stock if prediction_result else '50' }}"
+            required
+            oninput="triggerLivePreview();"
+          />
+        </div>
+
+        <!-- Prediction Period (7, 15, or 30 days) -->
+        <div class="form-group">
+          <label class="form-label">
+            Prediction Period Horizon <span style="color: #f87171;">*</span>
+          </label>
+          <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem;">
+            <label style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.65rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03); cursor: pointer;">
+              <input type="radio" name="prediction_period" value="7" {% if (input_period or 7) == 7 %}checked{% endif %} onchange="triggerLivePreview();" style="accent-color: var(--primary-purple);">
+              <span style="font-size: 0.82rem; font-weight: 600;">7d</span>
+            </label>
+            <label style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.65rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03); cursor: pointer;">
+              <input type="radio" name="prediction_period" value="15" {% if input_period == 15 %}checked{% endif %} onchange="triggerLivePreview();" style="accent-color: var(--primary-purple);">
+              <span style="font-size: 0.82rem; font-weight: 600;">15d</span>
+            </label>
+            <label style="display: flex; align-items: center; justify-content: center; gap: 0.35rem; padding: 0.65rem 0.5rem; border-radius: var(--radius-md); border: 1px solid var(--border-subtle); background: rgba(255,255,255,0.03); cursor: pointer;">
+              <input type="radio" name="prediction_period" value="30" {% if input_period == 30 %}checked{% endif %} onchange="triggerLivePreview();" style="accent-color: var(--primary-purple);">
+              <span style="font-size: 0.82rem; font-weight: 600;">30d</span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-full" style="padding: 0.85rem; font-size: 0.95rem; margin-top: 1rem;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+        </svg>
+        Predict with AI & Sourcing Match
+      </button>
+    </form>
+  </div>
+
+  <!-- Right Column: AI Output & Warehouse Sourcing Card -->
+  <div class="prediction-preview-box" id="predictionDisplayCard">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.85rem;">
+      <div style="font-size: 0.74rem; text-transform: uppercase; letter-spacing: 0.08em; color: #93c5fd; font-weight: 700;">
+        Prediction Intelligence Output
+      </div>
+      <span class="badge {% if prediction_result %}{{ prediction_result.status_badge }}{% else %}status-critical{% endif %}" id="displayStatusBadge">
+        {{ prediction_result.status if prediction_result else 'Critical' }}
+      </span>
+    </div>
+
+    <h2 id="displayTitle" style="font-size: 1.35rem; font-weight: 800; color: #ffffff; margin-bottom: 0.25rem;">
+      Demand Forecast & Sourcing Analysis
+    </h2>
+    <div id="displayStatusMsg" style="font-size: 0.84rem; color: #94a3b8; margin-bottom: 1.25rem;">
+      {{ prediction_result.status_message if prediction_result else 'Projected stockout imminent. Immediate restocking required.' }}
+    </div>
+
+    <!-- 4 Result Tiles -->
+    <div class="pred-metrics-grid">
+      <!-- 1. Predicted Demand -->
+      <div class="pred-metric-tile">
+        <div class="pm-label">Predicted Demand</div>
+        <div class="pm-value" id="valPredictedDemand" style="color: #38bdf8;">
+          {{ prediction_result.predicted_demand if prediction_result else '140' }}
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">units anticipated</div>
+      </div>
+
+      <!-- 2. Projected Remaining Stock -->
+      <div class="pred-metric-tile">
+        <div class="pm-label">Projected Stock</div>
+        <div class="pm-value" id="valProjectedStock" style="color: {% if prediction_result and prediction_result.status == 'Critical' %}#f87171{% elif prediction_result and prediction_result.status == 'Low Stock' %}#fbbf24{% elif prediction_result %}#34d399{% else %}#f87171{% endif %};">
+          {{ prediction_result.projected_stock if prediction_result else '-80' }}
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">units post-horizon</div>
+      </div>
+
+      <!-- 3. Recommended Replenishment -->
+      <div class="pred-metric-tile">
+        <div class="pm-label">Recommended Replenishment</div>
+        <div class="pm-value" id="valReplenishment" style="color: #c084fc;">
+          +{{ prediction_result.recommended_replenishment if prediction_result else '130' }}
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">to reach safety floor</div>
+      </div>
+
+      <!-- 4. Stock Runway -->
+      <div class="pred-metric-tile">
+        <div class="pm-label">Stock Runway</div>
+        <div class="pm-value" id="valRunway" style="color: #fbbf24;">
+          {{ prediction_result.days_of_coverage if prediction_result else '3.0' }} d
+        </div>
+        <div style="font-size: 0.7rem; color: var(--text-muted); margin-top: 0.2rem;">until depletion</div>
+      </div>
+    </div>
+
+    <!-- Suggested Warehouse Card -->
+    <div style="background: rgba(15, 23, 42, 0.85); border: 1px solid var(--border-subtle); border-radius: var(--radius-md); padding: 1.25rem; margin-top: 1.25rem;">
+      <div style="font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.06em; color: #a5b4fc; font-weight: 700; margin-bottom: 0.5rem;">
+        Distribution Sourcing Recommendation
+      </div>
+
+      {% if warehouse_suggestion and warehouse_suggestion.warehouse %}
+        <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+          <div>
+            <div style="font-weight: 700; color: #fff; font-size: 1rem;">
+              {{ warehouse_suggestion.warehouse.name }}
+            </div>
+            <div style="font-size: 0.78rem; color: #38bdf8; font-family: 'JetBrains Mono', monospace;">
+              {{ warehouse_suggestion.warehouse.code }} &bull; {{ warehouse_suggestion.warehouse.city }}, {{ warehouse_suggestion.warehouse.state }}
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-size: 0.72rem; color: var(--text-muted);">Available Stock</div>
+            <div style="font-size: 1.25rem; font-weight: 800; color: #34d399; font-family: 'JetBrains Mono', monospace;">
+              {{ warehouse_suggestion.available_stock }} units
+            </div>
+          </div>
+        </div>
+
+        {% if warehouse_suggestion.has_sufficient %}
+          <div class="alert alert-success" style="padding: 0.6rem 0.85rem; font-size: 0.82rem; margin-top: 0.65rem;">
+            <span>{{ warehouse_suggestion.message }}</span>
+          </div>
+        {% else %}
+          <div class="alert alert-warning" style="padding: 0.6rem 0.85rem; font-size: 0.82rem; margin-top: 0.65rem;">
+            <span>{{ warehouse_suggestion.message }}</span>
+          </div>
+        {% endif %}
+
+        <div style="margin-top: 0.85rem; text-align: right;">
+          <a href="{{ url_for('transfers') }}" class="btn btn-primary btn-sm">
+            Dispatch from {{ warehouse_suggestion.warehouse.code }} &rarr;
+          </a>
+        </div>
+      {% else %}
+        <div class="alert alert-error" style="padding: 0.6rem 0.85rem; font-size: 0.82rem;">
+          <span>Shortage: No warehouse stock currently available across all distribution hubs.</span>
+        </div>
+      {% endif %}
+    </div>
+
+    <!-- Mandatory Rule-Based Methodology Disclosure -->
+    <div class="model-disclosure-callout">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 2px;">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+      <div>
+        <strong>Deterministic Demand Forecast:</strong> Initial baseline uses deterministic rule-based consumption estimation (<code style="background: rgba(255,255,255,0.1); padding: 1px 4px; border-radius: 4px;">Velocity × Period</code>). Engineered with modular interfaces ready for Machine Learning (Scikit-Learn/Prophet/LSTM) model integration.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Saved Predictions History Table -->
+<div class="card">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Recent Demand Forecast Ledger</h3>
+      <p class="card-subtitle">Saved AI demand predictions and sourcing matches</p>
+    </div>
+    <span class="badge" style="background: rgba(255, 255, 255, 0.06); color: #fff;">{{ recent_predictions | length }} Executions</span>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Execution Date</th>
+          <th>Retail Store</th>
+          <th>Product / SKU</th>
+          <th>Sales Velocity</th>
+          <th>Window</th>
+          <th>Predicted Demand</th>
+          <th>Projected Stock</th>
+          <th>Replenishment</th>
+          <th>Status</th>
+          <th>Suggested Hub</th>
+          <th>Hub Stock</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for pr in recent_predictions %}
+          <tr>
+            <td style="font-size: 0.78rem; color: var(--text-muted);">{{ pr.created_at[:16] }}</td>
+            <td style="font-weight: 600; color: #fff;">{{ pr.store_name }}</td>
+            <td>
+              <div style="font-weight: 600; color: #cbd5e1;">{{ pr.product_name }}</div>
+              <div style="font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: #38bdf8;">{{ pr.product_sku }}</div>
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace;">{{ pr.units_sold_per_day }}/d</td>
+            <td>{{ pr.prediction_period }}d</td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #38bdf8; font-weight: 600;">{{ pr.predicted_demand }}</td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {% if pr.projected_stock < 0 %}#f87171{% elif pr.projected_stock <= pr.min_stock_level %}#fbbf24{% else %}#34d399{% endif %};">
+              {{ pr.projected_stock }}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; color: #c084fc; font-weight: 700;">
+              +{{ pr.recommended_replenishment }}
+            </td>
+            <td>
+              <span class="badge {% if pr.stock_status == 'Critical' %}status-critical{% elif pr.stock_status == 'Low Stock' %}status-low{% else %}status-healthy{% endif %}">
+                {{ pr.stock_status }}
+              </span>
+            </td>
+            <td style="font-size: 0.82rem;">
+              {% if pr.warehouse_name %}
+                <span class="badge badge-warehouse">{{ pr.warehouse_code }}</span>
+              {% else %}
+                <span style="color: #f87171;">Shortage</span>
+              {% endif %}
+            </td>
+            <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: #34d399;">
+              {{ pr.available_warehouse_stock }}
+            </td>
+          </tr>
+        {% else %}
+          <tr>
+            <td colspan="11" style="text-align: center; padding: 2.5rem; color: var(--text-muted);">
+              No prediction runs logged yet. Submit the form above to run demand prediction.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  async function fetchStoreSkuParams() {
+    const storeId = document.getElementById('pred_store_id').value;
+    const prodId = document.getElementById('pred_product_id').value;
+
+    if (!storeId || !prodId) return;
+
+    try {
+      const res = await fetch(`/api/store-sku-info?store_id=${storeId}&product_id=${prodId}`);
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById('pred_current_stock').value = data.current_stock;
+        document.getElementById('pred_velocity').value = data.units_sold_per_day;
+        document.getElementById('pred_min_stock').value = data.min_stock_level;
+        triggerLivePreview();
+      }
+    } catch (e) {
+      // silent
+    }
+  }
+
+  function triggerLivePreview() {
+    const stock = parseInt(document.getElementById('pred_current_stock').value, 10) || 0;
+    const velocity = parseInt(document.getElementById('pred_velocity').value, 10) || 0;
+    const minStock = parseInt(document.getElementById('pred_min_stock').value, 10) || 0;
+    const periodRadio = document.querySelector('input[name="prediction_period"]:checked');
+    const period = periodRadio ? parseInt(periodRadio.value, 10) || 7 : 7;
+
+    const predictedDemand = velocity * period;
+    const projectedStock = stock - predictedDemand;
+    const replenishment = Math.max(0, predictedDemand + minStock - stock);
+    const runway = velocity > 0 ? (stock / velocity).toFixed(1) : '999.0';
+
+    let status = 'Healthy';
+    let statusClass = 'status-healthy';
+    let statusMsg = 'Optimal inventory runway across the selected forecast horizon.';
+
+    if (projectedStock < 0) {
+      status = 'Critical';
+      statusClass = 'status-critical';
+      statusMsg = `Projected Stockout! Stock will be depleted in ${runway} days.`;
+    } else if (projectedStock <= minStock) {
+      status = 'Low Stock';
+      statusClass = 'status-low';
+      statusMsg = 'Projected stock approaches or falls below minimum safety buffer.';
+    }
+
+    document.getElementById('valPredictedDemand').textContent = predictedDemand;
+    const projEl = document.getElementById('valProjectedStock');
+    projEl.textContent = projectedStock;
+    projEl.style.color = projectedStock < 0 ? '#f87171' : (projectedStock <= minStock ? '#fbbf24' : '#34d399');
+    document.getElementById('valReplenishment').textContent = `+${replenishment}`;
+    document.getElementById('valRunway').textContent = `${runway} d`;
+
+    const badge = document.getElementById('displayStatusBadge');
+    badge.className = `badge ${statusClass}`;
+    badge.textContent = status;
+    document.getElementById('displayStatusMsg').textContent = statusMsg;
+  }
+</script>
+{% endblock %}

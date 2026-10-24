@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+
+{% block title %}Executive Dashboard{% endblock %}
+{% block header_title %}Inventory & Warehouse Operations Dashboard{% endblock %}
+
+{% block topbar_actions %}
+<div style="display: flex; gap: 0.65rem;">
+  <a href="{{ url_for('transfers') }}" class="btn btn-outline btn-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="17 1 21 5 17 9"></polyline>
+      <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+    </svg>
+    <span>Transfer Stock</span>
+  </a>
+  <a href="{{ url_for('predictions') }}" class="btn btn-primary btn-sm">
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+    </svg>
+    <span>AI Predictor</span>
+  </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- FMCG Live Map Banner -->
+<div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(30, 58, 138, 0.35) 0%, rgba(88, 28, 135, 0.35) 100%); border: 1px solid rgba(99, 102, 241, 0.35); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
+      <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 700;">LIVE TELEMETRY ACTIVE</span>
+      <span style="font-size: 0.8rem; color: #94a3b8;">{{ metrics.shipments_in_transit }} In Transit • {{ metrics.total_warehouses }} Hubs • {{ metrics.active_distributors }} Distributors • {{ metrics.retailers_served }} Outlets</span>
+    </div>
+    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem;">FMCG Distribution Intelligence & Interactive Live Map</h3>
+    <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0;">Real-time geographical tracking across Maharashtra & Gujarat distribution corridors with animated vehicle simulation and telemetry.</p>
+  </div>
+  <a href="{{ url_for('inventory') }}" class="btn btn-primary" style="padding: 0.7rem 1.25rem; font-weight: 600; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+      <circle cx="12" cy="10" r="3"></circle>
+    </svg>
+    <span>Open Live Map & Inventory Console &rarr;</span>
+  </a>
+</div>
+
+<!-- 6-Metric KPI Cards Grid -->
+<div class="kpi-grid-6">
+  <!-- 1. Total Products -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-blue">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">SKUs</span>
+    </div>
+    <div class="metric-val">{{ metrics.total_products }}</div>
+    <div class="metric-lbl">Total Products</div>
+  </div>
+
+  <!-- 2. Total Warehouses -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 21V9l9-6 9 6v12H3Z"></path>
+        </svg>
+      </div>
+      <span class="badge badge-warehouse">Hubs</span>
+    </div>
+    <div class="metric-val">{{ metrics.total_warehouses }}</div>
+    <div class="metric-lbl">Total Warehouses</div>
+  </div>
+
+  <!-- 3. Total Retail Stores -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
+          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+        </svg>
+      </div>
+      <span class="badge badge-store">Outlets</span>
+    </div>
+    <div class="metric-val">{{ metrics.total_retail_stores }}</div>
+    <div class="metric-lbl">Total Retail Stores</div>
+  </div>
+
+  <!-- 4. Total Inventory Value (₹) -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-purple">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h12"></path>
+          <path d="M6 8h12"></path>
+          <path d="m6 13 8.5 8"></path>
+          <path d="M6 13h3a4 4 0 0 0 0-8"></path>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">Capital</span>
+    </div>
+    <div class="metric-val">₹{{ "{:,.2f}".format(metrics.total_inventory_value) }}</div>
+    <div class="metric-lbl">Total Inventory Value</div>
+  </div>
+
+  <!-- 5. Low-Stock Products -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-amber">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+          <line x1="12" y1="9" x2="12" y2="13"></line>
+        </svg>
+      </div>
+      <span class="badge {% if metrics.low_stock_products > 0 %}status-low{% else %}status-healthy{% endif %}">
+        {% if metrics.low_stock_products > 0 %}Attention{% else %}Safe{% endif %}
+      </span>
+    </div>
+    <div class="metric-val" style="color: {% if metrics.low_stock_products > 0 %}#fbbf24{% else %}#34d399{% endif %};">
+      {{ metrics.low_stock_products }}
+    </div>
+    <div class="metric-lbl">Low-Stock Outlets</div>
+  </div>
+
+  <!-- 6. Predicted Demand -->
+  <div class="metric-card">
+    <div class="metric-top-row">
+      <div class="metric-icon icon-cyan">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
+          <polyline points="16 7 22 7 22 13"></polyline>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #38bdf8;">7-Day Run</span>
+    </div>
+    <div class="metric-val">{{ "{:,}".format(metrics.predicted_demand) }}</div>
+    <div class="metric-lbl">Predicted Demand (Units)</div>
+  </div>
+</div>
+
+<!-- Charts Row: Inventory Distribution & Stock Status Overview -->
+<div class="charts-grid-main">
+  <!-- Chart 1: Inventory Valuation by Category -->
+  <div class="card chart-card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Product Inventory Distribution</h3>
+        <p class="card-subtitle">Capital allocated across product categories across all warehouses & stores (₹)</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap" style="height: 280px;">
+      <canvas id="categoryChart"></canvas>
+    </div>
+  </div>
+
+  <!-- Chart 2: Stock Status Overview -->
+  <div class="card chart-card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Stock Status Overview</h3>
+        <p class="card-subtitle">Retail store inventory health distribution</p>
+      </div>
+    </div>
+    <div class="chart-canvas-wrap" style="height: 230px;">
+      <canvas id="statusChart"></canvas>
+    </div>
+    <div style="display: flex; justify-content: space-around; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border-subtle); font-size: 0.8rem;">
+      <div>
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34d399; margin-right: 4px;"></span>
+        <span style="color: var(--text-muted);">Healthy:</span> <strong style="color: #34d399;">{{ metrics.status_counts.Healthy }}</strong>
+      </div>
+      <div>
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-right: 4px;"></span>
+        <span style="color: var(--text-muted);">Low Stock:</span> <strong style="color: #fbbf24;">{{ metrics.status_counts['Low Stock'] }}</strong>
+      </div>
+      <div>
+        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f87171; margin-right: 4px;"></span>
+        <span style="color: var(--text-muted);">Critical:</span> <strong style="color: #f87171;">{{ metrics.status_counts.Critical }}</strong>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Operational Tables Row: Immediate Restocking Deficits & Recent Stock Transfers -->
+<div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem; margin-bottom: 1.75rem;">
+  <!-- Deficit Items at Retail Outlets -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Store Replenishment Alerts</h3>
+        <p class="card-subtitle">Retail outlets currently breaching safety stock thresholds</p>
+      </div>
+      <a href="{{ url_for('predictions') }}" class="btn btn-outline btn-sm">Predict & Sourcing &rarr;</a>
+    </div>
+
+    <div class="table-responsive">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Store</th>
+            <th>Product / SKU</th>
+            <th>On Hand</th>
+            <th>Velocity</th>
+            <th>Projected</th>
+            <th>Needed</th>
+            <th>Status</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in metrics.deficit_items %}
+            <tr>
+              <td style="font-weight: 600; color: #fff;">{{ item.store_name }}</td>
+              <td>
+                <div style="font-weight: 600; color: #cbd5e1;">{{ item.product_name }}</div>
+                <div style="font-size: 0.72rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">{{ item.product_sku }}</div>
+              </td>
+              <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">{{ item.current_stock }}</td>
+              <td style="font-family: 'JetBrains Mono', monospace; color: #94a3b8;">{{ item.units_sold_per_day }}/d</td>
+              <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {% if item.projected_stock < 0 %}#f87171{% else %}#fbbf24{% endif %};">
+                {{ item.projected_stock }}
+              </td>
+              <td style="font-family: 'JetBrains Mono', monospace; color: #c084fc; font-weight: 700;">
+                +{{ item.recommended_replenishment }}
+              </td>
+              <td>
+                <span class="badge {{ item.status_badge }}">{{ item.status }}</span>
+              </td>
+              <td>
+                <a href="{{ url_for('transfers') }}" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;">Transfer</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">
+                All retail outlets are fully stocked and healthy!
+              </td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Recent Stock Transfers -->
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 class="card-title">Recent Stock Transfers</h3>
+        <p class="card-subtitle">Latest inter-facility movements</p>
+      </div>
+      <a href="{{ url_for('transfers') }}" class="btn btn-outline btn-sm">All Transfers &rarr;</a>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+      {% for t in metrics.recent_transfers %}
+        <div style="padding: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">{{ t.transfer_code }}</span>
+            <span style="font-size: 0.74rem; color: var(--text-dim);">{{ t.created_at[:16] }}</span>
+          </div>
+          <div style="font-size: 0.86rem; font-weight: 600; color: #fff;">{{ t.product_name }}</div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; font-size: 0.78rem; color: var(--text-muted);">
+            <div>{{ t.source_code }} &rarr; {{ t.dest_code }}</div>
+            <div style="font-weight: 700; color: #34d399;">{{ t.quantity }} units</div>
+          </div>
+        </div>
+      {% else %}
+        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
+          No transfers recorded yet.
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    if (typeof initDashboardCharts === 'function') {
+      initDashboardCharts();
+    }
+  });
+</script>
+{% endblock %}

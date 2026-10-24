@@ -1,177 +1,166 @@
-# 📦 OptiStock AI
-**Distribution Intelligence & Inventory Optimization Engine**
+# 🚚 OptiStock AI — FMCG Distribution Intelligence & Inventory Optimization Engine
 
-An AI-powered FMCG supply chain dashboard built with Flask, SciPy MILP, and ML demand forecasting.
+A modern, professional enterprise web application designed for comprehensive warehouse network management, retail store inventory tracking, ACID-compliant stock transfers, rule-based AI demand forecasting, and **interactive geographical FMCG distribution tracking with real-time Leaflet.js maps**.
 
-## 🚀 Features
-- **MILP Optimization** — SciPy HiGHS solver minimizes freight cost while preventing stockouts
-- **FEFO Prioritization** — First-Expired-First-Out batch routing to reduce spoilage
-- **ML Demand Forecasting** — Ridge Regression with confidence intervals
-- **Interactive Dashboard** — Clean light-theme UI with Chart.js visualizations
-- **Live Shipment Map** — Leaflet.js map showing warehouse → store routes across Maharashtra
-- **What-If Simulator** — Demand shocks, fuel cost changes, warehouse shutdowns
-- **Delivery Locations** — Pune, Satara, Kolhapur, Sangli, Karad and more
-- **Autonomous Supply Chain Workflows** — Real-time automated replenishment, expiry rescue, distribution ranking, and SLA delivery tracking
-- **Manager Approval Lifecycle** — Audit-logged approval gate for procurement and inter-store transfers with idempotency deduplication
-- **Automated Alert Center** — Severity-prioritized notifications for stockouts, expiration risks, and delayed deliveries
+Built with **Python Flask**, **SQLite**, **Leaflet.js + OpenStreetMap**, **HTML5/CSS3 (Pitch Dark SaaS Theme)**, **JavaScript**, and **Chart.js**.
 
 ---
 
-## 🤖 Real-Time Automation System
+## 🌟 System Architecture & Core Modules
 
-OptiStock AI includes a production-grade background automation engine with multi-worker concurrency protection:
+### 1. 🗺️ FMCG Distribution Intelligence & Interactive Live Map (`/inventory`)
+- **Large Interactive Map**: Built using **Leaflet.js** and **OpenStreetMap** with custom vector markers:
+  - **Warehouses**: 🔵 Blue warehouse pins (distribution hubs).
+  - **Distributors**: 🟣 Purple location markers (regional stockists).
+  - **Retailers**: 🟠 Orange storefront markers (POS supermarkets, hypermarkets, and marts).
+  - **Delivery Vehicles**: 🚚 Moving truck markers with live position simulation along corridor transit routes.
+- **Dynamic Route Flow & Color Coding**:
+  - 🟢 **Green Solid Route Lines**: Successfully delivered shipments.
+  - 🔵 **Blue Animated Route Lines**: Shipments currently in transit with directional flowing pulse.
+  - 🔴 **Red Solid Route Lines**: Delayed shipments or corridor exception alerts.
+  - ⚪ **Dashed Route Lines**: Planned upcoming delivery movements.
+- **Rich Location Popups & Slide-Out Telemetry Drawer**:
+  - Clicking any location marker displays name, type, capacity & utilization progress bar, total stock, incoming stock, outgoing stock, stored products list, and recent delivery history.
+  - Click any marker to slide out the **Telemetry Drawer** for deeper operational inspection.
+- **Smart Real-Time Alerts**:
+  - Inventory safety floor breaches, capacity overloads (>85%), delayed shipments, and stockout warnings.
+  - **Click-to-Pan (`flyTo`)**: Clicking any alert smoothly flies the map camera to the target facility marker with an animated radar pulse!
+- **Facility Pinning & Address Geocoding**:
+  - Register new Warehouses, Distributors, or Retailers.
+  - Automatic address geocoding via OpenStreetMap Nominatim with local city heuristics.
+  - **Interactive Click-to-Pin**: Click directly anywhere on the map to set precise latitude and longitude.
 
-### 1. Auto-Replenishment Workflow
-- Continuously audits retail store inventory against dynamic Reorder Points (ROP) using lead times, daily demand, and safety stock.
-- Generates replenishment proposals with suggested order quantities and estimated costs.
-- Enforces an idempotency hash to prevent duplicate pending orders.
-- **Safety Guarantee**: Purchases, payments, or dispatches are never made automatically; manager authorization is required.
+### 2. ⚡ Stock Movement & Atomic Delivery Tracking
+- **Dispatch Shipment**:
+  - Atomically validates and deducts available stock at the source location.
+  - Calculates Haversine highway distance and estimated transit duration.
+  - Generates route geometry and places an active animated transit route on the map.
+- **Confirm Delivery**:
+  - Atomically credits the confirmed quantity to the destination facility inventory.
+  - Sets shipment status to `Delivered`, stamps actual delivery timestamp, and changes the route line to green.
+  - Enforces strict idempotency to prevent duplicate inventory crediting.
+- **Cancel / Fail Shipment**:
+  - Safely restores deducted stock back to the origin facility.
+  - Logs the restoration in the `inventory_transactions` audit ledger and sets status to `Cancelled`.
+- **Audit Ledger**:
+  - Tracks `DISPATCH_DEDUCT`, `DELIVERY_CREDIT`, `TRANSFER_OUT`, `TRANSFER_IN`, and `CANCEL_RESTORE` with balance after transaction.
 
-### 2. FEFO Expiry Rescue Workflow
-- Scans warehouse inventory batches for short remaining shelf-life (< 15 days).
-- Identifies optimal destination stores capable of absorbing the stock before expiration.
-- Validates feasibility constraints: ensures shelf-life strictly exceeds transit time plus a 1.0-day buffer (`expiry > transit + 1.0`).
-- Prevents transfers exceeding batch availability or destination capacity.
+### 3. 📊 10 FMCG KPI Metric Cards
+1. **Total Stock**: Aggregate units stored across the entire distribution network.
+2. **Total Valuation**: Capital valuation of inventory across all locations in Indian Rupees (`₹`).
+3. **Warehouses**: Active central distribution hubs.
+4. **Distributors**: Active regional transit stockists.
+5. **Retail Outlets**: Active POS hypermarkets and supermarkets served.
+6. **In Transit**: Active road shipments currently moving on distribution corridors.
+7. **Delivered**: Completed shipments delivered to destinations.
+8. **Delayed Shipments**: Corridor exceptions requiring logistics intervention.
+9. **Low Stock Alerts**: Facilities where current stock breaches safety floor thresholds.
+10. **Delivery Success Rate**: Overall completion rate percentage.
 
-### 3. Distribution Optimization Workflow
-- Evaluates candidate distribution centers for deficit stores using road distance matrices, freight tariff curves, and warehouse availability.
-- Generates ranked sourcing options (Rank 1 Optimal, Rank 2 Alternate) with explainable rationales.
-- Clearly flags simulated model estimates with `SIMULATED_SAMPLE` badges.
+### 4. 🎨 Modern Pitch Dark SaaS UI
+- **Pitch Dark Canvas**: Deep canvas (`#080c14` / `#070a12`), crisp high-contrast typography, electric blue (`#3b82f6`), royal purple (`#8b5cf6`), and emerald green (`#10b981`) accents.
+- **Ambient Lighting**: Ambient radial glows, smooth card elevations, glowing action buttons, and responsive sidebar navigation.
+- **Zero Raw Emojis**: Clean SVG icons across navigation, indicators, badges, and action buttons.
 
-### 4. Delivery Monitoring Workflow
-- Tracks dispatch manifest timestamps against SLA delivery deadlines.
-- Automatically flags delayed shipments exceeding their expected delivery window.
-- Checkpoint manifest auditing without false live GPS claims.
+### 5. 🔐 Authentication & Session Security
+- Registration and Login with secure password hashing (`werkzeug.security.generate_password_hash`).
+- Password visibility toggle (SVG open/closed eye) on all password fields.
+- Session-protected routes using `@login_required` decorators.
+- Parameterized SQLite queries preventing SQL injection vulnerabilities.
+- **1-Click Demo Login** button pre-configured with sample inventory data (`demo@optistock.ai` / `password123`).
 
-### 5. Automated Alert Center
-- Database-backed alert management with deduplication.
-- Prioritizes events across `CRITICAL`, `WARNING`, and `INFO` tiers.
-- Provides recommended remediation steps with one-click **Acknowledge** and **Resolve** audit logging.
+### 6. 🧠 OptiStock AI Demand Prediction & Warehouse Sourcing
+- Manual-input prediction form:
+  - Product SKU, Retail Store, Current Stock, Velocity (units/day), Min Stock Floor, Prediction Period (7, 15, or 30 days).
+- **Prediction Formulas**:
+  $$\text{Predicted Demand} = \text{Units Sold Per Day} \times \text{Prediction Period}$$
+  $$\text{Projected Stock} = \text{Current Stock} - \text{Predicted Demand}$$
+  $$\text{Recommended Replenishment} = \max(0, \text{Predicted Demand} + \text{Minimum Stock Level} - \text{Current Stock})$$
+- **Stock Status**:
+  - **Critical**: Projected Stock $< 0$ (imminent stockout).
+  - **Low Stock**: $0 \le \text{Projected Stock} \le \text{Minimum Stock Level}$ (safety buffer breached).
+  - **Healthy**: Projected Stock $> \text{Minimum Stock Level}$ (optimal runway).
+- **Suggested Warehouse Sourcing**:
+  - Searches all warehouses holding inventory of this SKU and recommends fulfillment from the nearest hub with sufficient stock.
 
-### 6. Automation Control Panel
-- Web-based cockpit to monitor workflow states (`Enabled`, `Disabled`, `Error`), cadence, execution times, and action counters.
-- Supports instant manual execution via **Run Now**.
-- Features an isolated **Dry-Run Mode** for risk-free policy simulation without database writes.
+### 7. 📦 Preserved Core Modules
+- **Products Catalog** (`/products`): Add, edit, search, filter, and delete product SKUs.
+- **Warehouses Management** (`/warehouses`): View warehouse details, capacity, and stored SKUs.
+- **Retail Stores Management** (`/retail-stores`): View retail store details, daily sales velocity, and restocking requirements.
+- **Inter-Facility Stock Transfers** (`/transfers`): Direct ACID-compliant stock transfers between facilities.
+- **Operational Reports** (`/reports`): Network capital breakdown, automated replenishment manifest, and printable inventory ledger.
 
 ---
 
-## 🔐 Dedicated User Portals & Login Pages
+## 🗄️ Database Schema (`optistock.db`)
 
-OptiStock AI features dedicated, branded authentication pages for each user role with 4-digit PIN verification and direct workspace routing:
-
-| User Role | Dedicated Login URL | Demo PIN | Workspace Access & Permissions |
-|:---|:---|:---:|:---|
-| **👑 Administrator** | [`/login/admin`](http://127.0.0.1:5000/login/admin) | `1111` | Executive command tower, SciPy HiGHS MILP optimizer, What-If simulator, automation engine & all reports |
-| **🏭 Warehouse Manager** | [`/login/warehouse`](http://127.0.0.1:5000/login/warehouse) | `2222` | Batch shelf-life tracking (FEFO radar), cold-chain pallet storage, expiry rescue transfers, and outbound manifests |
-| **🏪 Retail Store Manager** | [`/login/retail`](http://127.0.0.1:5000/login/retail) | `3333` | Store health, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts |
-| **🚚 Delivery Fleet Partner** | [`/login/delivery`](http://127.0.0.1:5000/login/delivery) | `4444` | Live dispatch route map, Pune-Kolhapur corridor stops, and road checkpoint SLA delivery tracker |
-| **🌐 Portal Hub Gateway** | [`/login`](http://127.0.0.1:5000/login) | — | Main gateway displaying all 4 user portals with direct one-click selection |
+SQLite database with 8 relational tables:
+1. `users` — Authentication credentials and profiles
+2. `products` — Master product catalog with SKU, category, price, min stock level, shelf life, and weight
+3. `locations` — Warehouses, Distributors, and Retailers with coordinates (`lat`, `lng`), city, state, and capacity
+4. `inventory` — Location-based stock tracking with `(user_id, product_id, location_id)` unique constraint
+5. `shipments` — Shipment lifecycle records with route geometry, distance, duration, vehicle coordinates, and idempotency key
+6. `inventory_transactions` — ACID audit ledger of all deductions, credits, transfers, and restoration movements
+7. `alerts` — Prioritized alerts for stockouts, capacity limits, and shipment delays
+8. `predictions` — Log of demand forecasting executions and suggested warehouses
 
 ---
 
-## 🏃 Quick Start
+## 💻 Instructions to Run in VS Code
 
+### Step 1: Open Folder in VS Code
+Open VS Code, press `Ctrl + O` (or `Cmd + O` on macOS), and select the folder:
 ```bash
-# Clone the repo
-git clone https://github.com/mayurimagdum041-svg/distribution-intellgence.git
-cd OptiStock-AI
+cd c:\Users\HP\Downloads\OptiStock-AI
+```
 
-# Create virtual environment
-python -m venv venv
-venv\Scripts\activate        # Windows
-# source venv/bin/activate   # Mac/Linux
+### Step 2: Open Terminal in VS Code
+Press ``Ctrl + ` `` (backtick) or select **Terminal > New Terminal**.
 
-# Install dependencies
-pip install flask numpy pandas scikit-learn scipy
+### Step 3: Activate Virtual Environment
+```powershell
+# Windows PowerShell:
+.\venv\Scripts\Activate.ps1
 
-# Run automated tests
-python -m unittest discover tests
+# Windows Command Prompt:
+.\venv\Scripts\activate.bat
+```
 
-# Run the app
+### Step 4: Install Dependencies (if needed)
+```bash
+pip install -r requirements.txt
+```
+
+### Step 5: Start the Web Application
+```bash
 python app.py
 ```
 
-Then open: **http://127.0.0.1:5000/simple**
+### Step 6: Access the Application
+Open your browser and navigate to:
+```
+http://127.0.0.1:5000
+```
 
 ---
 
-## 🧪 Testing the Automations
+## 🔑 Demo Account Credentials
 
-Run the complete test suite:
+For instant access:
+- **Email**: `demo@optistock.ai`
+- **Password**: `password123`
+- *Or click **"1-Click Demo Login"** on the sign-in screen.*
+
+---
+
+## 🧪 Running Automated Test Suites
+
+### 1. Run FMCG Live Map & Distribution Test Suite (13 Tests)
 ```bash
-python -m unittest tests/test_automation.py -v
+python test_fmcg_map.py
 ```
 
-### Manual Workflow Verification via UI:
-1. Navigate to **🤖 Automation** in the sidebar.
-2. Check the **🧪 Dry Run** box on **Auto-Replenishment** and click **▶ Run Now**. Observe that rules evaluate without committing database records.
-3. Uncheck Dry Run and click **▶ Run Now**.
-4. Navigate to **📋 Approvals** to view generated replenishment proposals. Click **✓ Approve PO** or **✕ Reject**.
-5. Navigate to **🔔 Alert Center** to view generated low stock and delivery delay alerts. Click **👁️ Ack** or **✓ Resolve**.
-
----
-
-## ☁️ Hosting on Render & Multi-Worker Environments
-
-### Concurrency & Scheduler Locking:
-When hosted with multi-process WSGI servers (e.g. Gunicorn with multiple workers on Render), running background loops in every process causes duplicate execution.
-
-OptiStock AI solves this with **database-backed leader election** using the `scheduler_locks` table. Only one worker can acquire the distributed mutex; standby workers automatically step down.
-
-### Deployment Architecture Options on Render:
-
-#### Option A: Unified Web Service (Default & Recommended)
-- Start Command: `gunicorn app:app --workers 2 --bind 0.0.0.0:$PORT`
-- Environment Variables:
-  - `SCHEDULER_AUTOSTART=true`
-  - `OPTISTOCK_DB_PATH=/var/data/optistock_automation.db` (attach a Render Persistent Disk)
-- Leader election guarantees that only 1 of the 2 Gunicorn workers acts as the scheduler.
-
-#### Option B: Dedicated Background Worker
-If you prefer complete separation between web traffic and scheduled background tasks:
-1. **Web Service**:
-   - Environment Variable: `SCHEDULER_AUTOSTART=false`
-   - Start Command: `gunicorn app:app --bind 0.0.0.0:$PORT`
-2. **Background Worker**:
-   - Start Command: `python -m engine.automation_scheduler`
-   - Shares the same persistent database volume.
-
-## 🗂️ Project Structure
+### 2. Run Comprehensive System Test Suite (18 Tests)
+```bash
+python test_comprehensive.py
 ```
-OptiStock-AI/
-├── app.py                  # Flask app & API routes
-├── engine/
-│   ├── allocator.py        # MILP distribution solver
-│   ├── forecaster.py       # ML demand forecaster
-│   ├── inventory_optimizer.py
-│   ├── data_loader.py
-│   └── simulator.py        # What-If scenario engine
-├── templates/
-│   └── simple.html         # Main dashboard UI
-├── static/
-│   ├── simple.css          # Light theme styles
-│   └── simple.js           # Dashboard logic + map
-└── data/
-    ├── products.csv
-    ├── stores.csv
-    ├── warehouses.csv
-    └── sales_history_sample.csv
-```
-
-## 🌐 API Endpoints
-| Endpoint | Description |
-|----------|-------------|
-| `GET /simple` | Main dashboard |
-| `GET /api/summary` | KPI summary |
-| `GET /api/plan` | Optimized shipment plan |
-| `GET /api/inventory/stores` | Store health & safety stock |
-| `GET /api/inventory/warehouses` | Warehouse batch tracker |
-| `GET /api/forecast` | ML demand forecast |
-| `POST /api/scenario` | What-If simulation |
-| `GET /api/network` | Supply chain topology |
-
-## 🛠️ Tech Stack
-- **Backend:** Python, Flask, SciPy, NumPy, Pandas, Scikit-learn
-- **Frontend:** HTML5, CSS3, Vanilla JS, Chart.js, Leaflet.js
-- **Optimization:** HiGHS MILP Solver via SciPy
-- **Maps:** Leaflet.js + OpenStreetMap (no API key needed)
