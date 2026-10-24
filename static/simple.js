@@ -14,7 +14,7 @@ const USER_ROLES = {
     badge: 'Administrator',
     avatar: 'AD',
     color: '#2563eb',
-    allowedSections: ['overview', 'automation', 'approvals', 'alerts', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
+    allowedSections: ['overview', 'transactions', 'automation', 'approvals', 'alerts', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
     defaultSection: 'overview',
     bannerIcon: '',
     bannerTitle: 'Logged in as Administrator (Full Access)',
@@ -26,7 +26,7 @@ const USER_ROLES = {
     badge: 'Warehouse Manager',
     avatar: 'WH',
     color: '#d97706',
-    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'map'],
+    allowedSections: ['inventory', 'transactions', 'approvals', 'alerts', 'distribution', 'map'],
     defaultSection: 'inventory',
     defaultSubTab: 'warehouses',
     bannerIcon: '',
@@ -39,7 +39,7 @@ const USER_ROLES = {
     badge: 'Retail Store Manager',
     avatar: 'RT',
     color: '#16a34a',
-    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'forecast', 'map'],
+    allowedSections: ['inventory', 'transactions', 'approvals', 'alerts', 'distribution', 'forecast', 'map'],
     defaultSection: 'inventory',
     defaultSubTab: 'stores',
     bannerIcon: '',
@@ -458,6 +458,7 @@ document.addEventListener('keydown', (e) => {
 ══════════════════════════════════════ */
 const SECTION_META = {
   overview:     { title: 'Overview',      subtitle: 'Key performance indicators at a glance' },
+  transactions: { title: 'Inventory Transactions', subtitle: 'Permanent Stock In / Stock Out ledger and warehouse movement records' },
   automation:   { title: 'Automation Engine', subtitle: 'Autonomous background workflows, scheduling controls, and dry-run execution engine' },
   approvals:    { title: 'Manager Approvals', subtitle: 'Authorize or reject store replenishment orders and FEFO expiry rescue transfers' },
   alerts:       { title: 'Alert Center', subtitle: 'Automated database-backed alerts with deduplication, severity ranking, and action recommendations' },
@@ -531,6 +532,7 @@ function refreshCurrentSection() {
 function lazyLoad(section) {
   switch (section) {
     case 'overview':     if (!state.summary)       loadSummary();             break;
+    case 'transactions': loadTransactions();                                  break;
     case 'automation':   loadAutomationStatus();   loadAutomationHistory();   break;
     case 'approvals':    loadApprovals();                                     break;
     case 'alerts':       loadAlerts();                                        break;
@@ -582,9 +584,31 @@ function truncate(text, len = 60) {
 /* ══════════════════════════════════════
    API HELPERS
 ══════════════════════════════════════ */
-async function apiFetch(url) {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`API error ${res.status}: ${res.statusText}`);
+async function apiFetch(url, options = {}) {
+  const currentRole = state.currentUser || 'admin';
+  const currentName = USER_ROLES[currentRole]?.name || 'System User';
+  const headers = Object.assign({
+    'X-User-Role': currentRole,
+    'X-User-Name': currentName,
+    'Content-Type': 'application/json'
+  }, options.headers || {});
+
+  const fetchOpts = Object.assign({}, options, {
+    headers: headers,
+    credentials: 'same-origin'
+  });
+
+  const res = await fetch(url, fetchOpts);
+  if (!res.ok) {
+    let errorMsg = `API error ${res.status}: ${res.statusText}`;
+    try {
+      const errJson = await res.json();
+      if (errJson && errJson.error) errorMsg = errJson.error;
+    } catch(e) {}
+    const err = new Error(errorMsg);
+    err.status = res.status;
+    throw err;
+  }
   return res.json();
 }
 
@@ -603,6 +627,7 @@ async function loadSummary() {
     renderKPICards(data);
     renderBenefitBanner(data);
     renderOverviewChart(data);
+    renderRecentTransactions(data.recent_transactions || data.transactions?.recent_transactions || []);
   } catch (err) {
     document.getElementById('kpi-grid').innerHTML =
       `<div style="color:var(--danger);padding:1rem;grid-column:1/-1">Failed to load KPIs: ${err.message}</div>`;
@@ -619,8 +644,16 @@ function renderKPICards(d) {
     truck: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>',
     chart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>',
     savings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
-    shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
+    shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>',
+    transfer: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path></svg>',
+    stockIn: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>',
+    stockOut: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>'
   };
+
+  const txnSummary = d.transactions || {};
+  const totalTxns = d.total_transactions ?? txnSummary.total_transactions ?? 0;
+  const stockRecv = d.stock_received ?? txnSummary.stock_received ?? 0;
+  const stockDisp = d.stock_dispatched ?? txnSummary.stock_dispatched ?? 0;
 
   const cards = [
     { icon: svgIcons.box, label: 'Total Stock Units',    value: fmtNum(d.total_inventory_units), accent: 'kpi-primary' },
@@ -635,6 +668,9 @@ function renderKPICards(d) {
     { icon: svgIcons.chart, label: 'Fulfillment Rate (AI)', value: fmtPct(d.fulfillment_rate_ai),  valueClass: 'value-success', accent: 'kpi-success' },
     { icon: svgIcons.savings, label: 'Transport Savings',     value: fmtINR(d.transport_savings),    valueClass: 'value-success', accent: 'kpi-success' },
     { icon: svgIcons.shield, label: 'Spoilage Prevented',   value: fmtINR(d.spoilage_averted_savings), valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: svgIcons.transfer, label: 'Total Transactions',  value: fmtNum(totalTxns),              accent: 'kpi-primary' },
+    { icon: svgIcons.stockIn,  label: 'Stock Received (In)', value: fmtNum(stockRecv),              valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: svgIcons.stockOut, label: 'Stock Dispatched',    value: fmtNum(stockDisp),              accent: 'kpi-primary' },
   ];
   const grid = document.getElementById('kpi-grid');
   grid.innerHTML = cards.map(c => `
@@ -646,6 +682,39 @@ function renderKPICards(d) {
       </div>
     </div>
   `).join('');
+}
+
+function renderRecentTransactions(transactions) {
+  const tbody = document.getElementById('overview-recent-txns-body');
+  if (!tbody) return;
+  if (!transactions || transactions.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="8" class="text-center text-muted" style="padding:1.5rem;">No recent inventory transactions recorded yet.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = transactions.map(t => {
+    const isStockIn = t.transaction_type === 'STOCK_IN';
+    const badge = isStockIn
+      ? `<span class="badge badge-stock-in"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Stock In</span>`
+      : `<span class="badge badge-stock-out"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> Stock Out</span>`;
+    const qtySign = isStockIn ? '+' : '-';
+    const qtyColor = isStockIn ? 'color:#059669' : 'color:#2563eb';
+    return `
+      <tr>
+        <td style="font-family:monospace;font-weight:600;font-size:0.82rem;color:#0f172a;">${t.transaction_code}</td>
+        <td style="font-size:0.82rem;color:#64748b;">${t.transaction_date}</td>
+        <td>
+          <div style="font-weight:600;font-size:0.85rem;color:#0f172a;">${t.product_name}</div>
+          <div style="font-size:0.72rem;color:#64748b;">${t.sku || ''}</div>
+        </td>
+        <td>${badge}</td>
+        <td style="font-weight:700;font-size:0.88rem;${qtyColor}">${qtySign}${fmtNum(t.quantity)}</td>
+        <td style="font-size:0.82rem;">${t.warehouse_name || t.warehouse_id}</td>
+        <td style="font-size:0.82rem;color:#334155;">${t.partner_name}</td>
+        <td style="font-size:0.8rem;color:#64748b;">${t.performed_by}</td>
+      </tr>
+    `;
+  }).join('');
+}
 }
 
 function renderBenefitBanner(d) {
@@ -2405,6 +2474,516 @@ async function fetchPipelineStatus() {
   } catch (err) {
     console.debug('[fetchPipelineStatus]', err);
   }
+}
+
+/* ══════════════════════════════════════
+   SECTION: INVENTORY TRANSACTIONS
+══════════════════════════════════════ */
+let txnFilterDebounceTimer = null;
+let txnCache = {
+  transactions: [],
+  summary: null,
+  products: [],
+  warehouses: []
+};
+
+// Known verified suppliers for Stock In auto-complete
+const KNOWN_SUPPLIERS = [
+  'Amul Dairy Cooperative Ltd. (Anand Depot)',
+  'KRBL Milling & Agro Ltd. (Punjab Mills)',
+  'Mother Dairy Fruit & Vegetable Pvt. Ltd.',
+  'Britannia Industries Supply Hub (Ranjangaon)',
+  'ITC Agri-Business Division (Nagpur DC)',
+  'Hindustan Unilever Distribution Depot',
+  'Nestle India Cold-Chain Logistics Hub',
+  'Adani Wilmar Edible Oils Supply Depot',
+  'Tata Consumer Products Agro Hub'
+];
+
+async function ensureTxnMeta() {
+  if (!state.meta) {
+    try {
+      const meta = await apiFetch('/api/meta');
+      state.meta = meta;
+    } catch (e) {
+      console.warn('[ensureTxnMeta] Failed to load meta', e);
+    }
+  }
+
+  // Populate Product select
+  const prodSelect = document.getElementById('txn-product');
+  if (prodSelect && prodSelect.options.length <= 1 && state.meta && state.meta.products) {
+    prodSelect.innerHTML = '<option value="">-- Select Product --</option>' +
+      state.meta.products.map(p => `<option value="${p.id}">${p.name} (${p.sku})</option>`).join('');
+  }
+
+  // Populate Warehouse selects
+  const whSelect = document.getElementById('txn-warehouse');
+  const whFilter = document.getElementById('txn-filter-warehouse');
+  if (whSelect && whSelect.options.length <= 1 && state.meta && state.meta.warehouses) {
+    const whOptions = state.meta.warehouses.map(w => `<option value="${w.id}">${w.name} (${w.city})</option>`).join('');
+    whSelect.innerHTML = '<option value="">-- Select Warehouse --</option>' + whOptions;
+    if (whFilter && whFilter.options.length <= 1) {
+      whFilter.innerHTML = '<option value="ALL">All Warehouses</option>' + whOptions;
+    }
+  }
+
+  // Set default date if blank
+  const dateInput = document.getElementById('txn-date');
+  if (dateInput && !dateInput.value) {
+    const today = new Date().toISOString().split('T')[0];
+    dateInput.value = today;
+  }
+
+  // Update datalist for current type
+  updatePartnerDatalist();
+}
+
+function updatePartnerDatalist() {
+  const datalist = document.getElementById('txn-partner-datalist');
+  if (!datalist) return;
+  const currentType = document.getElementById('txn-type')?.value || 'STOCK_IN';
+
+  if (currentType === 'STOCK_IN') {
+    datalist.innerHTML = KNOWN_SUPPLIERS.map(s => `<option value="${s}"></option>`).join('');
+  } else {
+    // Stores / Customer outlets
+    const storeOptions = (state.meta && state.meta.stores)
+      ? state.meta.stores.map(st => `<option value="${st.name} (${st.city})"></option>`).join('')
+      : '';
+    datalist.innerHTML = storeOptions;
+  }
+}
+
+async function fetchNextTransactionCode(type) {
+  const currentType = type || document.getElementById('txn-type')?.value || 'STOCK_IN';
+  try {
+    const res = await apiFetch(`/api/transactions/next-code?type=${currentType}`);
+    if (res && res.transaction_code) {
+      const codeInput = document.getElementById('txn-code');
+      if (codeInput) codeInput.value = res.transaction_code;
+    }
+  } catch (err) {
+    console.debug('[fetchNextTransactionCode]', err);
+  }
+}
+
+function setTransactionType(type) {
+  const isStockIn = (type === 'STOCK_IN');
+  const hiddenType = document.getElementById('txn-type');
+  if (hiddenType) hiddenType.value = isStockIn ? 'STOCK_IN' : 'STOCK_OUT';
+
+  const tabIn = document.getElementById('tab-type-in');
+  const tabOut = document.getElementById('tab-type-out');
+  if (tabIn && tabOut) {
+    if (isStockIn) {
+      tabIn.classList.add('active-in');
+      tabOut.classList.remove('active-out');
+    } else {
+      tabOut.classList.add('active-out');
+      tabIn.classList.remove('active-in');
+    }
+  }
+
+  const titleEl = document.getElementById('txn-form-title');
+  if (titleEl) {
+    titleEl.textContent = isStockIn ? 'Record Stock In (Supplier Intake)' : 'Record Stock Out (Store Dispatch)';
+  }
+
+  const partnerLabel = document.getElementById('txn-partner-label');
+  const partnerInput = document.getElementById('txn-partner');
+  if (partnerLabel && partnerInput) {
+    if (isStockIn) {
+      partnerLabel.textContent = 'Supplier / Vendor Name *';
+      partnerInput.placeholder = 'e.g. Amul Dairy Cooperative Ltd.';
+    } else {
+      partnerLabel.textContent = 'Destination Store / Customer *';
+      partnerInput.placeholder = 'e.g. Mumbai South Hypermarket';
+    }
+  }
+
+  const submitText = document.getElementById('txn-submit-btn-text');
+  if (submitText) {
+    submitText.textContent = isStockIn ? 'Record Stock In' : 'Record Stock Out';
+  }
+
+  updatePartnerDatalist();
+  fetchNextTransactionCode(isStockIn ? 'STOCK_IN' : 'STOCK_OUT');
+  onTxnProductOrWarehouseChange();
+}
+
+async function onTxnProductOrWarehouseChange() {
+  const prodId = parseInt(document.getElementById('txn-product')?.value, 10);
+  const whId = document.getElementById('txn-warehouse')?.value;
+  const availIndicator = document.getElementById('txn-stock-avail-val');
+
+  if (!prodId || !whId) {
+    if (availIndicator) availIndicator.textContent = '—';
+    validateTxnQuantity();
+    return;
+  }
+
+  // Fetch batches if not yet loaded to get exact real-time warehouse batch stock
+  if (!state.whInventory) {
+    try {
+      const res = await apiFetch('/api/warehouse/batches');
+      state.whInventory = res.batches || [];
+    } catch(e) {}
+  }
+
+  let onHand = 0;
+  if (state.whInventory) {
+    onHand = state.whInventory
+      .filter(b => b.product_id === prodId && b.warehouse_id === whId)
+      .reduce((acc, b) => acc + (b.quantity || 0), 0);
+  }
+
+  if (availIndicator) {
+    availIndicator.textContent = `${fmtNum(onHand)} units`;
+    availIndicator.dataset.onHand = onHand;
+  }
+
+  validateTxnQuantity();
+}
+
+function validateTxnQuantity() {
+  const qtyInput = document.getElementById('txn-quantity');
+  const hintEl = document.getElementById('txn-quantity-hint');
+  const submitBtn = document.getElementById('txn-submit-btn');
+  const currentType = document.getElementById('txn-type')?.value || 'STOCK_IN';
+  const availIndicator = document.getElementById('txn-stock-avail-val');
+  const onHand = parseInt(availIndicator?.dataset?.onHand || '0', 10);
+
+  if (!qtyInput) return true;
+  const qty = parseInt(qtyInput.value, 10);
+
+  if (isNaN(qty) || qty <= 0) {
+    if (hintEl) hintEl.classList.add('hidden');
+    if (submitBtn) submitBtn.disabled = false;
+    return false;
+  }
+
+  if (currentType === 'STOCK_OUT') {
+    if (qty > onHand) {
+      if (hintEl) {
+        hintEl.textContent = `Insufficient stock! On-hand is ${fmtNum(onHand)} units, requested: ${fmtNum(qty)} units.`;
+        hintEl.classList.remove('hidden');
+      }
+      if (submitBtn) submitBtn.disabled = true;
+      return false;
+    }
+  }
+
+  if (hintEl) hintEl.classList.add('hidden');
+  if (submitBtn) submitBtn.disabled = false;
+  return true;
+}
+
+function showTxnAlert(message, type = 'success') {
+  const alertBox = document.getElementById('txn-alert-box');
+  if (!alertBox) return;
+  alertBox.className = `txn-alert ${type === 'success' ? 'txn-alert-success' : 'txn-alert-error'}`;
+  alertBox.innerHTML = message;
+  alertBox.classList.remove('hidden');
+}
+
+function hideTxnAlert() {
+  const alertBox = document.getElementById('txn-alert-box');
+  if (alertBox) alertBox.classList.add('hidden');
+}
+
+function resetTransactionForm() {
+  const form = document.getElementById('txn-form');
+  if (form) form.reset();
+  hideTxnAlert();
+  const today = new Date().toISOString().split('T')[0];
+  const dateInput = document.getElementById('txn-date');
+  if (dateInput) dateInput.value = today;
+  const availIndicator = document.getElementById('txn-stock-avail-val');
+  if (availIndicator) {
+    availIndicator.textContent = '—';
+    availIndicator.dataset.onHand = '0';
+  }
+  fetchNextTransactionCode();
+}
+
+async function handleTransactionSubmit(event) {
+  event.preventDefault();
+  hideTxnAlert();
+
+  const code = document.getElementById('txn-code')?.value.trim();
+  const type = document.getElementById('txn-type')?.value || 'STOCK_IN';
+  const productId = parseInt(document.getElementById('txn-product')?.value, 10);
+  const warehouseId = document.getElementById('txn-warehouse')?.value;
+  const quantity = parseInt(document.getElementById('txn-quantity')?.value, 10);
+  const partnerName = document.getElementById('txn-partner')?.value.trim();
+  const txnDate = document.getElementById('txn-date')?.value;
+  const notes = document.getElementById('txn-notes')?.value.trim();
+
+  if (!productId || isNaN(productId)) {
+    showTxnAlert('Please select a valid product.', 'error');
+    return;
+  }
+  if (!warehouseId) {
+    showTxnAlert('Please select a warehouse location.', 'error');
+    return;
+  }
+  if (isNaN(quantity) || quantity <= 0) {
+    showTxnAlert('Please enter a valid quantity greater than 0.', 'error');
+    return;
+  }
+  if (!partnerName) {
+    const pLabel = type === 'STOCK_IN' ? 'Supplier name' : 'Destination store or customer';
+    showTxnAlert(`Please enter the ${pLabel}.`, 'error');
+    return;
+  }
+  if (!txnDate) {
+    showTxnAlert('Please specify a transaction date.', 'error');
+    return;
+  }
+
+  const submitBtn = document.getElementById('txn-submit-btn');
+  const submitText = document.getElementById('txn-submit-btn-text');
+  const originalText = submitText ? submitText.textContent : 'Submit';
+
+  if (submitBtn) submitBtn.disabled = true;
+  if (submitText) submitText.textContent = 'Recording & Auditing...';
+
+  try {
+    const payload = {
+      transaction_code: code,
+      transaction_type: type,
+      product_id: productId,
+      warehouse_id: warehouseId,
+      quantity: quantity,
+      partner_name: partnerName,
+      transaction_date: txnDate,
+      notes: notes,
+      user_role: state.currentUser,
+      user_name: USER_ROLES[state.currentUser]?.name || 'System User'
+    };
+
+    const res = await apiFetch('/api/transactions', {
+      method: 'POST',
+      body: JSON.stringify(payload)
+    });
+
+    if (res && res.success) {
+      const isStockIn = (res.transaction_type === 'STOCK_IN');
+      const actionVerb = isStockIn ? 'received & credited' : 'debited & dispatched';
+      const msg = `<strong>${res.transaction_code} recorded successfully!</strong><br />` +
+        `${fmtNum(res.quantity)} units of ${res.product_name} ${actionVerb} at ${res.warehouse_name}.<br />` +
+        `Updated Warehouse Available Stock: <strong>${fmtNum(res.updated_warehouse_stock)} units</strong>.`;
+
+      showTxnAlert(msg, 'success');
+      showToast(`Transaction ${res.transaction_code} recorded!`, 'success', 'Inventory Updated');
+
+      // Invalidate cached summaries and batches so inventory views update immediately
+      state.summary = null;
+      state.whInventory = null;
+      state.storeInventory = null;
+      state.plan = null;
+
+      // Clear quantity and notes, update next code
+      const qtyInput = document.getElementById('txn-quantity');
+      if (qtyInput) qtyInput.value = '';
+      const notesInput = document.getElementById('txn-notes');
+      if (notesInput) notesInput.value = '';
+
+      fetchNextTransactionCode(type);
+      onTxnProductOrWarehouseChange();
+
+      // Refresh transactions table and KPIs
+      await loadTransactions();
+      updateGlobalBadges();
+      fetchPipelineStatus();
+    } else {
+      showTxnAlert(res.error || 'Failed to record transaction.', 'error');
+    }
+  } catch (err) {
+    showTxnAlert(err.message || 'An unexpected error occurred while saving the transaction.', 'error');
+    showToast(err.message || 'Transaction submission failed', 'danger', 'Error');
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+    if (submitText) submitText.textContent = originalText;
+  }
+}
+
+async function loadTransactions() {
+  await ensureTxnMeta();
+
+  const codeInput = document.getElementById('txn-code');
+  if (codeInput && !codeInput.value) {
+    fetchNextTransactionCode();
+  }
+
+  const search = document.getElementById('txn-filter-search')?.value.trim() || '';
+  const type = document.getElementById('txn-filter-type')?.value || 'ALL';
+  const warehouse = document.getElementById('txn-filter-warehouse')?.value || 'ALL';
+  const startDate = document.getElementById('txn-filter-start')?.value || '';
+  const endDate = document.getElementById('txn-filter-end')?.value || '';
+
+  const queryParams = new URLSearchParams({
+    search: search,
+    type: type,
+    warehouse_id: warehouse,
+    start_date: startDate,
+    end_date: endDate,
+    limit: '200'
+  });
+
+  const tbody = document.getElementById('transactions-table-body');
+  if (tbody) {
+    tbody.innerHTML = '<tr><td colspan="8" class="text-center text-muted" style="padding:2rem;">Loading inventory ledger...</td></tr>';
+  }
+
+  try {
+    const res = await apiFetch(`/api/transactions?${queryParams.toString()}`);
+    if (res && res.success) {
+      txnCache.transactions = res.transactions || [];
+      txnCache.summary = res.summary || {};
+
+      // Update KPI cards
+      const s = res.summary || {};
+      const totalEl = document.getElementById('kpi-txn-total');
+      const inEl = document.getElementById('kpi-txn-stock-in');
+      const outEl = document.getElementById('kpi-txn-stock-out');
+      const netEl = document.getElementById('kpi-txn-net-balance');
+
+      if (totalEl) totalEl.textContent = fmtNum(s.total_transactions || 0);
+      if (inEl) inEl.textContent = fmtNum(s.stock_received || 0);
+      if (outEl) outEl.textContent = fmtNum(s.stock_dispatched || 0);
+      if (netEl) {
+        const net = s.net_movement || 0;
+        netEl.textContent = (net >= 0 ? '+' : '') + fmtNum(net);
+        netEl.className = `kpi-value ${net >= 0 ? 'value-success' : 'value-warning'}`;
+      }
+
+      // Render History Table
+      if (!tbody) return;
+      if (!res.transactions || res.transactions.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="8" style="padding: 3rem 1.5rem; text-align: center; color: #64748b;">
+              <div style="display:flex;flex-direction:column;align-items:center;gap:0.75rem;">
+                <div style="width:44px;height:44px;border-radius:50%;background:#f1f5f9;display:flex;align-items:center;justify-content:center;color:#94a3b8;">
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path></svg>
+                </div>
+                <div style="font-weight:600;font-size:0.95rem;color:#1e293b;">No inventory transactions found</div>
+                <div style="font-size:0.8rem;max-width:360px;">No matching records in the ledger. Record a Stock In or Stock Out using the form above, or adjust your filter filters.</div>
+              </div>
+            </td>
+          </tr>
+        `;
+      } else {
+        tbody.innerHTML = res.transactions.map(t => {
+          const isStockIn = (t.transaction_type === 'STOCK_IN');
+          const badge = isStockIn
+            ? `<span class="badge badge-stock-in"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg> Stock In</span>`
+            : `<span class="badge badge-stock-out"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg> Stock Out</span>`;
+          const qtySign = isStockIn ? '+' : '-';
+          const qtyColor = isStockIn ? 'color:#059669;' : 'color:#2563eb;';
+
+          return `
+            <tr>
+              <td style="font-family:monospace;font-weight:600;font-size:0.82rem;color:#0f172a;">${t.transaction_code}</td>
+              <td style="font-size:0.82rem;color:#64748b;white-space:nowrap;">${t.transaction_date}</td>
+              <td>
+                <div style="font-weight:600;font-size:0.85rem;color:#0f172a;">${t.product_name}</div>
+                <div style="font-size:0.72rem;color:#64748b;">SKU: ${t.sku || 'N/A'}</div>
+              </td>
+              <td>${badge}</td>
+              <td style="font-weight:700;font-size:0.88rem;${qtyColor}white-space:nowrap;">${qtySign}${fmtNum(t.quantity)}</td>
+              <td style="font-size:0.82rem;">${t.warehouse_name || t.warehouse_id}</td>
+              <td style="font-size:0.82rem;color:#334155;">
+                <div>${t.partner_name}</div>
+                ${t.notes ? `<div style="font-size:0.72rem;color:#94a3b8;font-style:italic;">${trunc(t.notes, 40)}</div>` : ''}
+              </td>
+              <td style="font-size:0.8rem;color:#64748b;">
+                <div>${t.performed_by}</div>
+                ${t.performed_by_role ? `<span style="font-size:0.68rem;text-transform:uppercase;color:#94a3b8;">${t.performed_by_role}</span>` : ''}
+              </td>
+            </tr>
+          `;
+        }).join('');
+      }
+
+      // Count label
+      const countLabel = document.getElementById('txn-table-count-label');
+      if (countLabel) {
+        countLabel.textContent = `Showing ${res.transactions.length} of ${res.total_count} records`;
+      }
+    }
+  } catch (err) {
+    console.error('[loadTransactions]', err);
+    if (tbody) {
+      tbody.innerHTML = `<tr><td colspan="8" class="loading-row" style="color:#dc2626">Failed to load transactions: ${err.message}</td></tr>`;
+    }
+  }
+}
+
+function debounceTxnFilter() {
+  if (txnFilterDebounceTimer) clearTimeout(txnFilterDebounceTimer);
+  txnFilterDebounceTimer = setTimeout(() => {
+    loadTransactions();
+  }, 250);
+}
+
+function filterTransactions() {
+  loadTransactions();
+}
+
+function clearTransactionFilters() {
+  const searchInput = document.getElementById('txn-filter-search');
+  const typeSelect = document.getElementById('txn-filter-type');
+  const whSelect = document.getElementById('txn-filter-warehouse');
+  const startInput = document.getElementById('txn-filter-start');
+  const endInput = document.getElementById('txn-filter-end');
+
+  if (searchInput) searchInput.value = '';
+  if (typeSelect) typeSelect.value = 'ALL';
+  if (whSelect) whSelect.value = 'ALL';
+  if (startInput) startInput.value = '';
+  if (endInput) endInput.value = '';
+
+  loadTransactions();
+}
+
+function exportTransactionsCSV() {
+  const records = txnCache.transactions || [];
+  if (records.length === 0) {
+    showToast('No records available to export', 'warning', 'Export');
+    return;
+  }
+
+  const headers = ['Transaction ID', 'Date', 'Type', 'Product ID', 'Product Name', 'SKU', 'Quantity', 'Warehouse ID', 'Warehouse Name', 'Supplier / Destination', 'Notes', 'Performed By', 'Role', 'Created At'];
+  const rows = records.map(r => [
+    r.transaction_code,
+    r.transaction_date,
+    r.transaction_type,
+    r.product_id,
+    `"${(r.product_name || '').replace(/"/g, '""')}"`,
+    r.sku,
+    r.quantity,
+    r.warehouse_id,
+    `"${(r.warehouse_name || '').replace(/"/g, '""')}"`,
+    `"${(r.partner_name || '').replace(/"/g, '""')}"`,
+    `"${(r.notes || '').replace(/"/g, '""')}"`,
+    `"${(r.performed_by || '').replace(/"/g, '""')}"`,
+    r.performed_by_role,
+    r.created_at
+  ]);
+
+  const csvContent = [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `optistock_transactions_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast(`Exported ${records.length} transaction records to CSV`, 'success', 'Export Completed');
 }
 
 /* ══════════════════════════════════════

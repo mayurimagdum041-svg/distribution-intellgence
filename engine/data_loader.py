@@ -647,3 +647,68 @@ def debit_warehouse_batch(
         "debited_batches": debited_batches,
     }
 
+
+def credit_warehouse_batch(
+    warehouse_id: str,
+    product_id: int,
+    quantity: int,
+    expiry_days: Optional[int] = None,
+    batch_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Credits received stock into warehouse inventory batches.
+    If batch_id is specified or an existing batch matches, increases batch quantity.
+    Otherwise creates a new batch entry in INITIAL_BATCHES.
+    """
+    qty = int(quantity)
+    product = next((p for p in PRODUCTS if p["id"] == product_id), None)
+    shelf_life = product["shelf_life_days"] if product else 30
+    exp_days = expiry_days if expiry_days is not None else shelf_life
+
+    matched_batch = None
+    if batch_id:
+        matched_batch = next((b for b in INITIAL_BATCHES if b.get("batch_id") == batch_id), None)
+
+    if not matched_batch:
+        # Check if there is an existing batch for this warehouse and product
+        candidates = [
+            b for b in INITIAL_BATCHES 
+            if b["warehouse_id"] == warehouse_id and b["product_id"] == product_id
+        ]
+        if candidates:
+            # Sort by highest expiry_days (newest batch)
+            candidates.sort(key=lambda x: x["expiry_days"], reverse=True)
+            matched_batch = candidates[0]
+
+    if matched_batch:
+        matched_batch["quantity"] += qty
+        used_batch_id = matched_batch["batch_id"]
+        current_batch_qty = matched_batch["quantity"]
+    else:
+        # Create a new batch entry
+        today_str = datetime.now().strftime("%Y-%m-%d")
+        sku_parts = product["sku"].split("-") if product and "-" in product["sku"] else ["", "GEN"]
+        sku_code = sku_parts[1] if len(sku_parts) > 1 else "GEN"
+        new_id = batch_id or f"BAT-{sku_code}-{len(INITIAL_BATCHES) + 1:02d}"
+        new_batch = {
+            "batch_id": new_id,
+            "product_id": product_id,
+            "warehouse_id": warehouse_id,
+            "quantity": qty,
+            "expiry_days": exp_days,
+            "mfg_date": today_str
+        }
+        INITIAL_BATCHES.append(new_batch)
+        used_batch_id = new_id
+        current_batch_qty = qty
+
+    return {
+        "warehouse_id": warehouse_id,
+        "product_id": product_id,
+        "total_credited": qty,
+        "batch_id": used_batch_id,
+        "new_quantity": current_batch_qty,
+        "total_warehouse_stock": get_warehouse_stock(warehouse_id, product_id)
+    }
+
+

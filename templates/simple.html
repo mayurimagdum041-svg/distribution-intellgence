@@ -33,6 +33,12 @@
           </span>
           <span>Overview</span>
         </a>
+        <a href="#" class="nav-link" data-nav="transactions" data-roles="admin,warehouse,retail" onclick="navigate('transactions', this)">
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path></svg>
+          </span>
+          <span>Transactions</span>
+        </a>
         <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
           <span class="nav-icon">
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
@@ -260,6 +266,263 @@
           </div>
           <div class="chart-wrapper">
             <canvas id="overview-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Recent Inventory Transactions Card in Overview -->
+        <div class="card" style="margin-top: 1.5rem;">
+          <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+            <div>
+              <h2 class="card-title">Recent Inventory Transactions</h2>
+              <span class="card-subtitle">Real-time audited stock receipts (Stock In) and dispatches (Stock Out)</span>
+            </div>
+            <button class="btn btn-sm btn-outline" onclick="navigate('transactions', document.querySelector('[data-nav=transactions]'))">
+              View All Transactions &rarr;
+            </button>
+          </div>
+          <div class="table-wrapper">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Transaction ID</th>
+                  <th>Date</th>
+                  <th>Product</th>
+                  <th>Type</th>
+                  <th>Quantity</th>
+                  <th>Warehouse</th>
+                  <th>Supplier / Destination</th>
+                  <th>Performed By</th>
+                </tr>
+              </thead>
+              <tbody id="overview-recent-txns-body">
+                <tr><td colspan="8" class="text-center text-muted" style="padding: 1.5rem;">Loading recent transactions...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: INVENTORY TRANSACTIONS ─────────── -->
+      <section id="section-transactions" class="section">
+        <!-- Transaction Summary KPI Row -->
+        <div class="kpi-grid kpi-grid-4" id="txn-kpi-grid" style="margin-bottom: 1.5rem;">
+          <div class="kpi-card kpi-primary">
+            <div class="kpi-icon" style="background:#eff6ff;color:#2563eb;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 16V4M7 4L3 8M7 4L11 8M17 8V20M17 20L21 16M17 20L13 16"></path></svg>
+            </div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-txn-total">—</div>
+              <div class="kpi-label">Total Transactions</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-success">
+            <div class="kpi-icon" style="background:#ecfdf5;color:#059669;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><polyline points="19 12 12 19 5 12"></polyline></svg>
+            </div>
+            <div class="kpi-body">
+              <div class="kpi-value value-success" id="kpi-txn-stock-in">—</div>
+              <div class="kpi-label">Stock Received (Units)</div>
+            </div>
+          </div>
+          <div class="kpi-card kpi-primary">
+            <div class="kpi-icon" style="background:#f0f9ff;color:#0284c7;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="19" x2="12" y2="5"></line><polyline points="5 12 12 5 19 12"></polyline></svg>
+            </div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-txn-stock-out">—</div>
+              <div class="kpi-label">Stock Dispatched (Units)</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#f8fafc;color:#475569;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>
+            </div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-txn-net-balance">—</div>
+              <div class="kpi-label">Net Movement Balance</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Main Content Grid: Form + History -->
+        <div class="transactions-layout-grid">
+          <!-- Card: Record Transaction Form -->
+          <div class="card txn-form-card">
+            <div class="card-header">
+              <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; flex-wrap: wrap; gap: 0.5rem;">
+                <div>
+                  <h2 class="card-title" id="txn-form-title">Record Inventory Transaction</h2>
+                  <span class="card-subtitle">Log stock receipts from suppliers or dispatches to stores</span>
+                </div>
+                <!-- Segmented Type Selector -->
+                <div class="txn-type-selector">
+                  <button type="button" class="txn-type-tab active-in" id="tab-type-in" onclick="setTransactionType('STOCK_IN')">
+                    Stock In
+                  </button>
+                  <button type="button" class="txn-type-tab" id="tab-type-out" onclick="setTransactionType('STOCK_OUT')">
+                    Stock Out
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <form id="txn-form" onsubmit="handleTransactionSubmit(event)" class="txn-form">
+              <!-- Alert Box for feedback -->
+              <div id="txn-alert-box" class="txn-alert hidden"></div>
+
+              <div class="txn-form-fields">
+                <!-- Transaction ID (auto-generated) -->
+                <div class="form-group">
+                  <label class="form-label" for="txn-code">
+                    Transaction ID
+                    <span class="label-help">(auto-generated)</span>
+                  </label>
+                  <div style="display: flex; gap: 0.5rem;">
+                    <input type="text" id="txn-code" class="form-input" readonly style="background: #f8fafc; font-family: monospace; font-weight: 600;" />
+                    <button type="button" class="btn btn-outline btn-sm" onclick="fetchNextTransactionCode()" title="Regenerate Transaction Code">
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+                    </button>
+                  </div>
+                </div>
+
+                <!-- Transaction Type (hidden state) -->
+                <input type="hidden" id="txn-type" value="STOCK_IN" />
+
+                <!-- Product Name -->
+                <div class="form-group">
+                  <label class="form-label" for="txn-product">Product Name *</label>
+                  <select id="txn-product" class="select-control form-input" required onchange="onTxnProductOrWarehouseChange()">
+                    <option value="">-- Select Product --</option>
+                  </select>
+                </div>
+
+                <!-- Warehouse -->
+                <div class="form-group">
+                  <label class="form-label" for="txn-warehouse">Warehouse Location *</label>
+                  <select id="txn-warehouse" class="select-control form-input" required onchange="onTxnProductOrWarehouseChange()">
+                    <option value="">-- Select Warehouse --</option>
+                  </select>
+                </div>
+
+                <!-- Quantity & Available Stock Indicator -->
+                <div class="form-group">
+                  <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <label class="form-label" for="txn-quantity">Quantity (Units) *</label>
+                    <span id="txn-stock-avail-indicator" class="txn-stock-indicator" style="font-size: 0.75rem; color: #64748b;">
+                      Available: <strong id="txn-stock-avail-val">—</strong>
+                    </span>
+                  </div>
+                  <input type="number" id="txn-quantity" class="form-input" min="1" step="1" placeholder="e.g. 50" required oninput="validateTxnQuantity()" />
+                  <span id="txn-quantity-hint" class="txn-hint-error hidden" style="font-size: 0.74rem; color: #dc2626; margin-top: 0.25rem;"></span>
+                </div>
+
+                <!-- Partner: Supplier or Destination Store -->
+                <div class="form-group">
+                  <label class="form-label" id="txn-partner-label" for="txn-partner">Supplier Name *</label>
+                  <input type="text" id="txn-partner" class="form-input" list="txn-partner-datalist" placeholder="e.g. Amul Dairy Cooperative Ltd." required />
+                  <datalist id="txn-partner-datalist">
+                    <!-- Populated dynamically based on type -->
+                  </datalist>
+                </div>
+
+                <!-- Date -->
+                <div class="form-group">
+                  <label class="form-label" for="txn-date">Transaction Date *</label>
+                  <input type="date" id="txn-date" class="form-input" required />
+                </div>
+
+                <!-- Notes (optional) -->
+                <div class="form-group form-group-full">
+                  <label class="form-label" for="txn-notes">Notes / Reference <span class="label-help">(optional)</span></label>
+                  <input type="text" id="txn-notes" class="form-input" placeholder="e.g. Morning farm intake batch / Dispatched via Reefer fleet" />
+                </div>
+              </div>
+
+              <!-- Form Actions -->
+              <div class="txn-form-actions" style="margin-top: 1.25rem; display: flex; align-items: center; justify-content: flex-end; gap: 0.75rem;">
+                <button type="button" class="btn btn-outline" onclick="resetTransactionForm()">Reset</button>
+                <button type="submit" class="btn btn-primary" id="txn-submit-btn">
+                  <span id="txn-submit-btn-text">Record Stock In</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <!-- Card: Transaction History Table -->
+          <div class="card txn-history-card">
+            <div class="card-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.5rem;">
+              <div>
+                <h2 class="card-title">Transaction History Ledger</h2>
+                <span class="card-subtitle">Permanent audit log of all inventory movements</span>
+              </div>
+              <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-sm btn-outline" onclick="exportTransactionsCSV()" title="Export filtered records to CSV">
+                  Export CSV
+                </button>
+                <button class="btn btn-sm btn-outline" onclick="loadTransactions()" title="Reload transaction ledger">
+                  Refresh
+                </button>
+              </div>
+            </div>
+
+            <!-- Filter Toolbar -->
+            <div class="txn-filters-bar" style="padding: 1rem 1.25rem; border-bottom: 1px solid var(--border); display: flex; flex-wrap: wrap; gap: 0.65rem; background: #fafbfc;">
+              <!-- Search -->
+              <div style="flex: 1; min-width: 200px;">
+                <input type="text" id="txn-filter-search" class="search-input" style="width: 100%;" placeholder="Search ID, product, warehouse, partner, user..." oninput="debounceTxnFilter()" />
+              </div>
+              <!-- Type Filter -->
+              <div>
+                <select id="txn-filter-type" class="select-control" onchange="filterTransactions()">
+                  <option value="ALL">All Types</option>
+                  <option value="STOCK_IN">Stock In (Receipts)</option>
+                  <option value="STOCK_OUT">Stock Out (Dispatches)</option>
+                </select>
+              </div>
+              <!-- Warehouse Filter -->
+              <div>
+                <select id="txn-filter-warehouse" class="select-control" onchange="filterTransactions()">
+                  <option value="ALL">All Warehouses</option>
+                </select>
+              </div>
+              <!-- Date Range Filter -->
+              <div style="display: flex; align-items: center; gap: 0.35rem;">
+                <input type="date" id="txn-filter-start" class="form-input" style="padding: 0.45rem 0.6rem; font-size: 0.8rem;" onchange="filterTransactions()" title="From Date" />
+                <span style="font-size: 0.8rem; color: #94a3b8;">to</span>
+                <input type="date" id="txn-filter-end" class="form-input" style="padding: 0.45rem 0.6rem; font-size: 0.8rem;" onchange="filterTransactions()" title="To Date" />
+              </div>
+              <!-- Clear Filters -->
+              <div>
+                <button type="button" class="btn btn-outline btn-sm" onclick="clearTransactionFilters()" style="padding: 0.48rem 0.75rem;">Clear</button>
+              </div>
+            </div>
+
+            <!-- Table -->
+            <div class="table-wrapper" style="min-height: 280px;">
+              <table class="data-table" id="transactions-table">
+                <thead>
+                  <tr>
+                    <th>Transaction ID</th>
+                    <th>Date</th>
+                    <th>Product</th>
+                    <th>Type</th>
+                    <th>Quantity</th>
+                    <th>Warehouse</th>
+                    <th>Supplier / Destination</th>
+                    <th>Performed By</th>
+                  </tr>
+                </thead>
+                <tbody id="transactions-table-body">
+                  <tr><td colspan="8" class="text-center text-muted" style="padding: 2rem;">Loading inventory ledger...</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <!-- Table Footer Pagination / Status Info -->
+            <div style="padding: 0.75rem 1.25rem; border-top: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; font-size: 0.8rem; color: #64748b;">
+              <span id="txn-table-count-label">Showing 0 records</span>
+              <span style="font-size: 0.75rem;">Audited & Committed to SQLite Ledger</span>
+            </div>
           </div>
         </div>
       </section>

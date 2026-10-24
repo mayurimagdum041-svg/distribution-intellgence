@@ -36,6 +36,12 @@ from engine.automation_engine import (
     get_pipeline_summary,
 )
 from engine.automation_scheduler import start_in_process_scheduler
+from engine.inventory_transactions import (
+    record_transaction,
+    get_transactions,
+    get_transaction_summary,
+    generate_transaction_code,
+)
 
 app = Flask(__name__)
 app.secret_key = os.environ.get("SECRET_KEY", "optistock-secret-key-2026")
@@ -67,7 +73,7 @@ USERS = {
         "badge": "Administrator",
         "avatar": "AD",
         "color": "#2563eb",
-        "allowed_sections": ["overview", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
+        "allowed_sections": ["overview", "transactions", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
         "description": "Executive command tower: global network KPIs, SciPy HiGHS MILP optimizer, What-If simulator, and complete audit trail."
     },
     "warehouse": {
@@ -78,7 +84,7 @@ USERS = {
         "badge": "Warehouse Manager",
         "avatar": "WH",
         "color": "#d97706",
-        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "map"],
+        "allowed_sections": ["inventory", "transactions", "approvals", "alerts", "distribution", "map"],
         "description": "Batch shelf-life tracking (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests."
     },
     "retail": {
@@ -89,7 +95,7 @@ USERS = {
         "badge": "Retail Store Manager",
         "avatar": "RT",
         "color": "#16a34a",
-        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast", "map"],
+        "allowed_sections": ["inventory", "transactions", "approvals", "alerts", "distribution", "forecast", "map"],
         "description": "Store stock levels, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts."
     },
     "delivery": {
@@ -275,6 +281,7 @@ def api_summary():
     urgent_batches = sum(1 for b in batches if b["status"] == "Urgent")
 
     b_mark = plan["benchmark"]
+    txn_summary = get_transaction_summary()
 
     return jsonify({
         "horizon_days": horizon,
@@ -298,6 +305,11 @@ def api_summary():
         "fulfillment_rate_ai": b_mark["fulfillment_rate_ai"],
         "fulfillment_rate_baseline": b_mark["fulfillment_rate_baseline"],
         "stockouts_prevented_units": b_mark["stockouts_prevented_units"],
+        "transactions": txn_summary,
+        "total_transactions": txn_summary["total_transactions"],
+        "stock_received": txn_summary["stock_received"],
+        "stock_dispatched": txn_summary["stock_dispatched"],
+        "recent_transactions": txn_summary["recent_transactions"],
     })
 
 
@@ -717,6 +729,115 @@ def api_automation_alerts_action():
         result = resolve_alert(alert_id=alert_id, user_name=user_name)
 
     return jsonify(result)
+
+
+def _get_authenticated_user():
+    """
+    Retrieves the currently authenticated user role and name.
+    Checks:
+      1. Flask session cookie (session['user_role'], session['user_name'])
+      2. Headers: X-User-Role, X-User-Name
+      3. Request JSON / query parameters: user_role, user_name
+    Validates that user_role exists in USERS.
+    """
+    role = session.get("user_role") or request.headers.get("X-User-Role")
+    name = session.get("user_name") or request.headers.get("X-User-Name")
+
+    if not role:
+        if request.is_json:
+            body = request.get_json(silent=True) or {}
+            role = body.get("user_role")
+            name = name or body.get("user_name")
+        elif request.args.get("user_role"):
+            role = request.args.get("user_role")
+            name = name or request.args.get("user_name")
+
+    if role and role in USERS:
+        name = name or USERS[role]["name"]
+        return role, name
+    return None, None
+
+
+@app.route("/api/transactions", methods=["GET", "POST"])
+def api_transactions():
+    """
+    GET: Retrieves filterable list of inventory transactions with summary metadata.
+    POST: Records a new Stock In or Stock Out transaction with atomic inventory sync.
+    Requires authentication.
+    """
+    user_role, user_name = _get_authenticated_user()
+    if not user_role:
+        return jsonify({
+            "success": False,
+            "error": "Authentication required. Please log in to access inventory transactions."
+        }), 401
+
+    if request.method == "POST":
+        body = request.get_json(silent=True) or {}
+        try:
+            result = record_transaction(
+                data=body,
+                user_name=user_name,
+                user_role=user_role
+            )
+            return jsonify(result), 201
+        except ValueError as ve:
+            return jsonify({"success": False, "error": str(ve)}), 400
+        except Exception as e:
+            app.logger.exception("Transaction recording error: %s", str(e))
+            return jsonify({"success": False, "error": str(e)}), 500
+
+    # GET request
+    filters = {
+        "search": request.args.get("search", ""),
+        "type": request.args.get("type", "ALL"),
+        "warehouse_id": request.args.get("warehouse_id", "ALL"),
+        "start_date": request.args.get("start_date", ""),
+        "end_date": request.args.get("end_date", "")
+    }
+    try:
+        limit = min(int(request.args.get("limit", 100)), 500)
+    except (ValueError, TypeError):
+        limit = 100
+    try:
+        offset = max(int(request.args.get("offset", 0)), 0)
+    except (ValueError, TypeError):
+        offset = 0
+
+    data = get_transactions(filters=filters, limit=limit, offset=offset)
+    summary = get_transaction_summary()
+    return jsonify({
+        "success": True,
+        "transactions": data["transactions"],
+        "total_count": data["total_count"],
+        "summary": summary
+    })
+
+
+@app.route("/api/transactions/summary")
+def api_transactions_summary():
+    """Returns aggregated transaction metrics for dashboard cards."""
+    user_role, _ = _get_authenticated_user()
+    if not user_role:
+        return jsonify({
+            "success": False,
+            "error": "Authentication required. Please log in to view transaction metrics."
+        }), 401
+    return jsonify({
+        "success": True,
+        "summary": get_transaction_summary()
+    })
+
+
+@app.route("/api/transactions/next-code")
+def api_transactions_next_code():
+    """Generates the next sequential transaction ID for form prefilling."""
+    txn_type = request.args.get("type", "STOCK_IN")
+    code = generate_transaction_code(txn_type)
+    return jsonify({
+        "success": True,
+        "transaction_code": code
+    })
 
 
 if __name__ == "__main__":
