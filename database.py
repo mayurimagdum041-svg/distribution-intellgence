@@ -11,7 +11,9 @@ import math
 from datetime import datetime, timedelta
 from werkzeug.security import generate_password_hash
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "optistock.db")
+DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "optistock.db"))
+if not os.access(os.path.dirname(os.path.abspath(DB_PATH)), os.W_OK):
+    DB_PATH = os.path.join("/tmp", "optistock.db")
 
 
 def get_db():
