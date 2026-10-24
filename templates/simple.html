@@ -24,32 +24,39 @@
       </div>
 
       <nav class="sidebar-nav">
+        <div class="nav-section-label" data-nav-group="core">OPERATIONS</div>
         <a href="#" class="nav-link active" data-nav="overview" data-roles="admin" onclick="navigate('overview', this)">
-          <span class="nav-icon">🏠</span> Overview
-        </a>
-        <a href="#" class="nav-link" data-nav="automation" data-roles="admin" onclick="navigate('automation', this)">
-          <span class="nav-icon">🤖</span> Automation
-        </a>
-        <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this)">
-          <span class="nav-icon">📋</span> Approvals <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
-        </a>
-        <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
-          <span class="nav-icon">🔔</span> Alerts <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
+          <span class="nav-icon">🏠</span> <span>Overview</span>
         </a>
         <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
-          <span class="nav-icon">🚚</span> Distribution
+          <span class="nav-icon">🚚</span> <span>Distribution</span>
         </a>
         <a href="#" class="nav-link" data-nav="inventory" data-roles="admin,warehouse,retail" onclick="navigate('inventory', this)">
-          <span class="nav-icon">🏪</span> Inventory
+          <span class="nav-icon">🏪</span> <span>Inventory</span>
         </a>
         <a href="#" class="nav-link" data-nav="forecast" data-roles="admin,retail" onclick="navigate('forecast', this)">
-          <span class="nav-icon">📈</span> Forecast
+          <span class="nav-icon">📈</span> <span>Demand Forecast</span>
         </a>
+
+        <div class="nav-section-label" data-nav-group="auto">AUTOMATION</div>
+        <a href="#" class="nav-link" data-nav="automation" data-roles="admin" onclick="navigate('automation', this)">
+          <span class="nav-icon">⚡</span> <span>Workflows</span>
+        </a>
+        <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this)">
+          <span class="nav-icon">✍️</span> <span>Decision Inbox</span>
+          <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
+        </a>
+        <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
+          <span class="nav-icon">🔔</span> <span>Alert Center</span>
+          <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
+        </a>
+
+        <div class="nav-section-label" data-nav-group="lab">INTELLIGENCE</div>
         <a href="#" class="nav-link" data-nav="whatif" data-roles="admin" onclick="navigate('whatif', this)">
-          <span class="nav-icon">🔬</span> What-If
+          <span class="nav-icon">🔬</span> <span>What-If Sandbox</span>
         </a>
         <a href="#" class="nav-link" data-nav="map" data-roles="admin,warehouse,delivery" onclick="navigate('map', this)">
-          <span class="nav-icon">🗺️</span> Shipment Map
+          <span class="nav-icon">🗺️</span> <span>Shipment Map</span>
         </a>
       </nav>
 
@@ -80,7 +87,6 @@
         <div class="topbar-right">
           <!-- 4 User Roles Quick Switcher -->
           <div class="role-selector-bar">
-            <span class="role-bar-label">Role:</span>
             <button class="role-chip active" id="btn-role-admin" onclick="switchUserRole('admin')">
               👑 Admin
             </button>
@@ -95,17 +101,24 @@
             </button>
           </div>
 
-          <label class="horizon-label" for="horizon-select">Horizon:</label>
-          <select id="horizon-select" class="select-control" onchange="onHorizonChange()">
-            <option value="1">1 Day</option>
-            <option value="3" selected>3 Days</option>
-            <option value="7">7 Days</option>
-            <option value="14">14 Days</option>
-          </select>
-          <button class="btn btn-outline" onclick="lockSession()" title="Lock dashboard with PIN" style="display:flex;align-items:center;gap:.3rem;">
-            🔒 Lock
+          <div class="topbar-divider"></div>
+
+          <div class="horizon-wrapper">
+            <span class="horizon-icon">⏱️</span>
+            <select id="horizon-select" class="select-control horizon-select" onchange="onHorizonChange()">
+              <option value="1">1 Day</option>
+              <option value="3" selected>3 Days</option>
+              <option value="7">7 Days</option>
+              <option value="14">14 Days</option>
+            </select>
+          </div>
+
+          <button class="btn btn-outline btn-icon-only" onclick="lockSession()" title="Lock workspace with PIN">
+            🔒
           </button>
-          <button class="btn btn-primary" onclick="refreshCurrentSection()">🔄 Refresh</button>
+          <button class="btn btn-primary btn-refresh" id="btn-global-refresh" onclick="refreshCurrentSection()" title="Refresh live data">
+            <span class="refresh-icon">🔄</span> <span class="refresh-text">Refresh</span>
+          </button>
         </div>
       </header>
 
@@ -117,7 +130,8 @@
           <p id="rwb-desc">Full access to global executive KPIs, MILP optimizer, What-If simulation and live shipment map.</p>
         </div>
         <div class="rwb-actions">
-          <button class="btn-subtle" onclick="openRoleModal()">Switch Account</button>
+          <button class="btn-subtle" onclick="openRoleModal()">Switch</button>
+          <button class="btn-close-banner" onclick="dismissBanner()" title="Dismiss banner">✕</button>
         </div>
       </div>
 
@@ -937,6 +951,33 @@
 
     </div>
   </div>
+
+  <!-- ═══════════════════════ MODERN ACTION CONFIRMATION DIALOG ═══════════════════════ -->
+  <div class="modal-backdrop hidden" id="action-dialog-modal">
+    <div class="modal-dialog prompt-modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="action-dialog-title">Manager Authorization</h2>
+          <p class="modal-subtitle" id="action-dialog-subtitle">Review details and submit decision notes</p>
+        </div>
+        <button class="modal-close" onclick="closeActionDialog(false)">✕</button>
+      </div>
+      <div class="prompt-modal-body">
+        <div id="action-dialog-message" class="prompt-message-box"></div>
+        <div class="control-group" id="action-dialog-input-group" style="margin-top:1rem;">
+          <label class="control-label" id="action-dialog-input-label" for="action-dialog-input">Manager Notes / Rationale:</label>
+          <input type="text" id="action-dialog-input" class="search-input" style="width:100%" placeholder="Enter audit notes..." />
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.65rem;padding:1rem 1.5rem;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline" onclick="closeActionDialog(false)">Cancel</button>
+        <button type="button" class="btn btn-primary" id="action-dialog-confirm-btn" onclick="closeActionDialog(true)">Confirm Decision</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ═══════════════════════ FLOATING TOAST NOTIFICATIONS ═══════════════════════ -->
+  <div id="toast-container" class="toast-container"></div>
 
   <script src="/static/simple.js"></script>
 </body>

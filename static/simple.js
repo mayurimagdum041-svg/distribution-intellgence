@@ -367,6 +367,20 @@ function updateRoleUI(role) {
     }
   });
 
+  // Filter Nav Section Labels so empty groups don't show
+  document.querySelectorAll('.nav-section-label').forEach(label => {
+    let nextEl = label.nextElementSibling;
+    let hasVisible = false;
+    while (nextEl && !nextEl.classList.contains('nav-section-label')) {
+      if (nextEl.classList.contains('nav-link') && nextEl.style.display !== 'none') {
+        hasVisible = true;
+        break;
+      }
+      nextEl = nextEl.nextElementSibling;
+    }
+    label.style.display = hasVisible ? 'block' : 'none';
+  });
+
   // Update Role Notification Banner
   const banner = document.getElementById('role-welcome-banner');
   const iconEl = document.getElementById('rwb-icon');
@@ -375,10 +389,22 @@ function updateRoleUI(role) {
 
   if (banner) {
     banner.style.borderLeftColor = role.color;
+    // If not previously dismissed by user in this session, show it
+    if (!sessionStorage.getItem('optistock_banner_dismissed')) {
+      banner.classList.remove('banner-dismissed');
+    }
   }
   if (iconEl) iconEl.textContent = role.bannerIcon;
   if (titleEl) titleEl.textContent = role.bannerTitle;
   if (descEl) descEl.textContent = role.bannerDesc;
+}
+
+function dismissBanner() {
+  const banner = document.getElementById('role-welcome-banner');
+  if (banner) {
+    banner.classList.add('banner-dismissed');
+    try { sessionStorage.setItem('optistock_banner_dismissed', 'true'); } catch(e) {}
+  }
 }
 
 function openRoleModal() {
@@ -482,12 +508,20 @@ function onHorizonChange() {
 }
 
 function refreshCurrentSection() {
+  const icon = document.querySelector('.refresh-icon');
+  if (icon) {
+    icon.classList.remove('spinning');
+    void icon.offsetWidth;
+    icon.classList.add('spinning');
+    setTimeout(() => icon.classList.remove('spinning'), 650);
+  }
   state.summary = null;
   state.plan = null;
   state.storeInventory = null;
   state.whInventory = null;
   updateGlobalBadges();
   lazyLoad(state.currentSection);
+  showToast('Live dashboard data updated', 'info', 'Refreshed');
 }
 
 function lazyLoad(section) {
@@ -748,7 +782,7 @@ function exportShipmentsCSV() {
     const matchText = !q  || [r.product, r.warehouse, r.store].some(f => f && f.toLowerCase().includes(q));
     return matchCat && matchText;
   });
-  if (!rows.length) { alert('No rows to export.'); return; }
+  if (!rows.length) { showToast('No shipment rows to export matching your filter.', 'warning', 'Export Notice'); return; }
   const headers = ['Product','Category','From Warehouse','To Store','City','Qty','Expiry (days)','Freight Cost (₹)','Reason'];
   const csvRows = [headers.join(',')];
   rows.forEach(r => {
@@ -900,7 +934,7 @@ async function runForecast() {
   const storeId   = document.getElementById('fc-store').value;
   const productId = document.getElementById('fc-product').value;
   const days      = document.getElementById('fc-days').value;
-  if (!storeId || !productId) { alert('Please select a store and a product.'); return; }
+  if (!storeId || !productId) { showToast('Please select both a store and a product first.', 'warning', 'Selection Required'); return; }
   document.getElementById('forecast-subtitle').textContent = 'Loading forecast…';
   try {
     const data = await apiFetch(`/api/forecast?store_id=${encodeURIComponent(storeId)}&product_id=${encodeURIComponent(productId)}&days=${days}`);
@@ -1347,6 +1381,96 @@ function renderLocationsTable() {
 }
 
 /* ══════════════════════════════════════
+   SMOOTH FLOATING TOAST NOTIFICATIONS
+══════════════════════════════════════ */
+function showToast(message, type = 'info', title = '') {
+  const container = document.getElementById('toast-container');
+  if (!container) return;
+
+  const icons = {
+    success: '✅',
+    error: '❌',
+    warning: '⚠️',
+    info: 'ℹ️'
+  };
+
+  const titles = {
+    success: title || 'Action Completed',
+    error: title || 'Attention Required',
+    warning: title || 'Warning Notice',
+    info: title || 'System Update'
+  };
+
+  const toast = document.createElement('div');
+  toast.className = `toast-item toast-${type}`;
+  toast.innerHTML = `
+    <div class="toast-icon">${icons[type] || 'ℹ️'}</div>
+    <div class="toast-content">
+      <div class="toast-title">${titles[type]}</div>
+      <div class="toast-msg">${message}</div>
+    </div>
+    <button class="toast-close" title="Dismiss">✕</button>
+  `;
+
+  const closeBtn = toast.querySelector('.toast-close');
+  const dismiss = () => {
+    toast.classList.add('toast-hiding');
+    setTimeout(() => toast.remove(), 220);
+  };
+
+  closeBtn.addEventListener('click', dismiss);
+  container.appendChild(toast);
+
+  // Auto-dismiss after 4 seconds
+  setTimeout(dismiss, 4000);
+}
+
+/* ══════════════════════════════════════
+   SMOOTH ACTION CONFIRMATION MODAL
+══════════════════════════════════════ */
+let actionDialogResolver = null;
+
+function showActionDialog({ title, subtitle, message, inputLabel = 'Manager Notes:', defaultValue = '', confirmText = 'Confirm Decision', showInput = true }) {
+  return new Promise((resolve) => {
+    actionDialogResolver = resolve;
+    const modal = document.getElementById('action-dialog-modal');
+    const titleEl = document.getElementById('action-dialog-title');
+    const subEl = document.getElementById('action-dialog-subtitle');
+    const msgEl = document.getElementById('action-dialog-message');
+    const labelEl = document.getElementById('action-dialog-input-label');
+    const inputEl = document.getElementById('action-dialog-input');
+    const groupEl = document.getElementById('action-dialog-input-group');
+    const confirmBtn = document.getElementById('action-dialog-confirm-btn');
+
+    if (titleEl) titleEl.textContent = title || 'Manager Authorization';
+    if (subEl) subEl.textContent = subtitle || 'Review and submit your decision';
+    if (msgEl) msgEl.innerHTML = message || '';
+    if (labelEl) labelEl.textContent = inputLabel;
+    if (inputEl) inputEl.value = defaultValue;
+    if (groupEl) groupEl.style.display = showInput ? 'block' : 'none';
+    if (confirmBtn) confirmBtn.textContent = confirmText;
+
+    if (modal) modal.classList.remove('hidden');
+    if (showInput && inputEl) {
+      setTimeout(() => inputEl.focus(), 120);
+    }
+  });
+}
+
+function closeActionDialog(isConfirmed) {
+  const modal = document.getElementById('action-dialog-modal');
+  const inputEl = document.getElementById('action-dialog-input');
+  const value = inputEl ? inputEl.value.trim() : '';
+
+  if (modal) modal.classList.add('hidden');
+
+  if (actionDialogResolver) {
+    actionDialogResolver({ confirmed: Boolean(isConfirmed), value: value });
+    actionDialogResolver = null;
+  }
+}
+
+/* ══════════════════════════════════════
    AUTOMATION ENGINE & WORKFLOWS
 ══════════════════════════════════════ */
 let automationState = {
@@ -1518,6 +1642,8 @@ async function runWorkflow(workflowId) {
     btn.textContent = '⏳ Executing…';
   }
 
+  showToast(`Running ${workflowId} (${isDryRun ? 'Dry-Run' : 'Live'})...`, 'info', 'Workflow Triggered');
+
   try {
     const res = await fetch('/api/automation/run', {
       method: 'POST',
@@ -1527,10 +1653,10 @@ async function runWorkflow(workflowId) {
     const result = await res.json();
 
     if (result.success) {
-      const modeText = result.dry_run ? '🧪 DRY-RUN COMPLETED' : '✅ EXECUTION COMPLETED';
-      alert(`${modeText}\n\nWorkflow: ${result.workflow_id}\nActions Generated: ${result.actions_generated}\nDetails: ${result.summary || 'Completed successfully'}`);
+      const modeText = result.dry_run ? 'Dry-Run Finished' : 'Execution Finished';
+      showToast(`${result.workflow_name || workflowId}: ${result.actions_generated} action(s) evaluated.`, 'success', modeText);
     } else {
-      alert(`⚠️ Workflow Error:\n\n${result.error || 'Execution encountered an issue'}`);
+      showToast(result.error || 'Execution encountered an issue', 'error', 'Workflow Error');
     }
 
     // Refresh UI components
@@ -1538,7 +1664,7 @@ async function runWorkflow(workflowId) {
     await loadAutomationHistory();
     await updateGlobalBadges();
   } catch (err) {
-    alert(`Network Error running workflow: ${err.message}`);
+    showToast(err.message, 'error', 'Network Error');
   } finally {
     if (btn) {
       btn.disabled = false;
@@ -1558,9 +1684,10 @@ async function toggleWorkflow(workflowId, targetEnabled) {
       body: JSON.stringify({ workflow_id: workflowId, enabled: targetEnabled })
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    showToast(`${workflowId} is now ${targetEnabled ? 'Enabled' : 'Disabled'}`, 'success', 'Status Updated');
     await loadAutomationStatus();
   } catch (err) {
-    alert(`Error updating workflow status: ${err.message}`);
+    showToast(err.message, 'error', 'Update Failed');
   } finally {
     if (btn) btn.disabled = false;
   }
@@ -1727,14 +1854,20 @@ async function handleReplenishAction(requestId, action) {
   const currentRole = USER_ROLES[state.currentUser] || {};
   const defaultManager = `${currentRole.name || 'Duty Manager'} (${currentRole.badge || 'Admin'})`;
 
-  let notes = '';
-  if (action === 'approve') {
-    notes = prompt('Manager approval note (Optional, e.g. "Approved for Pune Hub dispatch"):', 'Approved for procurement');
-    if (notes === null) return; // Cancelled
-  } else {
-    notes = prompt('Please provide reason for rejecting this replenishment request:', 'Stock surplus at neighboring store');
-    if (notes === null) return; // Cancelled
-  }
+  const isApprove = action === 'approve';
+  const dialogResult = await showActionDialog({
+    title: isApprove ? 'Approve Replenishment PO' : 'Reject Replenishment Proposal',
+    subtitle: `Replenishment Request #${requestId}`,
+    message: isApprove ?
+      `You are authorizing procurement/dispatch for <strong>Proposal #${requestId}</strong>. An official audit timestamp will be recorded under your name.` :
+      `You are rejecting <strong>Proposal #${requestId}</strong>. Please provide a brief justification for the audit log.`,
+    inputLabel: isApprove ? 'Approval Notes (Optional):' : 'Rejection Reason (Required):',
+    defaultValue: isApprove ? 'Approved for dispatch' : 'Stock surplus available at adjacent hub',
+    confirmText: isApprove ? '✓ Confirm Approval' : '✕ Confirm Rejection'
+  });
+
+  if (!dialogResult.confirmed) return;
+  const notes = dialogResult.value;
 
   try {
     const res = await fetch('/api/automation/replenishment/action', {
@@ -1749,14 +1882,14 @@ async function handleReplenishAction(requestId, action) {
     });
     const result = await res.json();
     if (result.success) {
-      alert(`Success: Replenishment request #${requestId} ${action}d successfully.`);
+      showToast(`Request #${requestId} ${action}d successfully`, 'success', 'Proposal Updated');
       await loadReplenishments();
       await updateGlobalBadges();
     } else {
-      alert(`Error: ${result.error || 'Failed to update request'}`);
+      showToast(result.error || 'Failed to update request', 'error', 'Action Failed');
     }
   } catch (err) {
-    alert(`Network error: ${err.message}`);
+    showToast(err.message, 'error', 'Network Error');
   }
 }
 
@@ -1846,14 +1979,20 @@ async function handleRescueAction(transferId, action) {
   const currentRole = USER_ROLES[state.currentUser] || {};
   const defaultManager = `${currentRole.name || 'Warehouse Operations Head'} (${currentRole.badge || 'Admin'})`;
 
-  let notes = '';
-  if (action === 'approve') {
-    notes = prompt('Manager note for dispatching FEFO rescue stock:', 'Authorized for expedited store transfer');
-    if (notes === null) return;
-  } else {
-    notes = prompt('Reason for rejecting this stock transfer:', 'Store shelf capacity constrained');
-    if (notes === null) return;
-  }
+  const isApprove = action === 'approve';
+  const dialogResult = await showActionDialog({
+    title: isApprove ? 'Authorize FEFO Expiry Rescue' : 'Reject Stock Transfer',
+    subtitle: `Rescue Transfer #${transferId}`,
+    message: isApprove ?
+      `You are authorizing expedited store transfer for <strong>Transfer #${transferId}</strong>. Stock will be dispatched before batch expiration.` :
+      `You are rejecting <strong>Transfer #${transferId}</strong>. Please provide a reason for the audit record.`,
+    inputLabel: isApprove ? 'Dispatch Notes (Optional):' : 'Rejection Reason (Required):',
+    defaultValue: isApprove ? 'Authorized for expedited store transfer' : 'Store shelf capacity constrained',
+    confirmText: isApprove ? '✓ Authorize Transfer' : '✕ Reject Transfer'
+  });
+
+  if (!dialogResult.confirmed) return;
+  const notes = dialogResult.value;
 
   try {
     const res = await fetch('/api/automation/expiry-rescue/action', {
@@ -1868,14 +2007,14 @@ async function handleRescueAction(transferId, action) {
     });
     const result = await res.json();
     if (result.success) {
-      alert(`Success: Expiry rescue transfer #${transferId} ${action}d successfully.`);
+      showToast(`Expiry transfer #${transferId} ${action}d successfully`, 'success', 'Transfer Updated');
       await loadExpiryRescue();
       await updateGlobalBadges();
     } else {
-      alert(`Error: ${result.error || 'Failed to update transfer'}`);
+      showToast(result.error || 'Failed to update transfer', 'error', 'Action Failed');
     }
   } catch (err) {
-    alert(`Network error: ${err.message}`);
+    showToast(err.message, 'error', 'Network Error');
   }
 }
 
@@ -1999,12 +2138,13 @@ async function handleAlertAction(alertId, action) {
     });
     const result = await res.json();
     if (result.success) {
+      showToast(`Alert #${alertId} marked as ${action === 'acknowledge' ? 'Acknowledged' : 'Resolved'}`, 'success', 'Alert Updated');
       await loadAlerts();
     } else {
-      alert(`Error updating alert: ${result.error || 'Failed'}`);
+      showToast(result.error || 'Failed to update alert', 'error', 'Update Error');
     }
   } catch (err) {
-    alert(`Network error: ${err.message}`);
+    showToast(err.message, 'error', 'Network Error');
   }
 }
 
