@@ -94,6 +94,28 @@ def simple():
     return render_template("simple.html")
 
 
+# 4-Digit Security PINs for Each Role
+USER_PINS = {
+    "admin": "1111",      # 👑 Admin PIN
+    "warehouse": "2222",  # 🏭 Warehouse PIN
+    "retail": "3333",     # 🏪 Retail PIN
+    "delivery": "4444"    # 🚚 Delivery PIN
+}
+
+@app.route("/api/auth/verify-pin", methods=["POST"])
+def api_verify_pin():
+    """Validates the 4-digit PIN for the requested user role."""
+    data = request.get_json(silent=True) or {}
+    role = data.get("role")
+    pin = str(data.get("pin", "")).strip()
+
+    if role in USER_PINS and USER_PINS[role] == pin:
+        user_info = dict(USERS[role])
+        return jsonify({"success": True, "user": user_info})
+
+    return jsonify({"success": False, "error": f"Invalid PIN for {role.capitalize() if role else 'user'}."}), 401
+
+
 @app.route("/api/users")
 def api_users():
     """Returns available user roles and profiles."""

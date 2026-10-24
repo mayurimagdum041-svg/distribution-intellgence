@@ -104,14 +104,211 @@ const NEW_LOCATIONS = [
 ];
 
 /* ══════════════════════════════════════
-   ROLE SWITCHING & ACCESS CONTROL
+   ROLE SWITCHING & PIN ACCESS CONTROL
 ══════════════════════════════════════ */
+const PIN_CONFIG = {
+  admin:     { pin: '1111', title: 'Administrator',          icon: '👑', color: '#2563eb' },
+  warehouse: { pin: '2222', title: 'Warehouse Manager',      icon: '🏭', color: '#d97706' },
+  retail:    { pin: '3333', title: 'Retail Store Manager',   icon: '🏪', color: '#16a34a' },
+  delivery:  { pin: '4444', title: 'Delivery Fleet Partner', icon: '🚚', color: '#7c3aed' },
+};
+
+let authState = {
+  pendingRole: null,
+  enteredPin: '',
+  isLocked: false,
+};
+
 function switchUserRole(roleKey) {
+  // If already logged in as this role, do nothing
+  if (state.currentUser === roleKey && !authState.isLocked) {
+    return;
+  }
+  // Require 4-digit PIN to switch to the new role
+  promptPinForRole(roleKey);
+}
+
+function promptPinForRole(roleKey) {
+  const role = USER_ROLES[roleKey];
+  const pinInfo = PIN_CONFIG[roleKey];
+  if (!role || !pinInfo) return;
+
+  authState.pendingRole = roleKey;
+  authState.enteredPin = '';
+
+  // Switch modal view to PIN pad
+  const selectView = document.getElementById('modal-role-select-view');
+  const pinView    = document.getElementById('modal-pin-entry-view');
+  if (selectView) selectView.classList.add('hidden');
+  if (pinView)    pinView.classList.remove('hidden');
+
+  // Update PIN modal headers and role display
+  const titleEl    = document.getElementById('pin-modal-title');
+  const roleIcon   = document.getElementById('pin-role-icon');
+  const roleName   = document.getElementById('pin-role-name');
+  const roleDesc   = document.getElementById('pin-role-desc');
+  const hintText   = document.getElementById('pin-hint-text');
+  const errorAlert = document.getElementById('pin-error-alert');
+
+  if (titleEl)  titleEl.textContent = `Unlock ${pinInfo.title}`;
+  if (roleIcon) {
+    roleIcon.textContent = pinInfo.icon;
+    roleIcon.style.background = `${pinInfo.color}15`;
+    roleIcon.style.color = pinInfo.color;
+  }
+  if (roleName) roleName.textContent = role.name;
+  if (roleDesc) roleDesc.textContent = `Role: ${role.badge} · Enter 4-digit PIN`;
+  if (hintText) hintText.innerHTML = `💡 Quick PIN: <strong>${pinInfo.pin}</strong>`;
+  if (errorAlert) {
+    errorAlert.textContent = '';
+    errorAlert.classList.add('hidden');
+  }
+
+  updatePinDisplay();
+  openRoleModal();
+}
+
+function enterPinDigit(digit) {
+  if (authState.enteredPin.length >= 4) return;
+  authState.enteredPin += String(digit);
+  updatePinDisplay();
+
+  // If 4 digits entered, automatically verify PIN after slight delay
+  if (authState.enteredPin.length === 4) {
+    setTimeout(verifyEnteredPin, 180);
+  }
+}
+
+function backspacePin() {
+  if (authState.enteredPin.length > 0) {
+    authState.enteredPin = authState.enteredPin.slice(0, -1);
+    updatePinDisplay();
+  }
+}
+
+function clearPin() {
+  authState.enteredPin = '';
+  updatePinDisplay();
+  const errorAlert = document.getElementById('pin-error-alert');
+  if (errorAlert) errorAlert.classList.add('hidden');
+}
+
+function updatePinDisplay() {
+  for (let i = 0; i < 4; i++) {
+    const box = document.getElementById(`pin-box-${i}`);
+    if (!box) continue;
+    if (i < authState.enteredPin.length) {
+      box.textContent = '●';
+      box.classList.add('filled');
+      box.classList.remove('active');
+    } else if (i === authState.enteredPin.length) {
+      box.textContent = '';
+      box.classList.remove('filled');
+      box.classList.add('active');
+    } else {
+      box.textContent = '';
+      box.classList.remove('filled');
+      box.classList.remove('active');
+    }
+  }
+}
+
+async function verifyEnteredPin() {
+  const roleKey = authState.pendingRole;
+  const pin = authState.enteredPin;
+  const pinInfo = PIN_CONFIG[roleKey];
+  const errorAlert = document.getElementById('pin-error-alert');
+  const dotsWrap = document.getElementById('pin-dots-wrap');
+
+  if (!roleKey || pin.length !== 4) return;
+
+  let isValid = false;
+
+  // Verify with backend API
+  try {
+    const res = await fetch('/api/auth/verify-pin', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ role: roleKey, pin: pin })
+    });
+    if (res.ok) {
+      isValid = true;
+    }
+  } catch (err) {
+    console.warn('[verifyEnteredPin] Falling back to local check', err);
+  }
+
+  // Fallback to client-side PIN check if offline
+  if (!isValid && pinInfo && pinInfo.pin === pin) {
+    isValid = true;
+  }
+
+  if (isValid) {
+    // Success: Flash green
+    for (let i = 0; i < 4; i++) {
+      const box = document.getElementById(`pin-box-${i}`);
+      if (box) {
+        box.style.borderColor = '#16a34a';
+        box.style.color = '#16a34a';
+        box.style.background = '#dcfce7';
+      }
+    }
+
+    setTimeout(() => {
+      // Reset box styles
+      for (let i = 0; i < 4; i++) {
+        const box = document.getElementById(`pin-box-${i}`);
+        if (box) {
+          box.style.borderColor = '';
+          box.style.color = '';
+          box.style.background = '';
+        }
+      }
+
+      applyUserRole(roleKey);
+      authState.isLocked = false;
+      closeRoleModal();
+    }, 280);
+
+  } else {
+    // Failure: Shake animation & alert
+    if (dotsWrap) {
+      dotsWrap.classList.add('shake');
+      setTimeout(() => dotsWrap.classList.remove('shake'), 450);
+    }
+
+    if (errorAlert) {
+      errorAlert.textContent = `❌ Invalid PIN for ${pinInfo ? pinInfo.title : 'role'}. Try: ${pinInfo ? pinInfo.pin : '1111'}`;
+      errorAlert.classList.remove('hidden');
+    }
+
+    // Clear after animation
+    setTimeout(() => {
+      clearPin();
+    }, 450);
+  }
+}
+
+function cancelPinPrompt() {
+  authState.enteredPin = '';
+  const selectView = document.getElementById('modal-role-select-view');
+  const pinView    = document.getElementById('modal-pin-entry-view');
+  if (selectView) selectView.classList.remove('hidden');
+  if (pinView)    pinView.classList.add('hidden');
+}
+
+function lockSession() {
+  authState.isLocked = true;
+  openRoleModal();
+}
+
+function applyUserRole(roleKey) {
   const role = USER_ROLES[roleKey];
   if (!role) return;
 
   state.currentUser = roleKey;
   try {
+    sessionStorage.setItem('optistock_auth_role', roleKey);
     localStorage.setItem('optistock_user_role', roleKey);
   } catch(e) {}
 
@@ -187,17 +384,48 @@ function updateRoleUI(role) {
 function openRoleModal() {
   const modal = document.getElementById('role-modal');
   if (modal) modal.classList.remove('hidden');
+
+  // By default show role selector unless already in pin view
+  const selectView = document.getElementById('modal-role-select-view');
+  const pinView    = document.getElementById('modal-pin-entry-view');
+  if (!authState.pendingRole) {
+    if (selectView) selectView.classList.remove('hidden');
+    if (pinView)    pinView.classList.add('hidden');
+  }
 }
 
 function closeRoleModal() {
+  // If locked, cannot close without unlocking
+  if (authState.isLocked) return;
+
   const modal = document.getElementById('role-modal');
   if (modal) modal.classList.add('hidden');
+  cancelPinPrompt();
 }
 
 function selectRoleAndClose(roleKey) {
-  switchUserRole(roleKey);
-  closeRoleModal();
+  promptPinForRole(roleKey);
 }
+
+// Global Keyboard Handler for PIN numpad
+document.addEventListener('keydown', (e) => {
+  const pinView = document.getElementById('modal-pin-entry-view');
+  if (!pinView || pinView.classList.contains('hidden')) return;
+
+  if (e.key >= '0' && e.key <= '9') {
+    e.preventDefault();
+    enterPinDigit(e.key);
+  } else if (e.key === 'Backspace') {
+    e.preventDefault();
+    backspacePin();
+  } else if (e.key === 'Enter') {
+    e.preventDefault();
+    verifyEnteredPin();
+  } else if (e.key === 'Escape') {
+    e.preventDefault();
+    cancelPinPrompt();
+  }
+});
 
 /* ══════════════════════════════════════
    NAVIGATION
@@ -1115,11 +1343,16 @@ function renderLocationsTable() {
    INIT
 ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  // Check for saved role preference
-  let savedRole = 'admin';
+  let authenticatedRole = null;
   try {
-    savedRole = localStorage.getItem('optistock_user_role') || 'admin';
+    authenticatedRole = sessionStorage.getItem('optistock_auth_role');
   } catch(e) {}
 
-  switchUserRole(savedRole);
+  if (authenticatedRole && USER_ROLES[authenticatedRole]) {
+    applyUserRole(authenticatedRole);
+  } else {
+    // Start with Admin selected but open PIN authentication prompt
+    applyUserRole('admin');
+    promptPinForRole('admin');
+  }
 });
