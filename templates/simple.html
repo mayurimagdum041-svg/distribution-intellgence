@@ -163,6 +163,77 @@
 
       <!-- ─────────── SECTION: OVERVIEW ─────────── -->
       <section id="section-overview" class="section active">
+        <!-- Interconnected Supply Chain Closed-Loop Pipeline Widget -->
+        <div class="pipeline-container card" style="margin-bottom: 1.5rem; padding: 1.25rem 1.5rem; background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); border: 1px solid #e2e8f0; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+          <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem; border-bottom: 1px solid #f1f5f9; padding-bottom: 0.75rem;">
+            <div style="display: flex; align-items: center; gap: 0.75rem;">
+              <div style="width: 32px; height: 32px; border-radius: 8px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>
+              </div>
+              <div>
+                <h3 style="margin: 0; font-size: 0.95rem; font-weight: 700; color: #0f172a;">Interconnected Supply Chain Closed-Loop Pipeline</h3>
+                <p style="margin: 0; font-size: 0.78rem; color: #64748b;">Autonomous reactive chain: ML Forecast &rarr; Replenishment &rarr; Manager Approval &rarr; Fleet Dispatch &rarr; Store Restock</p>
+              </div>
+            </div>
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+              <span class="status-pill status-active" style="font-size: 0.72rem; padding: 0.2rem 0.6rem;">Connected Reactive Pipeline</span>
+              <button class="btn btn-sm btn-outline" onclick="fetchPipelineStatus()" style="font-size: 0.75rem; padding: 0.25rem 0.5rem;">Sync Pipeline</button>
+            </div>
+          </div>
+
+          <div class="pipeline-flow-wrapper" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 0.75rem; position: relative;">
+            <!-- Step 1: Demand Forecaster -->
+            <div class="pipeline-step-card" onclick="switchSection('forecast')" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; transition: transform 0.15s, border-color 0.15s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">1. ML Demand Forecast</span>
+                <span class="status-pill status-active" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">Ridge ML</span>
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;" id="pipe-step1-count">12 SKUs</div>
+              <div style="font-size: 0.72rem; color: #64748b;">Autoregressive lag models active</div>
+            </div>
+
+            <!-- Step 2: Auto-Replenishment Engine -->
+            <div class="pipeline-step-card" onclick="switchSection('inventory')" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; transition: transform 0.15s, border-color 0.15s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">2. Auto-Replenish</span>
+                <span class="status-pill status-active" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;" id="pipe-step2-status">Continuous</span>
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;" id="pipe-step2-count">Evaluating ROP</div>
+              <div style="font-size: 0.72rem; color: #64748b;">Dynamic safety stock buffer</div>
+            </div>
+
+            <!-- Step 3: Manager Approval Inbox -->
+            <div class="pipeline-step-card" onclick="switchSection('approvals')" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; transition: transform 0.15s, border-color 0.15s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">3. Manager Approval</span>
+                <span class="status-pill status-warning" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;" id="pipe-step3-badge">Pending</span>
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;" id="pipe-step3-count">0 POs</div>
+              <div style="font-size: 0.72rem; color: #64748b;">Human governance checkpoint</div>
+            </div>
+
+            <!-- Step 4: Fleet Dispatches -->
+            <div class="pipeline-step-card" onclick="switchSection('map')" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; transition: transform 0.15s, border-color 0.15s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">4. Fleet Dispatch</span>
+                <span class="status-pill status-active" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;" id="pipe-step4-badge">In Transit</span>
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #0f172a; margin-bottom: 0.2rem;" id="pipe-step4-count">5 Shipments</div>
+              <div style="font-size: 0.72rem; color: #64748b;">Corridor manifest milestones</div>
+            </div>
+
+            <!-- Step 5: Store Dock Restock -->
+            <div class="pipeline-step-card" onclick="switchSection('inventory')" style="cursor: pointer; background: #ffffff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 0.85rem; transition: transform 0.15s, border-color 0.15s;">
+              <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem;">
+                <span style="font-size: 0.68rem; font-weight: 700; color: #64748b; text-transform: uppercase;">5. Store Restock</span>
+                <span class="status-pill status-active" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">Auto-Credit</span>
+              </div>
+              <div style="font-size: 1.15rem; font-weight: 800; color: #16a34a; margin-bottom: 0.2rem;" id="pipe-step5-count">Closed-Loop</div>
+              <div style="font-size: 0.72rem; color: #64748b;">Stock credited, alerts cleared</div>
+            </div>
+          </div>
+        </div>
+
         <div id="kpi-grid" class="kpi-grid">
           <!-- KPI cards injected by JS -->
           <div class="kpi-skeleton"></div>
@@ -842,10 +913,11 @@
                   <th>Delay (Mins)</th>
                   <th>Checkpoint Status</th>
                   <th>Delay Alert Status</th>
+                  <th>Restock Action</th>
                 </tr>
               </thead>
               <tbody id="delivery-monitor-tbody">
-                <tr><td colspan="9" class="loading-row">Loading delivery shipments…</td></tr>
+                <tr><td colspan="10" class="loading-row">Loading delivery shipments…</td></tr>
               </tbody>
             </table>
           </div>

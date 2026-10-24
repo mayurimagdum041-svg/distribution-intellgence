@@ -32,6 +32,8 @@ from engine.automation_engine import (
     reject_expiry_rescue,
     resolve_alert,
     acknowledge_alert,
+    complete_delivery_and_restock,
+    get_pipeline_summary,
 )
 from engine.automation_scheduler import start_in_process_scheduler
 
@@ -183,16 +185,56 @@ def api_users():
 
 @app.route("/api/delivery/stops", methods=["GET", "POST"])
 def api_delivery_stops():
-    """Get or update active delivery stops and their shipment progress."""
+    """Get or update active delivery stops and their shipment progress with closed-loop restocking."""
     if request.method == "POST":
         data = request.get_json(silent=True) or {}
         loc_id = data.get("loc_id")
         new_status = data.get("status")
         if loc_id in DELIVERY_STOPS and new_status:
             DELIVERY_STOPS[loc_id]["status"] = new_status
-            return jsonify({"success": True, "stop": DELIVERY_STOPS[loc_id]})
+            restock_res = None
+            if new_status.lower() == "delivered":
+                DELIVERY_STOPS[loc_id]["eta"] = "Completed"
+                restock_res = complete_delivery_and_restock(loc_id=loc_id, user_name="Corridor Fleet / Dock")
+            return jsonify({"success": True, "stop": DELIVERY_STOPS[loc_id], "restock": restock_res})
         return jsonify({"error": "Invalid location or status"}), 400
     return jsonify(DELIVERY_STOPS)
+
+
+@app.route("/api/delivery/complete", methods=["POST"])
+def api_delivery_complete():
+    """Marks a delivery shipment as delivered and triggers closed-loop restocking."""
+    body = request.get_json(silent=True) or {}
+    shipment_code = body.get("shipment_code")
+    loc_id = body.get("loc_id")
+    user_name = body.get("user_name") or session.get("user_name") or "Corridor Fleet Lead"
+
+    if not shipment_code and not loc_id:
+        return jsonify({"error": "shipment_code or loc_id is required"}), 400
+
+    result = complete_delivery_and_restock(
+        shipment_code=shipment_code,
+        loc_id=loc_id,
+        user_name=user_name
+    )
+
+    # Sync with in-memory corridor stops if applicable
+    matched_loc = loc_id or (result.get("destination_store_id") if result else None)
+    if matched_loc:
+        for k, v in DELIVERY_STOPS.items():
+            if k == matched_loc or matched_loc in k or (result and result.get("destination_store_id") and result["destination_store_id"] in k):
+                v["status"] = "Delivered"
+                v["eta"] = "Completed"
+
+    return jsonify(result)
+
+
+@app.route("/api/pipeline/status")
+def api_pipeline_status():
+    """Returns real-time interconnected pipeline status across all 5 supply chain stages."""
+    summary = get_pipeline_summary()
+    return jsonify(summary)
+
 
 
 @app.route("/api/meta")

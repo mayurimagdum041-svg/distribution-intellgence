@@ -33,7 +33,10 @@ from engine.automation_engine import (
     reject_expiry_rescue,
     resolve_alert,
     acknowledge_alert,
+    complete_delivery_and_restock,
+    get_pipeline_summary,
 )
+from engine.inventory_optimizer import get_store_stock, credit_store_stock
 
 
 class TestAutomationSystem(unittest.TestCase):
@@ -336,6 +339,102 @@ class TestAutomationSystem(unittest.TestCase):
         self.assertEqual(res_alt.status_code, 200)
         self.assertIn("alerts", res_alt.get_json())
         self.assertIn("counts", res_alt.get_json())
+
+    # -----------------------------------------------------------------------
+    # Test 11: Interconnected Replenishment Approval Generates Fleet Dispatch
+    # -----------------------------------------------------------------------
+    def test_interconnected_approval_generates_dispatch(self):
+        # Run replenishment to create pending proposals
+        run_auto_replenishment(dry_run=False, db_path=self.db_path)
+
+        conn = get_db_connection(self.db_path)
+        req = conn.execute("SELECT * FROM replenishment_requests WHERE status = 'PENDING_APPROVAL' LIMIT 1").fetchone()
+        self.assertIsNotNone(req)
+        req_id = req["id"]
+        conn.close()
+
+        # Approve proposal
+        result = approve_replenishment(req_id, manager_name="Pooja Sharma", notes="Expedite for festival demand", db_path=self.db_path)
+        self.assertTrue(result["success"])
+        self.assertIn("shipment_code", result)
+
+        # Verify active dispatch in delivery_shipments
+        conn = get_db_connection(self.db_path)
+        shipment = conn.execute("SELECT * FROM delivery_shipments WHERE shipment_code = ?", (result["shipment_code"],)).fetchone()
+        self.assertIsNotNone(shipment)
+        self.assertEqual(shipment["status"], "IN_TRANSIT")
+        self.assertEqual(shipment["destination_loc_id"], req["store_id"])
+        self.assertGreater(shipment["quantity"], 0)
+        self.assertTrue(len(shipment["assigned_driver"]) > 0)
+        self.assertTrue(len(shipment["vehicle_no"]) > 0)
+        conn.close()
+
+    # -----------------------------------------------------------------------
+    # Test 12: Interconnected Delivery Restocks Inventory and Resolves Alerts
+    # -----------------------------------------------------------------------
+    def test_interconnected_delivery_completion_restocks_and_resolves_alerts(self):
+        # Create a test shipment
+        conn = get_db_connection(self.db_path)
+        now_iso = datetime.now(timezone.utc).isoformat()
+        test_code = "SHP-TEST-999"
+        with conn:
+            conn.execute("""
+            INSERT OR REPLACE INTO delivery_shipments (
+                shipment_code, origin_warehouse_id, destination_loc_id, destination_city,
+                product_name, quantity, assigned_driver, vehicle_no,
+                dispatched_at, expected_delivery_at, status, delay_minutes, delay_reason,
+                tracking_source, notes, created_at, updated_at
+            ) VALUES (?, 'WH-PUN', 'ST-PUN-M', 'Pune', 'Fresh Pasteurised Milk (1L)', 75,
+                      'Test Driver', 'MH-12-TEST-01', ?, ?, 'IN_TRANSIT', 0, NULL,
+                      'ROAD_MANIFEST_CHECKPOINT', 'Test Dispatch', ?, ?);
+            """, (test_code, now_iso, now_iso, now_iso, now_iso))
+        conn.close()
+
+        # Record initial stock
+        initial_stock = get_store_stock(1, "ST-PUN-M")
+
+        # Complete delivery
+        restock_res = complete_delivery_and_restock(shipment_code=test_code, user_name="Dock Officer", db_path=self.db_path)
+        self.assertTrue(restock_res["success"])
+        self.assertEqual(restock_res["quantity_restocked"], 75)
+
+        # Store stock must have increased by 75
+        new_stock = get_store_stock(1, "ST-PUN-M")
+        self.assertEqual(new_stock, initial_stock + 75)
+
+        # Shipment status in DB must now be DELIVERED
+        conn = get_db_connection(self.db_path)
+        updated_shp = conn.execute("SELECT status, actual_delivery_at FROM delivery_shipments WHERE shipment_code = ?", (test_code,)).fetchone()
+        self.assertEqual(updated_shp["status"], "DELIVERED")
+        self.assertIsNotNone(updated_shp["actual_delivery_at"])
+        conn.close()
+
+    # -----------------------------------------------------------------------
+    # Test 13: Pipeline Status & Restock Corridor Endpoints
+    # -----------------------------------------------------------------------
+    def test_interconnected_pipeline_api_endpoints(self):
+        from app import app
+        client = app.test_client()
+
+        # 1. Pipeline status
+        res_pipe = client.get("/api/pipeline/status")
+        self.assertEqual(res_pipe.status_code, 200)
+        pipe_data = res_pipe.get_json()
+        self.assertIn("step_1_forecaster", pipe_data)
+        self.assertIn("step_2_replenishment", pipe_data)
+        self.assertIn("step_3_approvals", pipe_data)
+        self.assertIn("step_4_dispatches", pipe_data)
+        self.assertIn("step_5_restock", pipe_data)
+
+        # 2. Corridor stop delivered triggers closed-loop restock
+        res_stop = client.post("/api/delivery/stops", json={"loc_id": "LOC-PUNE", "status": "Delivered"})
+        self.assertEqual(res_stop.status_code, 200)
+        stop_data = res_stop.get_json()
+        self.assertTrue(stop_data["success"])
+        self.assertEqual(stop_data["stop"]["status"], "Delivered")
+        self.assertIsNotNone(stop_data.get("restock"))
+        self.assertTrue(stop_data["restock"]["success"])
+
 
 
 if __name__ == "__main__":

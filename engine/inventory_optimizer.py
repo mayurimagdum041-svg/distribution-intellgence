@@ -235,3 +235,30 @@ def analyze_warehouse_batches(batches: List[Dict[str, Any]] = None) -> List[Dict
         })
 
     return records
+
+
+def get_store_stock(product_id: int, store_id: str) -> int:
+    """Returns the current on-hand stock for a store SKU."""
+    return INITIAL_STORE_STOCK.get((product_id, store_id), 0)
+
+
+def credit_store_stock(store_id: str, product_id: int, quantity: int) -> int:
+    """
+    Credits replenished units to the specified retail store.
+    Updates the active stock level and returns the new balance.
+    """
+    key = (product_id, store_id)
+    current = INITIAL_STORE_STOCK.get(key, 0)
+    new_level = current + int(quantity)
+    INITIAL_STORE_STOCK[key] = new_level
+    return new_level
+
+
+def debit_store_stock(store_id: str, product_id: int, quantity: int) -> int:
+    """Debits units from the retail store (e.g. customer fulfillment)."""
+    key = (product_id, store_id)
+    current = INITIAL_STORE_STOCK.get(key, 0)
+    new_level = max(0, current - int(quantity))
+    INITIAL_STORE_STOCK[key] = new_level
+    return new_level
+

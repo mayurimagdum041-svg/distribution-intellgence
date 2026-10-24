@@ -498,6 +498,10 @@ function navigate(section, linkEl) {
   lazyLoad(section);
 }
 
+function switchSection(section) {
+  navigate(section);
+}
+
 function onHorizonChange() {
   const val = parseInt(document.getElementById('horizon-select').value, 10);
   state.horizon = isNaN(val) ? 3 : val;
@@ -1346,11 +1350,27 @@ async function updateStopStatus(locId, newStatus) {
 
   // Sync with backend API
   try {
-    await fetch('/api/delivery/stops', {
+    const res = await fetch('/api/delivery/stops', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ loc_id: locId, status: newStatus })
     });
+    const data = await res.json();
+    if (data.success && newStatus === 'Delivered' && data.restock) {
+      const r = data.restock;
+      showToast(
+        `Restocked ${r.quantity_restocked} units of ${r.product_name} at ${r.destination_store_id}. Store stock is now ${r.new_store_stock} units. Alerts cleared.`,
+        'success',
+        'Delivery & Restock Complete'
+      );
+      // Trigger interconnected live reloads
+      await loadInventory();
+      await loadSummary();
+      await loadAlerts();
+      await loadDeliveryMonitoring();
+      await fetchPipelineStatus();
+      await updateGlobalBadges();
+    }
   } catch (err) {
     console.error('[updateStopStatus]', err);
   }
@@ -1894,9 +1914,17 @@ async function handleReplenishAction(requestId, action) {
     });
     const result = await res.json();
     if (result.success) {
-      showToast(`Request #${requestId} ${action}d successfully`, 'success', 'Proposal Updated');
+      const dispatchNote = result.shipment_code ? ` Active dispatch ${result.shipment_code} created for ${result.store_name || ''}.` : '';
+      showToast(`Proposal #${requestId} ${action}d.${dispatchNote}`, 'success', isApprove ? 'PO Dispatched' : 'Proposal Rejected');
       await loadReplenishments();
       await updateGlobalBadges();
+      await fetchPipelineStatus();
+      if (isApprove) {
+        await loadDeliveryMonitoring();
+        await loadAlerts();
+        await loadInventory();
+        await loadSummary();
+      }
     } else {
       showToast(result.error || 'Failed to update request', 'error', 'Action Failed');
     }
@@ -2019,9 +2047,15 @@ async function handleRescueAction(transferId, action) {
     });
     const result = await res.json();
     if (result.success) {
-      showToast(`Expiry transfer #${transferId} ${action}d successfully`, 'success', 'Transfer Updated');
+      const dispatchNote = result.shipment_code ? ` Expedited dispatch ${result.shipment_code} generated.` : '';
+      showToast(`Expiry transfer #${transferId} ${action}d.${dispatchNote}`, 'success', isApprove ? 'Rescue Dispatched' : 'Transfer Rejected');
       await loadExpiryRescue();
       await updateGlobalBadges();
+      await fetchPipelineStatus();
+      if (isApprove) {
+        await loadDeliveryMonitoring();
+        await loadAlerts();
+      }
     } else {
       showToast(result.error || 'Failed to update transfer', 'error', 'Action Failed');
     }
@@ -2205,7 +2239,7 @@ async function loadDistributionOptions() {
 }
 
 /* ══════════════════════════════════════
-   DELIVERY MONITORING (MANIFEST CHECKPOINTS)
+   DELIVERY MONITORING (MANIFEST CHECKPOINTS & RESTOCK)
 ══════════════════════════════════════ */
 async function loadDeliveryMonitoring() {
   const tbody = document.getElementById('delivery-monitor-tbody');
@@ -2218,14 +2252,15 @@ async function loadDeliveryMonitoring() {
     const shipments = data.shipments || [];
 
     if (shipments.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="9" class="loading-row">No active delivery shipments tracked.</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="10" class="loading-row">No active delivery shipments tracked.</td></tr>';
       return;
     }
 
     tbody.innerHTML = shipments.map(s => {
       const isDelayed = s.status === 'DELAYED';
+      const isDelivered = s.status === 'DELIVERED';
       const statusPill = isDelayed ? 'status-critical' :
-                         (s.status === 'DELIVERED' ? 'status-active' : 'status-warning');
+                         (isDelivered ? 'status-active' : 'status-warning');
 
       const delayMinutes = s.delay_minutes || 0;
       const delayCell = delayMinutes > 0 ?
@@ -2235,10 +2270,15 @@ async function loadDeliveryMonitoring() {
       const expDate = s.expected_delivery_at ? new Date(s.expected_delivery_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
       const dispDate = s.dispatched_at ? new Date(s.dispatched_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
 
+      const sCode = s.shipment_code || s.shipment_id || ('SHP-' + s.id);
+      const actionCell = isDelivered ?
+        '<span class="chip chip-healthy">Restocked</span>' :
+        `<button class="btn btn-sm btn-primary" onclick="completeShipment('${sCode}', '${s.destination_loc_id || ''}')" style="font-size:0.75rem;padding:0.25rem 0.65rem;white-space:nowrap;">Mark Delivered</button>`;
+
       return `
         <tr ${isDelayed ? 'style="background:#fef2f2"' : ''}>
-          <td><strong>${s.shipment_code || s.shipment_id || ('SHP-' + s.id)}</strong></td>
-          <td>${s.origin_warehouse_id || s.source_warehouse} → <strong>${s.destination_city || s.destination_store}</strong></td>
+          <td><strong>${sCode}</strong></td>
+          <td>${s.origin_warehouse_id || s.source_warehouse} &rarr; <strong>${s.destination_city || s.destination_store}</strong></td>
           <td><strong>${s.assigned_driver || s.driver_name}</strong><br><small style="color:#64748b">${s.vehicle_no || s.vehicle_number}</small></td>
           <td>${dispDate}</td>
           <td>${expDate}</td>
@@ -2248,11 +2288,93 @@ async function loadDeliveryMonitoring() {
           <td>
             ${isDelayed ? `<span class="chip chip-warning" title="${s.delay_reason || ''}">Delay Alert: ${s.delay_reason || 'Delayed'}</span>` : '<span class="chip chip-subtle">SLA Compliant</span>'}
           </td>
+          <td>${actionCell}</td>
         </tr>
       `;
     }).join('');
   } catch (err) {
-    tbody.innerHTML = `<tr><td colspan="9" style="color:#dc2626;padding:1rem;">Error loading deliveries: ${err.message}</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="color:#dc2626;padding:1rem;">Error loading deliveries: ${err.message}</td></tr>`;
+  }
+}
+
+async function completeShipment(shipmentCode, locId) {
+  try {
+    const res = await fetch('/api/delivery/complete', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        shipment_code: shipmentCode,
+        loc_id: locId
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      showToast(
+        `Shipment ${result.shipment_code} marked Delivered. +${result.quantity_restocked} units credited to ${result.destination_store_id}. Stockout & delay alerts resolved.`,
+        'success',
+        'Dock Restock Completed'
+      );
+      await loadDeliveryMonitoring();
+      await renderFleetStops();
+      await loadInventory();
+      await loadSummary();
+      await loadAlerts();
+      await fetchPipelineStatus();
+      await updateGlobalBadges();
+    } else {
+      showToast(result.error || 'Failed to complete shipment delivery', 'error', 'Action Error');
+    }
+  } catch (err) {
+    showToast(err.message, 'error', 'Network Error');
+  }
+}
+
+/* ══════════════════════════════════════
+   INTERCONNECTED SUPPLY CHAIN PIPELINE STATUS
+══════════════════════════════════════ */
+async function fetchPipelineStatus() {
+  try {
+    const res = await fetch('/api/pipeline/status');
+    if (!res.ok) return;
+    const data = await res.json();
+
+    const s1 = data.step_1_forecaster || {};
+    const s2 = data.step_2_replenishment || {};
+    const s3 = data.step_3_approvals || {};
+    const s4 = data.step_4_dispatches || {};
+    const s5 = data.step_5_restock || {};
+
+    const el1 = document.getElementById('pipe-step1-count');
+    if (el1) el1.textContent = `${s1.skus_forecasted || 12} SKUs`;
+
+    const el2 = document.getElementById('pipe-step2-count');
+    if (el2) el2.textContent = s2.pending_proposals ? `${s2.pending_proposals} Low Stock` : 'Optimal ROP';
+    const el2Status = document.getElementById('pipe-step2-status');
+    if (el2Status) {
+      el2Status.textContent = s2.pending_proposals ? `${s2.pending_proposals} Needed` : 'Balanced';
+      el2Status.className = `status-pill ${s2.pending_proposals ? 'status-warning' : 'status-active'}`;
+    }
+
+    const el3 = document.getElementById('pipe-step3-count');
+    if (el3) el3.textContent = `${s3.pending_actions || 0} Pending`;
+    const el3Badge = document.getElementById('pipe-step3-badge');
+    if (el3Badge) {
+      el3Badge.textContent = s3.pending_actions ? 'Action Needed' : 'Cleared';
+      el3Badge.className = `status-pill ${s3.pending_actions ? 'status-critical' : 'status-active'}`;
+    }
+
+    const el4 = document.getElementById('pipe-step4-count');
+    if (el4) el4.textContent = `${s4.in_transit || 0} Active Fleet`;
+    const el4Badge = document.getElementById('pipe-step4-badge');
+    if (el4Badge) {
+      el4Badge.textContent = s4.delayed > 0 ? `${s4.delayed} Delayed` : 'On Schedule';
+      el4Badge.className = `status-pill ${s4.delayed > 0 ? 'status-critical' : 'status-active'}`;
+    }
+
+    const el5 = document.getElementById('pipe-step5-count');
+    if (el5) el5.textContent = `${s5.delivered_completed || 0} Restocked`;
+  } catch (err) {
+    console.debug('[fetchPipelineStatus]', err);
   }
 }
 
@@ -2273,7 +2395,11 @@ document.addEventListener('DOMContentLoaded', () => {
     promptPinForRole('admin');
   }
 
-  // Initial badge update and periodic polling
+  // Initial badge and pipeline updates
   updateGlobalBadges();
-  setInterval(updateGlobalBadges, 30000);
+  fetchPipelineStatus();
+  setInterval(() => {
+    updateGlobalBadges();
+    fetchPipelineStatus();
+  }, 30000);
 });

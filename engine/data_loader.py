@@ -8,6 +8,7 @@ and synthetic 180-day store sales history for ML demand forecasting.
 import math
 import random
 from datetime import date, datetime, timedelta
+from typing import Dict, List, Any, Optional
 import pandas as pd
 import numpy as np
 
@@ -588,3 +589,61 @@ def get_sales_history_df() -> pd.DataFrame:
     if _CACHED_SALES_DF is None:
         _CACHED_SALES_DF = generate_sales_history(180)
     return _CACHED_SALES_DF
+
+
+def get_warehouse_stock(warehouse_id: str, product_id: int) -> int:
+    """Returns total on-hand batch quantity for a product in a warehouse."""
+    return sum(
+        b["quantity"]
+        for b in INITIAL_BATCHES
+        if b["warehouse_id"] == warehouse_id and b["product_id"] == product_id
+    )
+
+
+def debit_warehouse_batch(
+    warehouse_id: str,
+    product_id: int,
+    quantity: int,
+    batch_id: Optional[str] = None
+) -> Dict[str, Any]:
+    """
+    Debits stock from warehouse batches using FEFO (First-Expired, First-Out) priority
+    or a specific targeted batch.
+    """
+    remaining_to_debit = int(quantity)
+    debited_batches = []
+
+    # Filter eligible batches
+    eligible = [
+        b for b in INITIAL_BATCHES
+        if b["warehouse_id"] == warehouse_id and b["product_id"] == product_id and b["quantity"] > 0
+    ]
+
+    if batch_id:
+        target = [b for b in eligible if b["batch_id"] == batch_id]
+        if target:
+            eligible = target + [b for b in eligible if b["batch_id"] != batch_id]
+
+    # Sort FEFO (lowest expiry_days first)
+    eligible.sort(key=lambda x: x["expiry_days"])
+
+    for b in eligible:
+        if remaining_to_debit <= 0:
+            break
+        deduct = min(b["quantity"], remaining_to_debit)
+        b["quantity"] -= deduct
+        remaining_to_debit -= deduct
+        debited_batches.append({
+            "batch_id": b["batch_id"],
+            "debited": deduct,
+            "remaining": b["quantity"],
+        })
+
+    return {
+        "warehouse_id": warehouse_id,
+        "product_id": product_id,
+        "total_debited": int(quantity) - remaining_to_debit,
+        "unfulfilled": max(0, remaining_to_debit),
+        "debited_batches": debited_batches,
+    }
+

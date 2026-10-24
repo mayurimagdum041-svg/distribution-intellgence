@@ -2130,3 +2130,17 @@ body.one-page-mode .section {
   color: #334155;
   line-height: 1.45;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   INTERCONNECTED SUPPLY CHAIN PIPELINE WIDGET
+   ═══════════════════════════════════════════════════════════ */
+.pipeline-step-card:hover {
+  transform: translateY(-2px);
+  border-color: #3b82f6 !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.08);
+}
+
+.pipeline-step-card:active {
+  transform: translateY(0);
+}
+
