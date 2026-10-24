@@ -219,36 +219,12 @@ def init_db(db_path: Optional[str] = None):
             );
             """)
 
-            # 9. Inventory Movement Transactions (Stock In / Stock Out Ledger)
-            conn.execute("""
-            CREATE TABLE IF NOT EXISTS inventory_transactions (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                transaction_code TEXT UNIQUE NOT NULL,
-                transaction_type TEXT NOT NULL,       -- 'STOCK_IN', 'STOCK_OUT'
-                product_id INTEGER NOT NULL,
-                product_name TEXT NOT NULL,
-                sku TEXT,
-                quantity INTEGER NOT NULL,
-                warehouse_id TEXT NOT NULL,
-                warehouse_name TEXT NOT NULL,
-                partner_name TEXT NOT NULL,           -- Supplier (Stock In) or Store/Customer (Stock Out)
-                transaction_date TEXT NOT NULL,       -- YYYY-MM-DD
-                notes TEXT,
-                performed_by TEXT NOT NULL,
-                performed_by_role TEXT,
-                created_at TEXT NOT NULL
-            );
-            """)
-
             # Performance Indexes
             conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_status_severity ON alerts(status, severity);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_alerts_hash ON alerts(idempotency_hash);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_replenish_status ON replenishment_requests(status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_rescue_status ON expiry_rescue_transfers(status);")
             conn.execute("CREATE INDEX IF NOT EXISTS idx_shipments_status ON delivery_shipments(status);")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_date ON inventory_transactions(transaction_date);")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_type ON inventory_transactions(transaction_type);")
-            conn.execute("CREATE INDEX IF NOT EXISTS idx_txn_warehouse ON inventory_transactions(warehouse_id);")
 
             # Seed Default Automation Workflow Configurations
             now_iso = datetime.now(timezone.utc).isoformat()
@@ -306,11 +282,6 @@ def init_db(db_path: Optional[str] = None):
             count = conn.execute("SELECT COUNT(*) as cnt FROM delivery_shipments").fetchone()["cnt"]
             if count == 0:
                 _seed_initial_shipments(conn, now_iso)
-
-            # Seed sample initial verified inventory transactions if table is empty
-            txn_count = conn.execute("SELECT COUNT(*) as cnt FROM inventory_transactions").fetchone()["cnt"]
-            if txn_count == 0:
-                _seed_initial_transactions(conn, now_iso)
 
         logger.info("Database initialized successfully at %s", target_path)
     finally:
@@ -377,40 +348,6 @@ def _seed_initial_shipments(conn: sqlite3.Connection, now_iso: str):
             tracking_source, notes, created_at, updated_at
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         """, s)
-
-
-def _seed_initial_transactions(conn: sqlite3.Connection, now_iso: str):
-    """Seeds verified initial inventory transactions (Stock In and Stock Out ledger records)."""
-    sample_txns = [
-        (
-            "TXN-IN-20261023-0001", "STOCK_IN", 1, "Fresh Pasteurised Milk (1L)", "DAIRY-MLK-01",
-            100, "WH-PUN", "Pune Regional Distribution Hub", "Amul Dairy Cooperative Ltd.",
-            "2026-10-23", "Scheduled morning farm fresh intake batch", "Rajesh Warehouse Lead", "warehouse", now_iso
-        ),
-        (
-            "TXN-IN-20261023-0002", "STOCK_IN", 10, "Royal Basmati Rice (5kg Bag)", "GROC-RCE-10",
-            250, "WH-MUM", "Mumbai Central Mega-DC", "KRBL Milling & Agro Ltd.",
-            "2026-10-23", "Bulk seasonal procurement receipt", "System Admin", "admin", now_iso
-        ),
-        (
-            "TXN-OUT-20261024-0001", "STOCK_OUT", 2, "Artisanal Greek Yogurt (400g)", "DAIRY-YGT-02",
-            50, "WH-PUN", "Pune Regional Distribution Hub", "Mumbai South Hypermarket",
-            "2026-10-24", "Dispatched via Reefer Van MH-12-Q-4021", "Rajesh Warehouse Lead", "warehouse", now_iso
-        ),
-        (
-            "TXN-OUT-20261024-0002", "STOCK_OUT", 5, "Whole Wheat Brown Bread (400g)", "BKRY-BRD-05",
-            80, "WH-MUM", "Mumbai Central Mega-DC", "Thane Regional Stockist",
-            "2026-10-24", "Express morning store replenishment", "Sneha Retail Dispatch", "retail", now_iso
-        )
-    ]
-    for t in sample_txns:
-        conn.execute("""
-        INSERT INTO inventory_transactions (
-            transaction_code, transaction_type, product_id, product_name, sku,
-            quantity, warehouse_id, warehouse_name, partner_name,
-            transaction_date, notes, performed_by, performed_by_role, created_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
-        """, t)
 
 
 # Helper function to acquire distributed scheduler lock
