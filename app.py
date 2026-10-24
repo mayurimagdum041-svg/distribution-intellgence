@@ -63,7 +63,9 @@ def index():
     return render_template("simple.html")
 
 
-# 4 User Roles & Profiles
+# 4 User Roles & Profiles - Full Operations Access Across All Roles
+ALL_OPERATIONS = ["overview", "transactions", "distribution", "inventory", "forecast", "automation", "approvals", "alerts", "whatif", "map"]
+
 USERS = {
     "admin": {
         "username": "admin",
@@ -73,7 +75,7 @@ USERS = {
         "badge": "Administrator",
         "avatar": "AD",
         "color": "#2563eb",
-        "allowed_sections": ["overview", "transactions", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
+        "allowed_sections": ALL_OPERATIONS,
         "description": "Executive command tower: global network KPIs, SciPy HiGHS MILP optimizer, What-If simulator, and complete audit trail."
     },
     "warehouse": {
@@ -84,7 +86,7 @@ USERS = {
         "badge": "Warehouse Manager",
         "avatar": "WH",
         "color": "#d97706",
-        "allowed_sections": ["inventory", "transactions", "approvals", "alerts", "distribution", "map"],
+        "allowed_sections": ALL_OPERATIONS,
         "description": "Batch shelf-life tracking (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests."
     },
     "retail": {
@@ -95,7 +97,7 @@ USERS = {
         "badge": "Retail Store Manager",
         "avatar": "RT",
         "color": "#16a34a",
-        "allowed_sections": ["inventory", "transactions", "approvals", "alerts", "distribution", "forecast", "map"],
+        "allowed_sections": ALL_OPERATIONS,
         "description": "Store stock levels, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts."
     },
     "delivery": {
@@ -106,7 +108,7 @@ USERS = {
         "badge": "Delivery Fleet",
         "avatar": "DL",
         "color": "#7c3aed",
-        "allowed_sections": ["map", "alerts", "distribution"],
+        "allowed_sections": ALL_OPERATIONS,
         "description": "Dispatch manifests, road transit routes, and delivery milestones for Pune, Satara, Kolhapur, Sangli, Karad."
     }
 }

@@ -7,6 +7,8 @@
 /* ══════════════════════════════════════
    USER ROLES & AUTHENTICATION
 ══════════════════════════════════════ */
+const ALL_SECTIONS = ['overview', 'transactions', 'distribution', 'inventory', 'forecast', 'automation', 'approvals', 'alerts', 'whatif', 'map'];
+
 const USER_ROLES = {
   admin: {
     key: 'admin',
@@ -14,7 +16,7 @@ const USER_ROLES = {
     badge: 'Administrator',
     avatar: 'AD',
     color: '#2563eb',
-    allowedSections: ['overview', 'transactions', 'automation', 'approvals', 'alerts', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
+    allowedSections: ALL_SECTIONS,
     defaultSection: 'overview',
     bannerIcon: '',
     bannerTitle: 'Logged in as Administrator (Full Access)',
@@ -26,8 +28,8 @@ const USER_ROLES = {
     badge: 'Warehouse Manager',
     avatar: 'WH',
     color: '#d97706',
-    allowedSections: ['inventory', 'transactions', 'approvals', 'alerts', 'distribution', 'map'],
-    defaultSection: 'inventory',
+    allowedSections: ALL_SECTIONS,
+    defaultSection: 'overview',
     defaultSubTab: 'warehouses',
     bannerIcon: '',
     bannerTitle: 'Logged in as Warehouse Manager (Pune Hub)',
@@ -39,8 +41,8 @@ const USER_ROLES = {
     badge: 'Retail Store Manager',
     avatar: 'RT',
     color: '#16a34a',
-    allowedSections: ['inventory', 'transactions', 'approvals', 'alerts', 'distribution', 'forecast', 'map'],
-    defaultSection: 'inventory',
+    allowedSections: ALL_SECTIONS,
+    defaultSection: 'overview',
     defaultSubTab: 'stores',
     bannerIcon: '',
     bannerTitle: 'Logged in as Retail Store Manager',
@@ -52,8 +54,8 @@ const USER_ROLES = {
     badge: 'Delivery Fleet',
     avatar: 'DL',
     color: '#7c3aed',
-    allowedSections: ['map', 'alerts', 'distribution'],
-    defaultSection: 'map',
+    allowedSections: ALL_SECTIONS,
+    defaultSection: 'overview',
     bannerIcon: '',
     bannerTitle: 'Logged in as Delivery Partner & Driver Fleet',
     bannerDesc: 'Live dispatch route navigation, SLA deadline audit monitoring, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, and Karad.'
@@ -1155,7 +1157,7 @@ async function runWhatIf() {
   const fuelMultiplier = parseFloat(document.getElementById('fuel-slider').value);
   const disabled = [...document.querySelectorAll('#wh-checkboxes input:checked')].map(c => c.value);
   const btn = document.querySelector('#section-whatif .btn-primary');
-  btn.textContent = '⏳ Running…';
+  btn.textContent = 'Running Simulation…';
   btn.disabled    = true;
   const msgEl = document.getElementById('whatif-message');
   msgEl.className = 'whatif-message hidden';
@@ -2995,17 +2997,14 @@ document.addEventListener('DOMContentLoaded', () => {
     authenticatedRole = sessionStorage.getItem('optistock_auth_role');
   } catch(e) {}
 
-  if (authenticatedRole && USER_ROLES[authenticatedRole]) {
-    applyUserRole(authenticatedRole);
-  } else {
-    // Start with Admin selected but open PIN authentication prompt
-    applyUserRole('admin');
-    promptPinForRole('admin');
-  }
+  const roleToApply = (authenticatedRole && USER_ROLES[authenticatedRole]) ? authenticatedRole : 'admin';
+  applyUserRole(roleToApply);
 
-  // Initial badge and pipeline updates
+  // Initial badge, pipeline, and active section loads
   updateGlobalBadges();
   fetchPipelineStatus();
+  lazyLoad(state.currentSection);
+
   setInterval(() => {
     updateGlobalBadges();
     fetchPipelineStatus();
