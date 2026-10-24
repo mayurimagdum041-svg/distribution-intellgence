@@ -5,7 +5,7 @@ Flask Application & RESTful API Gateway
 
 import json
 import os
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template, jsonify, request, redirect, url_for, session
 from engine.data_loader import (
     PRODUCTS,
     WAREHOUSES,
@@ -36,6 +36,7 @@ from engine.automation_engine import (
 from engine.automation_scheduler import start_in_process_scheduler
 
 app = Flask(__name__)
+app.secret_key = os.environ.get("SECRET_KEY", "optistock-secret-key-2026")
 
 # Initialize database on startup
 init_db()
@@ -60,12 +61,12 @@ USERS = {
         "username": "admin",
         "name": "System Administrator",
         "role": "admin",
-        "role_title": "Executive Admin",
+        "role_title": "Executive Administrator",
         "badge": "👑 Administrator",
         "avatar": "AD",
         "color": "#2563eb",
-        "allowed_sections": ["overview", "distribution", "inventory", "forecast", "whatif", "map"],
-        "description": "Full access: Network-wide KPIs, SciPy MILP optimizer, simulations, and complete supply chain."
+        "allowed_sections": ["overview", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
+        "description": "Executive command tower: global network KPIs, SciPy HiGHS MILP optimizer, What-If simulator, and complete audit trail."
     },
     "warehouse": {
         "username": "warehouse",
@@ -75,8 +76,8 @@ USERS = {
         "badge": "🏭 Warehouse Manager",
         "avatar": "WH",
         "color": "#d97706",
-        "allowed_sections": ["inventory", "distribution", "map"],
-        "description": "Lot-level tracking, cold-chain storage, FEFO expiry priorities, and outbound pallet dispatches."
+        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "map"],
+        "description": "Batch shelf-life tracking (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests."
     },
     "retail": {
         "username": "retail",
@@ -86,8 +87,8 @@ USERS = {
         "badge": "🏪 Retail Store Manager",
         "avatar": "RT",
         "color": "#16a34a",
-        "allowed_sections": ["inventory", "distribution", "forecast"],
-        "description": "Store stock levels, Days of Cover, Reorder Points (ROP), stockout alerts, and ML demand forecasts."
+        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast"],
+        "description": "Store stock levels, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts."
     },
     "delivery": {
         "username": "delivery",
@@ -97,9 +98,17 @@ USERS = {
         "badge": "🚚 Delivery Fleet",
         "avatar": "DL",
         "color": "#7c3aed",
-        "allowed_sections": ["map", "distribution"],
-        "description": "Dispatch manifests, road transit routes, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, Karad."
+        "allowed_sections": ["map", "alerts", "distribution"],
+        "description": "Dispatch manifests, road transit routes, and delivery milestones for Pune, Satara, Kolhapur, Sangli, Karad."
     }
+}
+
+# 4-Digit Security PINs for Each Role
+USER_PINS = {
+    "admin": "1111",      # 👑 Admin PIN
+    "warehouse": "2222",  # 🏭 Warehouse PIN
+    "retail": "3333",     # 🏪 Retail PIN
+    "delivery": "4444"    # 🚚 Delivery PIN
 }
 
 # Live in-memory delivery status tracker for stops
@@ -111,19 +120,32 @@ DELIVERY_STOPS = {
     "LOC-KARAD": {"city": "Karad", "status": "Scheduled", "eta": "2 hrs 40 mins", "driver": "Nitin Sawant", "vehicle": "MH-50-B-3100"},
 }
 
+@app.route("/login")
+@app.route("/login/<role>")
+def login_view(role=None):
+    """Separate dedicated login page for each user role and login portal hub."""
+    if role and role not in USERS:
+        return redirect(url_for("login_view"))
+
+    user_info = USERS.get(role) if role else None
+    return render_template(
+        "login.html",
+        active_role=role,
+        user_info=user_info,
+        users=USERS,
+        user_pins=USER_PINS,
+    )
+
+@app.route("/logout")
+def logout_view():
+    """Logs out and redirects to the login portal."""
+    session.clear()
+    return redirect(url_for("login_view"))
+
 @app.route("/simple")
 def simple():
     """Light-theme, simplified dashboard for presentations and quick reviews."""
     return render_template("simple.html")
-
-
-# 4-Digit Security PINs for Each Role
-USER_PINS = {
-    "admin": "1111",      # 👑 Admin PIN
-    "warehouse": "2222",  # 🏭 Warehouse PIN
-    "retail": "3333",     # 🏪 Retail PIN
-    "delivery": "4444"    # 🚚 Delivery PIN
-}
 
 @app.route("/api/auth/verify-pin", methods=["POST"])
 def api_verify_pin():
@@ -134,6 +156,8 @@ def api_verify_pin():
 
     if role in USER_PINS and USER_PINS[role] == pin:
         user_info = dict(USERS[role])
+        session["user_role"] = role
+        session["user_name"] = user_info["name"]
         return jsonify({"success": True, "user": user_info})
 
     return jsonify({"success": False, "error": f"Invalid PIN for {role.capitalize() if role else 'user'}."}), 401

@@ -55,6 +55,20 @@ OptiStock AI includes a production-grade background automation engine with multi
 
 ---
 
+## 🔐 Dedicated User Portals & Login Pages
+
+OptiStock AI features dedicated, branded authentication pages for each user role with 4-digit PIN verification and direct workspace routing:
+
+| User Role | Dedicated Login URL | Demo PIN | Workspace Access & Permissions |
+|:---|:---|:---:|:---|
+| **👑 Administrator** | [`/login/admin`](http://127.0.0.1:5000/login/admin) | `1111` | Executive command tower, SciPy HiGHS MILP optimizer, What-If simulator, automation engine & all reports |
+| **🏭 Warehouse Manager** | [`/login/warehouse`](http://127.0.0.1:5000/login/warehouse) | `2222` | Batch shelf-life tracking (FEFO radar), cold-chain pallet storage, expiry rescue transfers, and outbound manifests |
+| **🏪 Retail Store Manager** | [`/login/retail`](http://127.0.0.1:5000/login/retail) | `3333` | Store health, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts |
+| **🚚 Delivery Fleet Partner** | [`/login/delivery`](http://127.0.0.1:5000/login/delivery) | `4444` | Live dispatch route map, Pune-Kolhapur corridor stops, and road checkpoint SLA delivery tracker |
+| **🌐 Portal Hub Gateway** | [`/login`](http://127.0.0.1:5000/login) | — | Main gateway displaying all 4 user portals with direct one-click selection |
+
+---
+
 ## 🏃 Quick Start
 
 ```bash
