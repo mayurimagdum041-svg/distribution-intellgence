@@ -11,50 +11,50 @@ const USER_ROLES = {
   admin: {
     key: 'admin',
     name: 'System Administrator',
-    badge: '👑 Administrator',
+    badge: 'Administrator',
     avatar: 'AD',
     color: '#2563eb',
     allowedSections: ['overview', 'automation', 'approvals', 'alerts', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
     defaultSection: 'overview',
-    bannerIcon: '👑',
+    bannerIcon: '',
     bannerTitle: 'Logged in as Administrator (Full Access)',
     bannerDesc: 'Full executive control: global network KPIs, SciPy HiGHS MILP solver, automation engine, manager approvals, and all reports.'
   },
   warehouse: {
     key: 'warehouse',
     name: 'Pune Regional DC Head',
-    badge: '🏭 Warehouse Manager',
+    badge: 'Warehouse Manager',
     avatar: 'WH',
     color: '#d97706',
     allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'map'],
     defaultSection: 'inventory',
     defaultSubTab: 'warehouses',
-    bannerIcon: '🏭',
+    bannerIcon: '',
     bannerTitle: 'Logged in as Warehouse Manager (Pune Hub)',
     bannerDesc: 'Monitoring batch shelf-life (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests.'
   },
   retail: {
     key: 'retail',
     name: 'Store Operations Head',
-    badge: '🏪 Retail Store Manager',
+    badge: 'Retail Store Manager',
     avatar: 'RT',
     color: '#16a34a',
     allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'forecast'],
     defaultSection: 'inventory',
     defaultSubTab: 'stores',
-    bannerIcon: '🏪',
+    bannerIcon: '',
     bannerTitle: 'Logged in as Retail Store Manager',
     bannerDesc: 'Tracking store on-hand stock, Days of Cover, Reorder Points (ROP), auto-replenishment approvals, and ML demand forecasts.'
   },
   delivery: {
     key: 'delivery',
     name: 'Maharashtra Corridor Fleet',
-    badge: '🚚 Delivery Fleet',
+    badge: 'Delivery Fleet',
     avatar: 'DL',
     color: '#7c3aed',
     allowedSections: ['map', 'alerts', 'distribution'],
     defaultSection: 'map',
-    bannerIcon: '🚚',
+    bannerIcon: '',
     bannerTitle: 'Logged in as Delivery Partner & Driver Fleet',
     bannerDesc: 'Live dispatch route navigation, SLA deadline audit monitoring, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, and Karad.'
   }
@@ -107,10 +107,10 @@ const NEW_LOCATIONS = [
    ROLE SWITCHING & PIN ACCESS CONTROL
 ══════════════════════════════════════ */
 const PIN_CONFIG = {
-  admin:     { pin: '1111', title: 'Administrator',          icon: '👑', color: '#2563eb' },
-  warehouse: { pin: '2222', title: 'Warehouse Manager',      icon: '🏭', color: '#d97706' },
-  retail:    { pin: '3333', title: 'Retail Store Manager',   icon: '🏪', color: '#16a34a' },
-  delivery:  { pin: '4444', title: 'Delivery Fleet Partner', icon: '🚚', color: '#7c3aed' },
+  admin:     { pin: '1111', title: 'Administrator',          icon: 'AD', color: '#2563eb' },
+  warehouse: { pin: '2222', title: 'Warehouse Manager',      icon: 'WH', color: '#d97706' },
+  retail:    { pin: '3333', title: 'Retail Store Manager',   icon: 'RT', color: '#16a34a' },
+  delivery:  { pin: '4444', title: 'Delivery Fleet Partner', icon: 'DL', color: '#7c3aed' },
 };
 
 let authState = {
@@ -158,7 +158,7 @@ function promptPinForRole(roleKey) {
   }
   if (roleName) roleName.textContent = role.name;
   if (roleDesc) roleDesc.textContent = `Role: ${role.badge} · Enter 4-digit PIN`;
-  if (hintText) hintText.innerHTML = `💡 Quick PIN: <strong>${pinInfo.pin}</strong>`;
+  if (hintText) hintText.innerHTML = `Quick PIN: <strong>${pinInfo.pin}</strong>`;
   if (errorAlert) {
     errorAlert.textContent = '';
     errorAlert.classList.add('hidden');
@@ -278,7 +278,7 @@ async function verifyEnteredPin() {
     }
 
     if (errorAlert) {
-      errorAlert.textContent = `❌ Invalid PIN for ${pinInfo ? pinInfo.title : 'role'}. Try: ${pinInfo ? pinInfo.pin : '1111'}`;
+      errorAlert.textContent = `Invalid PIN for ${pinInfo ? pinInfo.title : 'role'}. Try: ${pinInfo ? pinInfo.pin : '1111'}`;
       errorAlert.classList.remove('hidden');
     }
 
@@ -586,7 +586,7 @@ async function apiFetch(url) {
 
 function tableError(tbodyId, colSpan, msg) {
   const el = document.getElementById(tbodyId);
-  if (el) el.innerHTML = `<tr><td colspan="${colSpan}" class="loading-row" style="color:#dc2626">⚠️ ${msg}</td></tr>`;
+  if (el) el.innerHTML = `<tr><td colspan="${colSpan}" class="loading-row" style="color:#dc2626">${msg}</td></tr>`;
 }
 
 /* ══════════════════════════════════════
@@ -601,25 +601,36 @@ async function loadSummary() {
     renderOverviewChart(data);
   } catch (err) {
     document.getElementById('kpi-grid').innerHTML =
-      `<div style="color:var(--danger);padding:1rem;grid-column:1/-1">⚠️ Failed to load KPIs: ${err.message}</div>`;
+      `<div style="color:var(--danger);padding:1rem;grid-column:1/-1">Failed to load KPIs: ${err.message}</div>`;
     console.error('[loadSummary]', err);
   }
 }
 
 function renderKPICards(d) {
+  const svgIcons = {
+    box: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>',
+    money: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    critical: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+    warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>',
+    truck: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>',
+    chart: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>',
+    savings: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>',
+    shield: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>'
+  };
+
   const cards = [
-    { icon: '📦', label: 'Total Stock Units',    value: fmtNum(d.total_inventory_units), accent: 'kpi-primary' },
-    { icon: '💰', label: 'Stock Value',           value: fmtINR(d.total_inventory_value), accent: 'kpi-primary' },
-    { icon: '🚨', label: 'Critical Stores',       value: fmtNum(d.critical_stockouts),
+    { icon: svgIcons.box, label: 'Total Stock Units',    value: fmtNum(d.total_inventory_units), accent: 'kpi-primary' },
+    { icon: svgIcons.money, label: 'Stock Value',           value: fmtINR(d.total_inventory_value), accent: 'kpi-primary' },
+    { icon: svgIcons.critical, label: 'Critical Stores',       value: fmtNum(d.critical_stockouts),
       valueClass: d.critical_stockouts > 0 ? 'value-danger' : '',
       accent: d.critical_stockouts > 0 ? 'kpi-danger' : '' },
-    { icon: '⚠️', label: 'At-Risk Stores',        value: fmtNum(d.warning_stockouts),
+    { icon: svgIcons.warning, label: 'At-Risk Stores',        value: fmtNum(d.warning_stockouts),
       valueClass: d.warning_stockouts > 0 ? 'value-warning' : '',
       accent: d.warning_stockouts > 0 ? 'kpi-warning' : '' },
-    { icon: '🚚', label: 'Shipments Planned',     value: fmtNum(d.shipment_count),       accent: 'kpi-primary' },
-    { icon: '📈', label: 'Fulfillment Rate (AI)', value: fmtPct(d.fulfillment_rate_ai),  valueClass: 'value-success', accent: 'kpi-success' },
-    { icon: '💸', label: 'Transport Savings',     value: fmtINR(d.transport_savings),    valueClass: 'value-success', accent: 'kpi-success' },
-    { icon: '🗑️', label: 'Spoilage Prevented',   value: fmtINR(d.spoilage_averted_savings), valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: svgIcons.truck, label: 'Shipments Planned',     value: fmtNum(d.shipment_count),       accent: 'kpi-primary' },
+    { icon: svgIcons.chart, label: 'Fulfillment Rate (AI)', value: fmtPct(d.fulfillment_rate_ai),  valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: svgIcons.savings, label: 'Transport Savings',     value: fmtINR(d.transport_savings),    valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: svgIcons.shield, label: 'Spoilage Prevented',   value: fmtINR(d.spoilage_averted_savings), valueClass: 'value-success', accent: 'kpi-success' },
   ];
   const grid = document.getElementById('kpi-grid');
   grid.innerHTML = cards.map(c => `
@@ -747,7 +758,7 @@ function renderPlanTable(rows) {
 function renderUnmetTable(rows) {
   const tbody = document.getElementById('unmet-tbody');
   if (!rows || rows.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="4" class="loading-row" style="color:var(--success)">✅ All demand fulfilled!</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="4" class="loading-row" style="color:var(--success)">All demand fulfilled!</td></tr>';
     document.getElementById('unmet-count').textContent = 'No unmet demand';
     return;
   }
@@ -945,7 +956,7 @@ async function runForecast() {
     document.getElementById('forecast-subtitle').textContent =
       `${productName} · ${storeName} · ${days}-day horizon`;
   } catch (err) {
-    document.getElementById('forecast-subtitle').textContent = '⚠️ ' + err.message;
+    document.getElementById('forecast-subtitle').textContent = err.message;
     console.error('[runForecast]', err);
   }
 }
@@ -959,10 +970,10 @@ function renderForecastKPIs(data) {
   const mae           = data.metrics?.mae  ?? data.mae  ?? null;
   const mape          = data.metrics?.mape ?? data.mape ?? null;
   const cards = [
-    { icon: '📦', label: 'Total Expected (units)', value: fmtNum(Math.round(totalExpected)), accent: 'kpi-primary' },
-    { icon: '📅', label: 'Daily Avg Demand',        value: fmtNum(Math.round(dailyAvg)),     accent: 'kpi-primary' },
-    { icon: '📏', label: 'MAE (units)',              value: mae  != null ? Number(mae).toFixed(1) : '—', accent: '' },
-    { icon: '🎯', label: 'MAPE',                    value: mape != null ? Number(mape).toFixed(1) + '%' : '—', accent: '' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>', label: 'Total Expected (units)', value: fmtNum(Math.round(totalExpected)), accent: 'kpi-primary' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>', label: 'Daily Avg Demand',        value: fmtNum(Math.round(dailyAvg)),     accent: 'kpi-primary' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>', label: 'MAE (units)',              value: mae  != null ? Number(mae).toFixed(1) : '—', accent: '' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>', label: 'MAPE',                    value: mape != null ? Number(mape).toFixed(1) + '%' : '—', accent: '' },
   ];
   kpiDiv.innerHTML = cards.map(c => `
     <div class="kpi-card ${c.accent}">
@@ -1078,11 +1089,11 @@ async function runWhatIf() {
     renderWhatIfResults(data);
   } catch (err) {
     msgEl.className = 'whatif-message error';
-    msgEl.textContent = '⚠️ Simulation failed: ' + err.message;
+    msgEl.textContent = 'Simulation failed: ' + err.message;
     msgEl.classList.remove('hidden');
     console.error('[runWhatIf]', err);
   } finally {
-    btn.textContent = '🚀 Run Simulation';
+    btn.textContent = 'Run Simulation';
     btn.disabled    = false;
   }
 }
@@ -1092,14 +1103,14 @@ function renderWhatIfResults(d) {
   const plan      = d.plan || d;
   const benchmark = (d.plan && d.plan.benchmark) ? d.plan.benchmark : (d.benchmark || {});
   const cards = [
-    { icon: '🚚', label: 'Units Shipped',       value: fmtNum(plan.units_shipped ?? d.units_shipped),   accent: 'kpi-primary' },
-    { icon: '💸', label: 'Freight Cost',         value: fmtINR(plan.total_transport_cost ?? d.total_transport_cost), accent: '' },
-    { icon: '⚠️', label: 'Unmet Demand',         value: fmtNum(plan.total_unmet_units ?? d.total_unmet_units),
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>', label: 'Units Shipped',       value: fmtNum(plan.units_shipped ?? d.units_shipped),   accent: 'kpi-primary' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"></line><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>', label: 'Freight Cost',         value: fmtINR(plan.total_transport_cost ?? d.total_transport_cost), accent: '' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>', label: 'Unmet Demand',         value: fmtNum(plan.total_unmet_units ?? d.total_unmet_units),
       valueClass: (plan.total_unmet_units ?? d.total_unmet_units) > 0 ? 'value-warning' : 'value-success',
       accent:     (plan.total_unmet_units ?? d.total_unmet_units) > 0 ? 'kpi-warning' : 'kpi-success' },
-    { icon: '📈', label: 'Fulfillment Rate',     value: fmtPct(benchmark.fulfillment_rate_ai ?? d.fulfillment_rate_ai), valueClass: 'value-success', accent: 'kpi-success' },
-    { icon: '💰', label: 'Transport Savings',    value: fmtINR(benchmark.transport_savings ?? d.transport_savings), valueClass: 'value-success', accent: 'kpi-success' },
-    { icon: '🎉', label: 'Net Economic Benefit', value: fmtINR(benchmark.total_economic_benefit ?? d.total_economic_benefit), valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>', label: 'Fulfillment Rate',     value: fmtPct(benchmark.fulfillment_rate_ai ?? d.fulfillment_rate_ai), valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path></svg>', label: 'Transport Savings',    value: fmtINR(benchmark.transport_savings ?? d.transport_savings), valueClass: 'value-success', accent: 'kpi-success' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>', label: 'Net Economic Benefit', value: fmtINR(benchmark.total_economic_benefit ?? d.total_economic_benefit), valueClass: 'value-success', accent: 'kpi-success' },
   ];
   kpiDiv.innerHTML = cards.map(c => `
     <div class="kpi-card ${c.accent || ''}">
@@ -1112,7 +1123,7 @@ function renderWhatIfResults(d) {
   `).join('');
   const msgEl = document.getElementById('whatif-message');
   msgEl.className = 'whatif-message success';
-  msgEl.textContent = '✅ Simulation complete!';
+  msgEl.textContent = 'Simulation complete!';
   msgEl.classList.remove('hidden');
 }
 
@@ -1165,23 +1176,23 @@ function initMap() {
   // Custom icons
   const warehouseIcon = L.divIcon({
     className: '',
-    html: '<div style="background:#1e293b;color:#fff;border-radius:8px;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #2563eb">🏭</div>',
-    iconSize: [36, 36],
-    iconAnchor: [18, 18],
+    html: '<div style="background:#1e293b;color:#fff;border-radius:8px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,0.3);border:2px solid #2563eb"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg></div>',
+    iconSize: [34, 34],
+    iconAnchor: [17, 17],
     popupAnchor: [0, -20],
   });
   const storeIcon = L.divIcon({
     className: '',
-    html: '<div style="background:#2563eb;color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;font-size:15px;box-shadow:0 2px 8px rgba(37,99,235,0.4);border:2px solid #fff">🏪</div>',
+    html: '<div style="background:#2563eb;color:#fff;border-radius:50%;width:30px;height:30px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(37,99,235,0.4);border:2px solid #fff"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path></svg></div>',
     iconSize: [30, 30],
     iconAnchor: [15, 15],
     popupAnchor: [0, -18],
   });
   const newLocIcon = L.divIcon({
     className: '',
-    html: '<div style="background:#16a34a;color:#fff;border-radius:50%;width:34px;height:34px;display:flex;align-items:center;justify-content:center;font-size:16px;box-shadow:0 2px 8px rgba(22,163,74,0.5);border:2px solid #fff;animation:pulse-green 2s infinite">📍</div>',
-    iconSize: [34, 34],
-    iconAnchor: [17, 17],
+    html: '<div style="background:#16a34a;color:#fff;border-radius:50%;width:32px;height:32px;display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(22,163,74,0.5);border:2px solid #fff;animation:pulse-green 2s infinite"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M12 2a8 8 0 0 0-8 8c0 5.25 8 12 8 12s8-6.75 8-12a8 8 0 0 0-8-8z"></path></svg></div>',
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
     popupAnchor: [0, -20],
   });
 
@@ -1190,8 +1201,8 @@ function initMap() {
     const marker = L.marker([wh.lat, wh.lng], { icon: warehouseIcon }).addTo(map);
     marker.bindPopup(`
       <div style="font-family:Inter,sans-serif;min-width:180px">
-        <strong style="font-size:14px">🏭 ${wh.name}</strong><br/>
-        <span style="color:#64748b;font-size:12px">📍 ${wh.city}</span><br/>
+        <strong style="font-size:14px">${wh.name}</strong><br/>
+        <span style="color:#64748b;font-size:12px">${wh.city}</span><br/>
         <span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#1e293b;color:#fff;border-radius:4px;font-size:11px">Distribution Centre</span>
       </div>
     `);
@@ -1202,8 +1213,8 @@ function initMap() {
     const marker = L.marker([st.lat, st.lng], { icon: storeIcon }).addTo(map);
     marker.bindPopup(`
       <div style="font-family:Inter,sans-serif;min-width:160px">
-        <strong style="font-size:13px">🏪 ${st.name}</strong><br/>
-        <span style="color:#64748b;font-size:12px">📍 ${st.city}</span><br/>
+        <strong style="font-size:13px">${st.name}</strong><br/>
+        <span style="color:#64748b;font-size:12px">${st.city}</span><br/>
         <span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#2563eb;color:#fff;border-radius:4px;font-size:11px">Retail Store</span>
       </div>
     `);
@@ -1214,8 +1225,8 @@ function initMap() {
     const marker = L.marker([loc.lat, loc.lng], { icon: newLocIcon }).addTo(map);
     marker.bindPopup(`
       <div style="font-family:Inter,sans-serif;min-width:180px">
-        <strong style="font-size:14px;color:#16a34a">🆕 ${loc.name}</strong><br/>
-        <span style="color:#64748b;font-size:12px">📍 ${loc.city}, Maharashtra</span><br/>
+        <strong style="font-size:14px;color:#16a34a">${loc.name}</strong><br/>
+        <span style="color:#64748b;font-size:12px">${loc.city}, Maharashtra</span><br/>
         <span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#16a34a;color:#fff;border-radius:4px;font-size:11px">New Delivery Location</span>
       </div>
     `).openPopup();
@@ -1235,7 +1246,7 @@ function initMap() {
       { color: routeColors[i], weight: 3, opacity: 0.75, dashArray: '8, 6' }
     ).addTo(map);
     routeLine.bindTooltip(
-      `🚚 Pune DC → ${loc.city}<br/>Est. route distance`,
+      `Pune DC → ${loc.city}<br/>Est. route distance`,
       { sticky: true, className: 'route-tooltip' }
     );
 
@@ -1299,7 +1310,7 @@ async function renderFleetStops() {
     return `
       <div class="fleet-stop-card" id="stop-card-${locId}" style="${isDelivered ? 'border-color:#86efac;background:#f0fdf4;' : ''}">
         <div class="fsc-header">
-          <span class="fsc-city">📍 ${stop.city}</span>
+          <span class="fsc-city">${stop.city}</span>
           <span class="chip ${statusChipClass}">${stop.status}</span>
         </div>
         <div class="fsc-meta">
@@ -1309,7 +1320,7 @@ async function renderFleetStops() {
         </div>
         <div class="fsc-actions">
           <button class="fsc-btn" onclick="updateStopStatus('${locId}', 'In Transit')">In Transit</button>
-          <button class="fsc-btn delivered" onclick="updateStopStatus('${locId}', 'Delivered')">✓ Delivered</button>
+          <button class="fsc-btn delivered" onclick="updateStopStatus('${locId}', 'Delivered')">Delivered</button>
         </div>
       </div>
     `;
@@ -1317,7 +1328,7 @@ async function renderFleetStops() {
 
   const liveBadge = document.getElementById('fleet-live-badge');
   if (liveBadge) {
-    liveBadge.textContent = `⚡ ${stopKeys.length - completedCount} In Progress · ${completedCount} Delivered`;
+    liveBadge.textContent = `${stopKeys.length - completedCount} In Progress · ${completedCount} Delivered`;
   }
 }
 
@@ -1360,8 +1371,8 @@ function renderLocationsTable() {
   ];
 
   tbody.innerHTML = allLocations.map(loc => {
-    const typeLabel = loc.type === 'warehouse' ? '🏭 Warehouse' :
-                      loc.type === 'New Delivery' ? '📍 New Location' : '🏪 Store';
+    const typeLabel = loc.type === 'warehouse' ? 'Warehouse' :
+                      loc.type === 'New Delivery' ? 'New Location' : 'Store';
     const isNew = loc.type === 'New Delivery';
     const rowClass  = isNew ? 'style="background:#f0fdf4"' : '';
     const statusChip = loc.status === 'Delivered' ? 'chip-healthy' :
@@ -1388,10 +1399,10 @@ function showToast(message, type = 'info', title = '') {
   if (!container) return;
 
   const icons = {
-    success: '✅',
-    error: '❌',
-    warning: '⚠️',
-    info: 'ℹ️'
+    success: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"></polyline></svg>',
+    error: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>',
+    warning: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>',
+    info: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.5"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>'
   };
 
   const titles = {
@@ -1404,12 +1415,12 @@ function showToast(message, type = 'info', title = '') {
   const toast = document.createElement('div');
   toast.className = `toast-item toast-${type}`;
   toast.innerHTML = `
-    <div class="toast-icon">${icons[type] || 'ℹ️'}</div>
+    <div class="toast-icon">${icons[type] || icons.info}</div>
     <div class="toast-content">
       <div class="toast-title">${titles[type]}</div>
       <div class="toast-msg">${message}</div>
     </div>
-    <button class="toast-close" title="Dismiss">✕</button>
+    <button class="toast-close" title="Dismiss">&times;</button>
   `;
 
   const closeBtn = toast.querySelector('.toast-close');
@@ -1484,10 +1495,10 @@ let automationState = {
 };
 
 const WORKFLOW_ICONS = {
-  auto_replenishment: { icon: '📦', bg: '#eff6ff', color: '#2563eb' },
-  expiry_rescue:      { icon: '⏳', bg: '#fef3c7', color: '#d97706' },
-  distribution_optimization: { icon: '🚚', bg: '#dcfce7', color: '#16a34a' },
-  delivery_monitoring: { icon: '⏱️', bg: '#f3e8ff', color: '#7c3aed' }
+  auto_replenishment: { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>', bg: '#eff6ff', color: '#2563eb' },
+  expiry_rescue:      { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>', bg: '#fef3c7', color: '#d97706' },
+  distribution_optimization: { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="22" y1="12" x2="18" y2="12"></line><line x1="6" y1="12" x2="2" y2="12"></line><line x1="12" y1="6" x2="12" y2="2"></line><line x1="12" y1="22" x2="12" y2="18"></line></svg>', bg: '#dcfce7', color: '#16a34a' },
+  delivery_monitoring: { icon: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>', bg: '#f3e8ff', color: '#7c3aed' }
 };
 
 async function updateGlobalBadges() {
@@ -1563,7 +1574,8 @@ function renderWorkflowCards(workflows) {
   }
 
   container.innerHTML = workflows.map(w => {
-    const meta = WORKFLOW_ICONS[w.id] || { icon: '⚙️', bg: '#f1f5f9', color: '#475569' };
+    const defaultIcon = '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>';
+    const meta = WORKFLOW_ICONS[w.id] || { icon: defaultIcon, bg: '#f1f5f9', color: '#475569' };
     const isEnabled = w.enabled;
     const statusClass = !isEnabled ? 'status-disabled' :
                         (w.last_status === 'ERROR' ? 'status-error' : 'status-enabled');
@@ -1616,14 +1628,14 @@ function renderWorkflowCards(workflows) {
         <div class="wf-controls">
           <label class="dryrun-toggle" title="Dry run evaluates rules without committing DB changes">
             <input type="checkbox" id="dryrun-${w.id}">
-            <span>🧪 Dry Run</span>
+            <span>Dry Run</span>
           </label>
           <div class="wf-btn-group">
             <button class="btn btn-outline btn-sm" id="btn-toggle-${w.id}" onclick="toggleWorkflow('${w.id}', ${!isEnabled})">
               ${isEnabled ? 'Disable' : 'Enable'}
             </button>
             <button class="btn btn-primary btn-sm" id="btn-run-${w.id}" onclick="runWorkflow('${w.id}')">
-              ▶ Run Now
+              Run Now
             </button>
           </div>
         </div>
@@ -1639,7 +1651,7 @@ async function runWorkflow(workflowId) {
 
   if (btn) {
     btn.disabled = true;
-    btn.textContent = '⏳ Executing…';
+    btn.textContent = 'Executing…';
   }
 
   showToast(`Running ${workflowId} (${isDryRun ? 'Dry-Run' : 'Live'})...`, 'info', 'Workflow Triggered');
@@ -1668,7 +1680,7 @@ async function runWorkflow(workflowId) {
   } finally {
     if (btn) {
       btn.disabled = false;
-      btn.textContent = '▶ Run Now';
+      btn.textContent = 'Run Now';
     }
   }
 }
@@ -1731,7 +1743,7 @@ async function loadAutomationHistory() {
           <td><span class="status-pill ${statusPill}">${h.status}</span></td>
           <td style="font-weight:600;color:#2563eb">${h.actions_generated}</td>
           <td style="font-size:.78rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h.error_message || ''}">
-            ${h.error_message ? `<span style="color:#dc2626">${h.error_message}</span>` : '<span style="color:#16a34a">✓ Clean execution</span>'}
+            ${h.error_message ? `<span style="color:#dc2626">${h.error_message}</span>` : '<span style="color:#16a34a">Clean execution</span>'}
           </td>
           <td style="font-size:.8rem;color:#64748b">${startTime}</td>
           <td style="font-size:.8rem">${durationSec}s</td>
@@ -1822,8 +1834,8 @@ function renderReplenishmentsTable(requests) {
 
     const actionCell = isPending ? `
       <div style="display:flex;gap:.35rem">
-        <button class="btn-approve" onclick="handleReplenishAction(${r.id}, 'approve')">✓ Approve PO</button>
-        <button class="btn-reject" onclick="handleReplenishAction(${r.id}, 'reject')">✕ Reject</button>
+        <button class="btn-approve" onclick="handleReplenishAction(${r.id}, 'approve')">Approve PO</button>
+        <button class="btn-reject" onclick="handleReplenishAction(${r.id}, 'reject')">Reject</button>
       </div>` : `
       <div class="text-muted-xs">
         <strong>${r.approved_by || 'Manager'}</strong><br>
@@ -1863,7 +1875,7 @@ async function handleReplenishAction(requestId, action) {
       `You are rejecting <strong>Proposal #${requestId}</strong>. Please provide a brief justification for the audit log.`,
     inputLabel: isApprove ? 'Approval Notes (Optional):' : 'Rejection Reason (Required):',
     defaultValue: isApprove ? 'Approved for dispatch' : 'Stock surplus available at adjacent hub',
-    confirmText: isApprove ? '✓ Confirm Approval' : '✕ Confirm Rejection'
+    confirmText: isApprove ? 'Confirm Approval' : 'Confirm Rejection'
   });
 
   if (!dialogResult.confirmed) return;
@@ -1944,8 +1956,8 @@ function renderRescueTable(transfers) {
 
     const actionCell = isPending ? `
       <div style="display:flex;gap:.35rem">
-        <button class="btn-approve" onclick="handleRescueAction(${t.id}, 'approve')">✓ Authorize</button>
-        <button class="btn-reject" onclick="handleRescueAction(${t.id}, 'reject')">✕ Reject</button>
+        <button class="btn-approve" onclick="handleRescueAction(${t.id}, 'approve')">Authorize</button>
+        <button class="btn-reject" onclick="handleRescueAction(${t.id}, 'reject')">Reject</button>
       </div>` : `
       <div class="text-muted-xs">
         <strong>${t.approved_by || 'Manager'}</strong><br>
@@ -1965,7 +1977,7 @@ function renderRescueTable(transfers) {
         <td>${fmtINR(t.inventory_value)}</td>
         <td>
           <span class="chip chip-healthy" title="Remaining life after transit: ${marginDays} days">
-            ✓ Expiry &gt; Transit + 1.0d
+            Expiry &gt; Transit + 1.0d
           </span>
         </td>
         <td><span class="status-pill ${statusClass}">${t.status}</span></td>
@@ -1988,7 +2000,7 @@ async function handleRescueAction(transferId, action) {
       `You are rejecting <strong>Transfer #${transferId}</strong>. Please provide a reason for the audit record.`,
     inputLabel: isApprove ? 'Dispatch Notes (Optional):' : 'Rejection Reason (Required):',
     defaultValue: isApprove ? 'Authorized for expedited store transfer' : 'Store shelf capacity constrained',
-    confirmText: isApprove ? '✓ Authorize Transfer' : '✕ Reject Transfer'
+    confirmText: isApprove ? 'Authorize Transfer' : 'Reject Transfer'
   });
 
   if (!dialogResult.confirmed) return;
@@ -2100,12 +2112,12 @@ function renderAlertsTable(alerts) {
     if (a.status === 'OPEN') {
       actionBtns = `
         <div style="display:flex;gap:.3rem">
-          <button class="btn-acknowledge" onclick="handleAlertAction(${a.id}, 'acknowledge')">👁️ Ack</button>
-          <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">✓ Resolve</button>
+          <button class="btn-acknowledge" onclick="handleAlertAction(${a.id}, 'acknowledge')">Ack</button>
+          <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">Resolve</button>
         </div>`;
     } else if (a.status === 'ACKNOWLEDGED') {
       actionBtns = `
-        <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">✓ Resolve</button>
+        <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">Resolve</button>
         <span class="text-muted-xs" style="display:block;margin-top:.2rem">by ${a.acknowledged_by || 'Staff'}</span>`;
     } else {
       actionBtns = `<span class="text-muted-xs">Resolved by ${a.resolved_by || 'Staff'}</span>`;
@@ -2168,8 +2180,8 @@ async function loadDistributionOptions() {
 
     tbody.innerHTML = rows.map(r => {
       const isRank1 = r.warehouse_rank === 1;
-      const rankBadge = isRank1 ? '<span class="chip chip-healthy">🥇 Rank 1 (Optimal)</span>' :
-                                  `<span class="chip chip-subtle">🥈 Rank ${r.warehouse_rank}</span>`;
+      const rankBadge = isRank1 ? '<span class="chip chip-healthy">Rank 1 (Optimal)</span>' :
+                                  `<span class="chip chip-subtle">Rank ${r.warehouse_rank}</span>`;
       const rowStyle = isRank1 ? 'style="background:#f8fafc;font-weight:500"' : '';
 
       return `
@@ -2234,7 +2246,7 @@ async function loadDeliveryMonitoring() {
           <td>${delayCell}</td>
           <td><span class="status-pill ${statusPill}">${s.status}</span></td>
           <td>
-            ${isDelayed ? `<span class="chip chip-warning" title="${s.delay_reason || ''}">🚨 Delay Alert: ${s.delay_reason || 'Delayed'}</span>` : '<span class="chip chip-subtle">SLA Compliant</span>'}
+            ${isDelayed ? `<span class="chip chip-warning" title="${s.delay_reason || ''}">Delay Alert: ${s.delay_reason || 'Delayed'}</span>` : '<span class="chip chip-subtle">SLA Compliant</span>'}
           </td>
         </tr>
       `;

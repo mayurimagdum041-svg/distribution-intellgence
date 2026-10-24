@@ -62,7 +62,7 @@ USERS = {
         "name": "System Administrator",
         "role": "admin",
         "role_title": "Executive Administrator",
-        "badge": "👑 Administrator",
+        "badge": "Administrator",
         "avatar": "AD",
         "color": "#2563eb",
         "allowed_sections": ["overview", "automation", "approvals", "alerts", "distribution", "inventory", "forecast", "whatif", "map"],
@@ -73,7 +73,7 @@ USERS = {
         "name": "Pune Regional DC Head",
         "role": "warehouse",
         "role_title": "Warehouse Manager",
-        "badge": "🏭 Warehouse Manager",
+        "badge": "Warehouse Manager",
         "avatar": "WH",
         "color": "#d97706",
         "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "map"],
@@ -84,7 +84,7 @@ USERS = {
         "name": "Store Operations Head",
         "role": "retail",
         "role_title": "Retail Store Manager",
-        "badge": "🏪 Retail Store Manager",
+        "badge": "Retail Store Manager",
         "avatar": "RT",
         "color": "#16a34a",
         "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast"],
@@ -95,7 +95,7 @@ USERS = {
         "name": "Maharashtra Corridor Fleet",
         "role": "delivery",
         "role_title": "Delivery Partner & Driver",
-        "badge": "🚚 Delivery Fleet",
+        "badge": "Delivery Fleet",
         "avatar": "DL",
         "color": "#7c3aed",
         "allowed_sections": ["map", "alerts", "distribution"],
@@ -105,10 +105,10 @@ USERS = {
 
 # 4-Digit Security PINs for Each Role
 USER_PINS = {
-    "admin": "1111",      # 👑 Admin PIN
-    "warehouse": "2222",  # 🏭 Warehouse PIN
-    "retail": "3333",     # 🏪 Retail PIN
-    "delivery": "4444"    # 🚚 Delivery PIN
+    "admin": "1111",
+    "warehouse": "2222",
+    "retail": "3333",
+    "delivery": "4444"
 }
 
 # Live in-memory delivery status tracker for stops
@@ -120,10 +120,22 @@ DELIVERY_STOPS = {
     "LOC-KARAD": {"city": "Karad", "status": "Scheduled", "eta": "2 hrs 40 mins", "driver": "Nitin Sawant", "vehicle": "MH-50-B-3100"},
 }
 
+@app.route("/admin")
+def admin_view():
+    """Square-inspired high-end Executive Administrator authentication and command portal."""
+    return render_template(
+        "admin.html",
+        user_info=USERS["admin"],
+        user_pins=USER_PINS,
+    )
+
 @app.route("/login")
 @app.route("/login/<role>")
 def login_view(role=None):
     """Separate dedicated login page for each user role and login portal hub."""
+    if role == "admin":
+        return redirect(url_for("admin_view"))
+
     if role and role not in USERS:
         return redirect(url_for("login_view"))
 

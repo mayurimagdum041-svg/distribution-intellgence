@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>OptiStock AI — Dashboard</title>
+  <link rel="icon" type="image/svg+xml" href="/static/logo-icon.svg" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -19,59 +20,89 @@
     <!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
     <aside class="sidebar">
       <div class="sidebar-logo">
-        <span class="logo-icon">📦</span>
-        <span class="logo-text">OptiStock <span class="logo-accent">AI</span></span>
+        <a href="/admin" title="OptiStock AI" style="text-decoration:none;display:flex;align-items:center;">
+          <img src="/static/logo.svg" alt="OptiStock AI Logo" style="height:32px;width:auto;" />
+        </a>
       </div>
 
       <nav class="sidebar-nav">
         <div class="nav-section-label" data-nav-group="core">OPERATIONS</div>
         <a href="#" class="nav-link active" data-nav="overview" data-roles="admin" onclick="navigate('overview', this)">
-          <span class="nav-icon">🏠</span> <span>Overview</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          </span>
+          <span>Overview</span>
         </a>
         <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
-          <span class="nav-icon">🚚</span> <span>Distribution</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+          </span>
+          <span>Distribution</span>
         </a>
         <a href="#" class="nav-link" data-nav="inventory" data-roles="admin,warehouse,retail" onclick="navigate('inventory', this)">
-          <span class="nav-icon">🏪</span> <span>Inventory</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+          </span>
+          <span>Inventory</span>
         </a>
         <a href="#" class="nav-link" data-nav="forecast" data-roles="admin,retail" onclick="navigate('forecast', this)">
-          <span class="nav-icon">📈</span> <span>Demand Forecast</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline><polyline points="17 6 23 6 23 12"></polyline></svg>
+          </span>
+          <span>Demand Forecast</span>
         </a>
 
         <div class="nav-section-label" data-nav-group="auto">AUTOMATION</div>
         <a href="#" class="nav-link" data-nav="automation" data-roles="admin" onclick="navigate('automation', this)">
-          <span class="nav-icon">⚡</span> <span>Workflows</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"></polyline></svg>
+          </span>
+          <span>Workflows</span>
         </a>
         <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this)">
-          <span class="nav-icon">✍️</span> <span>Decision Inbox</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"></path><rect x="8" y="2" width="8" height="4" rx="1" ry="1"></rect><path d="M9 14l2 2 4-4"></path></svg>
+          </span>
+          <span>Decision Inbox</span>
           <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
         </a>
         <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
-          <span class="nav-icon">🔔</span> <span>Alert Center</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+          </span>
+          <span>Alert Center</span>
           <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
         </a>
 
         <div class="nav-section-label" data-nav-group="lab">INTELLIGENCE</div>
         <a href="#" class="nav-link" data-nav="whatif" data-roles="admin" onclick="navigate('whatif', this)">
-          <span class="nav-icon">🔬</span> <span>What-If Sandbox</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="21" x2="4" y2="14"></line><line x1="4" y1="10" x2="4" y2="3"></line><line x1="12" y1="21" x2="12" y2="12"></line><line x1="12" y1="8" x2="12" y2="3"></line><line x1="20" y1="21" x2="20" y2="16"></line><line x1="20" y1="12" x2="20" y2="3"></line><line x1="1" y1="14" x2="7" y2="14"></line><line x1="9" y1="8" x2="15" y2="8"></line><line x1="17" y1="16" x2="23" y2="16"></line></svg>
+          </span>
+          <span>What-If Sandbox</span>
         </a>
         <a href="#" class="nav-link" data-nav="map" data-roles="admin,warehouse,delivery" onclick="navigate('map', this)">
-          <span class="nav-icon">🗺️</span> <span>Shipment Map</span>
+          <span class="nav-icon">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round"><polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon><line x1="8" y1="2" x2="8" y2="18"></line><line x1="16" y1="6" x2="16" y2="22"></line></svg>
+          </span>
+          <span>Shipment Map</span>
         </a>
       </nav>
 
       <!-- Sidebar User Profile Card -->
-      <div class="sidebar-user" id="sidebar-user-card" onclick="openRoleModal()">
+      <div class="sidebar-user" id="sidebar-user-card">
         <div class="user-avatar" id="sidebar-user-avatar">AD</div>
         <div class="user-info">
           <div class="user-name" id="sidebar-user-name">System Administrator</div>
-          <div class="user-role-badge" id="sidebar-user-badge">👑 Administrator</div>
+          <div class="user-role-badge" id="sidebar-user-badge">Administrator</div>
         </div>
-        <button class="user-switch-btn" title="Switch User Role">⇆</button>
+        <a href="/logout" class="user-switch-btn" title="Sign Out">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+        </a>
       </div>
 
       <div class="sidebar-footer">
-        <span class="sidebar-footer-text">AI Powered by MILP + ML</span>
+        <span class="sidebar-footer-text">Powered by MILP + ML</span>
       </div>
     </aside>
 
@@ -85,26 +116,9 @@
           <span class="page-subtitle" id="page-subtitle">Key performance indicators at a glance</span>
         </div>
         <div class="topbar-right">
-          <!-- 4 User Roles Quick Switcher -->
-          <div class="role-selector-bar">
-            <button class="role-chip active" id="btn-role-admin" onclick="switchUserRole('admin')">
-              👑 Admin
-            </button>
-            <button class="role-chip" id="btn-role-warehouse" onclick="switchUserRole('warehouse')">
-              🏭 Warehouse
-            </button>
-            <button class="role-chip" id="btn-role-retail" onclick="switchUserRole('retail')">
-              🏪 Retail
-            </button>
-            <button class="role-chip" id="btn-role-delivery" onclick="switchUserRole('delivery')">
-              🚚 Delivery
-            </button>
-          </div>
-
-          <div class="topbar-divider"></div>
-
+          <!-- Horizon Selector -->
           <div class="horizon-wrapper">
-            <span class="horizon-icon">⏱️</span>
+            <label class="horizon-label" for="horizon-select">Planning Horizon:</label>
             <select id="horizon-select" class="select-control horizon-select" onchange="onHorizonChange()">
               <option value="1">1 Day</option>
               <option value="3" selected>3 Days</option>
@@ -113,28 +127,37 @@
             </select>
           </div>
 
-          <button class="btn btn-outline btn-icon-only" onclick="lockSession()" title="Lock workspace with PIN">
-            🔒
-          </button>
-          <a href="/login" class="btn btn-outline" title="Separate User Login Portals" style="text-decoration:none;font-size:.78rem;padding:.45rem .75rem;">
-            🚪 Exit to Login
-          </a>
           <button class="btn btn-primary btn-refresh" id="btn-global-refresh" onclick="refreshCurrentSection()" title="Refresh live data">
-            <span class="refresh-icon">🔄</span> <span class="refresh-text">Refresh</span>
+            <span class="refresh-icon">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
+            </span>
+            <span class="refresh-text">Refresh</span>
           </button>
+
+          <div class="topbar-divider"></div>
+
+          <!-- Active User Badge -->
+          <div class="user-active-badge">
+            <span class="user-status-dot"></span>
+            <span id="topbar-user-badge">Administrator</span>
+          </div>
+
+          <!-- Sign Out Link -->
+          <a href="/logout" class="btn btn-outline" title="Sign out of current workspace" style="text-decoration:none;font-size:.8rem;padding:.42rem .8rem;">
+            Sign Out
+          </a>
         </div>
       </header>
 
       <!-- Role Notification & Context Banner -->
       <div id="role-welcome-banner" class="role-welcome-banner">
-        <div class="rwb-icon" id="rwb-icon">👑</div>
+        <div class="rwb-icon" id="rwb-icon" style="font-size:1.1rem;font-weight:700;color:var(--primary)">i</div>
         <div class="rwb-content">
           <strong id="rwb-title">Logged in as Administrator</strong>
           <p id="rwb-desc">Full access to global executive KPIs, MILP optimizer, What-If simulation and live shipment map.</p>
         </div>
         <div class="rwb-actions">
-          <button class="btn-subtle" onclick="openRoleModal()">Switch</button>
-          <button class="btn-close-banner" onclick="dismissBanner()" title="Dismiss banner">✕</button>
+          <button class="btn-close-banner" onclick="dismissBanner()" title="Dismiss banner">Dismiss</button>
         </div>
       </div>
 
@@ -154,7 +177,7 @@
 
         <!-- Economic Benefit Banner -->
         <div id="benefit-banner" class="benefit-banner hidden">
-          <span class="benefit-label">💡 Net Economic Benefit (AI vs. Baseline)</span>
+          <span class="benefit-label">Net Economic Benefit (AI vs. Baseline)</span>
           <span class="benefit-value" id="benefit-value">—</span>
         </div>
 
@@ -175,28 +198,36 @@
         <!-- Automation Summary KPIs -->
         <div class="kpi-grid kpi-grid-4" id="automation-kpi-grid">
           <div class="kpi-card">
-            <div class="kpi-icon" style="background:#eff6ff;color:#2563eb">🤖</div>
+            <div class="kpi-icon" style="background:#eff6ff;color:#2563eb">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect><line x1="8" y1="21" x2="16" y2="21"></line><line x1="12" y1="17" x2="12" y2="21"></line></svg>
+            </div>
             <div class="kpi-body">
               <div class="kpi-value" id="kpi-auto-workflows">4 / 4</div>
               <div class="kpi-label">Active Workflows</div>
             </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-icon" style="background:#dcfce7;color:#16a34a">📦</div>
+            <div class="kpi-icon" style="background:#dcfce7;color:#16a34a">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+            </div>
             <div class="kpi-body">
               <div class="kpi-value" id="kpi-pending-replenish">—</div>
               <div class="kpi-label">Pending Replenishments</div>
             </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-icon" style="background:#fef3c7;color:#d97706">⏳</div>
+            <div class="kpi-icon" style="background:#fef3c7;color:#d97706">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+            </div>
             <div class="kpi-body">
               <div class="kpi-value" id="kpi-pending-rescue">—</div>
               <div class="kpi-label">Pending Expiry Rescues</div>
             </div>
           </div>
           <div class="kpi-card">
-            <div class="kpi-icon" style="background:#fee2e2;color:#dc2626">🔔</div>
+            <div class="kpi-icon" style="background:#fee2e2;color:#dc2626">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>
+            </div>
             <div class="kpi-body">
               <div class="kpi-value" id="kpi-active-alerts">—</div>
               <div class="kpi-label">Active Alert Items</div>
@@ -206,15 +237,17 @@
 
         <!-- Automation Notice Banner -->
         <div class="automation-security-banner">
-          <div class="asb-icon">🛡️</div>
+          <div class="asb-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+          </div>
           <div class="asb-text">
             <strong>Production Safety System Active</strong>:
             Scheduled tasks run safely with distributed mutex locking and idempotency deduplication.
             Autonomous decisions are strictly non-destructive recommendations — manager approval is required before purchasing or dispatch.
           </div>
           <div class="asb-actions">
-            <button class="btn btn-outline btn-sm" onclick="loadAutomationHistory()">📜 View Execution Logs</button>
-            <button class="btn btn-primary btn-sm" onclick="loadAutomationStatus()">🔄 Refresh Status</button>
+            <button class="btn btn-outline btn-sm" onclick="loadAutomationHistory()">View Execution Logs</button>
+            <button class="btn btn-primary btn-sm" onclick="loadAutomationStatus()">Refresh Status</button>
           </div>
         </div>
 
@@ -230,7 +263,7 @@
         <div class="card" style="margin-top:1.5rem">
           <div class="card-header">
             <div>
-              <h2 class="card-title">📜 Automation Execution History &amp; Audit Trail</h2>
+              <h2 class="card-title">Automation Execution History &amp; Audit Trail</h2>
               <span class="card-subtitle">Complete run log with execution times, dry-run flags, action counts and errors</span>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;">
@@ -270,7 +303,9 @@
       <section id="section-approvals" class="section">
         <!-- Safety Banner -->
         <div class="automation-security-banner" style="margin-bottom:1.25rem;">
-          <div class="asb-icon">✍️</div>
+          <div class="asb-icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          </div>
           <div class="asb-text">
             <strong>Manager Action Required</strong>:
             OptiStock AI identifies deficits and expiring stock, generating actionable proposals.
@@ -280,24 +315,24 @@
 
         <div class="sub-tabs">
           <button class="sub-tab active" id="subtab-replenish" onclick="switchApprovalTab('replenish')">
-            📦 Replenishment Requests (<span id="count-tab-replenish">0</span>)
+            Replenishment Requests (<span id="count-tab-replenish">0</span>)
           </button>
           <button class="sub-tab" id="subtab-rescue" onclick="switchApprovalTab('rescue')">
-            ⏳ Expiry Rescue Transfers (<span id="count-tab-rescue">0</span>)
+            Expiry Rescue Transfers (<span id="count-tab-rescue">0</span>)
           </button>
         </div>
 
         <!-- Replenishment Approval Panel -->
         <div id="approvals-replenish-panel" class="sub-panel">
           <div class="toolbar">
-            <input type="text" id="replenish-search" class="search-input" placeholder="🔍  Search store, product, rationale…" oninput="filterReplenishTable()" />
+            <input type="text" id="replenish-search" class="search-input" placeholder="Search store, product, rationale…" oninput="filterReplenishTable()" />
             <select id="replenish-status-filter" class="select-control" onchange="loadReplenishments()">
               <option value="PENDING_APPROVAL" selected>Pending Approval</option>
               <option value="APPROVED">Approved Orders</option>
               <option value="REJECTED">Rejected Orders</option>
               <option value="all">All Records</option>
             </select>
-            <button class="btn btn-primary" onclick="loadReplenishments()">🔄 Refresh</button>
+            <button class="btn btn-primary" onclick="loadReplenishments()">Refresh</button>
           </div>
           <div class="card">
             <div class="card-header">
@@ -331,14 +366,14 @@
         <!-- Expiry Rescue Approval Panel -->
         <div id="approvals-rescue-panel" class="sub-panel hidden">
           <div class="toolbar">
-            <input type="text" id="rescue-search" class="search-input" placeholder="🔍  Search batch, warehouse, destination store…" oninput="filterRescueTable()" />
+            <input type="text" id="rescue-search" class="search-input" placeholder="Search batch, warehouse, destination store…" oninput="filterRescueTable()" />
             <select id="rescue-status-filter" class="select-control" onchange="loadExpiryRescue()">
               <option value="PENDING_APPROVAL" selected>Pending Approval</option>
               <option value="APPROVED">Authorized Transfers</option>
               <option value="REJECTED">Rejected Transfers</option>
               <option value="all">All Records</option>
             </select>
-            <button class="btn btn-primary" onclick="loadExpiryRescue()">🔄 Refresh</button>
+            <button class="btn btn-primary" onclick="loadExpiryRescue()">Refresh</button>
           </div>
           <div class="card">
             <div class="card-header">
@@ -378,11 +413,11 @@
         <div class="alert-stats-row">
           <div class="alert-stat-card stat-critical" onclick="setAlertSeverityFilter('CRITICAL')">
             <div class="asc-number" id="alert-stat-critical">0</div>
-            <div class="asc-label">🔴 Critical Priority</div>
+            <div class="asc-label">Critical Priority</div>
           </div>
           <div class="alert-stat-card stat-warning" onclick="setAlertSeverityFilter('WARNING')">
             <div class="asc-number" id="alert-stat-warning">0</div>
-            <div class="asc-label">🟡 Warning Level</div>
+            <div class="asc-label">Warning Level</div>
           </div>
           <div class="alert-stat-card stat-total" onclick="setAlertSeverityFilter('all')">
             <div class="asc-number" id="alert-stat-total">0</div>
@@ -392,12 +427,12 @@
 
         <!-- Alert Filter Bar -->
         <div class="toolbar" style="margin-top:1rem">
-          <input type="text" id="alert-search" class="search-input" placeholder="🔍  Search alert message, store, product, shipment…" oninput="filterAlertTable()" />
+          <input type="text" id="alert-search" class="search-input" placeholder="Search alert message, store, product, shipment…" oninput="filterAlertTable()" />
           <select id="alert-severity-filter" class="select-control" onchange="loadAlerts()">
             <option value="all">All Severities</option>
-            <option value="CRITICAL">🔴 Critical Only</option>
-            <option value="WARNING">🟡 Warning Only</option>
-            <option value="INFO">🔵 Info Only</option>
+            <option value="CRITICAL">Critical Only</option>
+            <option value="WARNING">Warning Only</option>
+            <option value="INFO">Info Only</option>
           </select>
           <select id="alert-status-filter" class="select-control" onchange="loadAlerts()">
             <option value="" selected>Open &amp; Acknowledged</option>
@@ -413,7 +448,7 @@
             <option value="DELAYED_SHIPMENT">Delayed Delivery</option>
             <option value="REPLENISHMENT_NEEDED">Urgent Replenishment</option>
           </select>
-          <button class="btn btn-primary" onclick="loadAlerts()">🔄 Refresh Alerts</button>
+          <button class="btn btn-primary" onclick="loadAlerts()">Refresh Alerts</button>
         </div>
 
         <!-- Alert Data Table -->
@@ -447,11 +482,11 @@
       <!-- ─────────── SECTION: DISTRIBUTION ─────────── -->
       <section id="section-distribution" class="section">
         <div class="toolbar">
-          <input type="text" id="plan-search" class="search-input" placeholder="🔍  Search product, warehouse, store…" oninput="filterPlanTable()" />
+          <input type="text" id="plan-search" class="search-input" placeholder="Search product, warehouse, store…" oninput="filterPlanTable()" />
           <select id="plan-category" class="select-control" onchange="filterPlanTable()">
             <option value="">All Categories</option>
           </select>
-          <button class="btn btn-outline" onclick="exportShipmentsCSV()">⬇️ Export CSV</button>
+          <button class="btn btn-outline" onclick="exportShipmentsCSV()">Export CSV</button>
         </div>
 
         <div class="card">
@@ -481,7 +516,7 @@
 
         <div class="card" id="unmet-card" style="margin-top:1.5rem">
           <div class="card-header">
-            <h2 class="card-title">⚠️ Unmet Demand</h2>
+            <h2 class="card-title">Unmet Demand</h2>
             <span id="unmet-count" class="card-subtitle"></span>
           </div>
           <div class="table-wrap">
@@ -505,12 +540,12 @@
         <div class="card" id="ranked-dist-card" style="margin-top:1.5rem">
           <div class="card-header">
             <div>
-              <h2 class="card-title">🎯 Multi-Echelon Sourcing Recommendations</h2>
+              <h2 class="card-title">Multi-Echelon Sourcing Recommendations</h2>
               <span class="card-subtitle">Automated warehouse ranking comparing road distance, transport tariffs, and stock availability</span>
             </div>
             <div style="display:flex;gap:.5rem;align-items:center;">
-              <span class="chip chip-warning">⚠️ SIMULATED_SAMPLE DATA</span>
-              <button class="btn btn-outline btn-sm" onclick="loadDistributionOptions()">🔄 Refresh</button>
+              <span class="chip chip-warning">SIMULATED DATA</span>
+              <button class="btn btn-outline btn-sm" onclick="loadDistributionOptions()">Refresh</button>
             </div>
           </div>
           <div class="banner-subtle" style="margin: 0 1.25rem 1rem; padding: .65rem .9rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; font-size: .8rem; color: #92400e;">
@@ -543,19 +578,19 @@
       <!-- ─────────── SECTION: INVENTORY ─────────── -->
       <section id="section-inventory" class="section">
         <div class="sub-tabs">
-          <button class="sub-tab active" id="subtab-stores" onclick="switchSubTab('stores')">🏪 Store Health</button>
-          <button class="sub-tab" id="subtab-warehouses" onclick="switchSubTab('warehouses')">🏭 Warehouse Batches</button>
+          <button class="sub-tab active" id="subtab-stores" onclick="switchSubTab('stores')">Store Health</button>
+          <button class="sub-tab" id="subtab-warehouses" onclick="switchSubTab('warehouses')">Warehouse Batches</button>
         </div>
 
         <!-- Store Health -->
         <div id="inv-stores-panel" class="sub-panel">
           <div class="toolbar">
-            <input type="text" id="store-search" class="search-input" placeholder="🔍  Search store, city, product…" oninput="filterStoreTable()" />
+            <input type="text" id="store-search" class="search-input" placeholder="Search store, city, product…" oninput="filterStoreTable()" />
             <select id="store-status-filter" class="select-control" onchange="filterStoreTable()">
               <option value="">All Statuses</option>
-              <option value="Critical">🔴 Critical</option>
-              <option value="Warning">🟡 Warning</option>
-              <option value="Healthy">🟢 Healthy</option>
+              <option value="Critical">Critical</option>
+              <option value="Warning">Warning</option>
+              <option value="Healthy">Healthy</option>
             </select>
           </div>
           <div class="card">
@@ -588,12 +623,12 @@
         <!-- Warehouse Batches -->
         <div id="inv-warehouses-panel" class="sub-panel hidden">
           <div class="toolbar">
-            <input type="text" id="wh-search" class="search-input" placeholder="🔍  Search batch, warehouse, product…" oninput="filterWhTable()" />
+            <input type="text" id="wh-search" class="search-input" placeholder="Search batch, warehouse, product…" oninput="filterWhTable()" />
             <select id="wh-status-filter" class="select-control" onchange="filterWhTable()">
               <option value="">All Statuses</option>
-              <option value="Urgent">🔴 Urgent</option>
-              <option value="Expiring-soon">🟡 Expiring Soon</option>
-              <option value="Healthy">🟢 Healthy</option>
+              <option value="Urgent">Urgent</option>
+              <option value="Expiring-soon">Expiring Soon</option>
+              <option value="Healthy">Healthy</option>
             </select>
           </div>
           <div class="card">
@@ -644,7 +679,7 @@
                 <option value="30">30 Days</option>
               </select>
             </div>
-            <button class="btn btn-primary" onclick="runForecast()">📈 Run Forecast</button>
+            <button class="btn btn-primary" onclick="runForecast()">Run Forecast</button>
           </div>
         </div>
 
@@ -668,7 +703,7 @@
         <div class="whatif-layout">
           <div class="card whatif-controls-card">
             <div class="card-header">
-              <h2 class="card-title">🔬 Scenario Parameters</h2>
+              <h2 class="card-title">Scenario Parameters</h2>
               <span class="card-subtitle">Adjust variables and run the simulation</span>
             </div>
 
@@ -700,13 +735,15 @@
               </div>
             </div>
 
-            <button class="btn btn-primary btn-full" onclick="runWhatIf()">🚀 Run Simulation</button>
+            <button class="btn btn-primary btn-full" onclick="runWhatIf()">Run Simulation</button>
           </div>
 
           <div class="whatif-results">
             <div id="whatif-kpis" class="kpi-grid kpi-grid-2">
               <div class="kpi-card placeholder-card">
-                <div class="kpi-icon">📊</div>
+                <div class="kpi-icon">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+                </div>
                 <div class="kpi-body">
                   <div class="kpi-value">—</div>
                   <div class="kpi-label">Run simulation to see results</div>
@@ -723,11 +760,11 @@
         <div class="card" style="margin-bottom:1rem">
           <div class="card-header">
             <div>
-              <h2 class="card-title">🗺️ Live Shipment Route Map</h2>
-              <span class="card-subtitle">Warehouses (🏭) → Delivery locations across Maharashtra. Routes shown based on active shipment plan.</span>
+              <h2 class="card-title">Live Shipment Route Map</h2>
+              <span class="card-subtitle">Warehouses (DC) to delivery locations across Maharashtra. Routes shown based on active shipment plan.</span>
             </div>
             <div style="display:flex;gap:.6rem;align-items:center">
-              <button class="btn btn-primary" onclick="reloadMap()">🔄 Reload Map</button>
+              <button class="btn btn-primary" onclick="reloadMap()">Reload Map</button>
             </div>
           </div>
           <!-- Map legend -->
@@ -745,10 +782,10 @@
         <div class="card" style="margin-bottom:1.5rem">
           <div class="card-header">
             <div>
-              <h2 class="card-title">🚚 Maharashtra Corridor Active Dispatches</h2>
+              <h2 class="card-title">Maharashtra Corridor Active Dispatches</h2>
               <span class="card-subtitle">Live status tracking for Pune, Satara, Kolhapur, Sangli, and Karad</span>
             </div>
-            <span class="chip chip-primary" id="fleet-live-badge">⚡ 5 Active Dispatches</span>
+            <span class="chip chip-primary" id="fleet-live-badge">5 Active Dispatches</span>
           </div>
           <div class="fleet-stops-grid" id="fleet-stops-cards">
             <!-- Dynamic stop cards rendered by JS -->
@@ -758,7 +795,7 @@
         <!-- Route Details Table -->
         <div class="card">
           <div class="card-header">
-            <h2 class="card-title">📋 Active Delivery Locations</h2>
+            <h2 class="card-title">Active Delivery Locations</h2>
             <span class="card-subtitle">All shipment destinations including new Maharashtra locations</span>
           </div>
           <div class="table-wrap">
@@ -784,10 +821,10 @@
         <div class="card" style="margin-top:1.5rem">
           <div class="card-header">
             <div>
-              <h2 class="card-title">⏱️ Shipment Deadline &amp; Delay Monitoring</h2>
+              <h2 class="card-title">Shipment Deadline &amp; Delay Monitoring</h2>
               <span class="card-subtitle">Automated SLA tracker evaluating dispatch milestones against expected delivery times</span>
             </div>
-            <button class="btn btn-outline btn-sm" onclick="loadDeliveryMonitoring()">🔄 Refresh Shipments</button>
+            <button class="btn btn-outline btn-sm" onclick="loadDeliveryMonitoring()">Refresh Shipments</button>
           </div>
           <div class="banner-subtle" style="margin: 0 1.25rem 1rem; padding: .65rem .9rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: .8rem; color: #1e40af;">
             <strong>Audit Disclosure</strong>: Milestone tracking is captured via driver manifest checkpoints at transit toll gates and store receiving docks. No live continuous GPS hardware claimed.
@@ -826,74 +863,82 @@
       <div id="modal-role-select-view">
         <div class="modal-header">
           <div>
-            <h2 class="modal-title">🔒 User Workspace Authentication</h2>
+            <h2 class="modal-title">User Workspace Authentication</h2>
             <p class="modal-subtitle">Select a user role to authenticate with 4-digit PIN</p>
           </div>
-          <button class="modal-close" id="modal-close-btn" onclick="closeRoleModal()">✕</button>
+          <button class="modal-close" id="modal-close-btn" onclick="closeRoleModal()">&times;</button>
         </div>
         <div class="role-cards-grid">
           <!-- 1. Admin -->
           <div class="role-selection-card" onclick="promptPinForRole('admin')">
             <div class="rsc-header">
-              <span class="rsc-icon" style="background:#dbeafe;color:#2563eb">👑</span>
+              <span class="rsc-icon" style="background:#dbeafe;color:#2563eb">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+              </span>
               <span class="rsc-badge" style="background:#dbeafe;color:#1e40af">PIN: 1111</span>
             </div>
             <h3 class="rsc-title">1. Administrator</h3>
             <p class="rsc-desc">Executive tower with global network KPIs, SciPy MILP optimizer, What-If simulator, and all reports.</p>
             <div class="rsc-features">
-              <span>✓ All 6 Modules</span>
-              <span>✓ SciPy MILP Solver</span>
-              <span>✓ What-If Sandbox</span>
+              <span>• All 6 Modules</span>
+              <span>• SciPy MILP Solver</span>
+              <span>• What-If Sandbox</span>
             </div>
-            <button class="btn btn-primary btn-full rsc-btn">Unlock as Admin 🔒</button>
+            <button class="btn btn-primary btn-full rsc-btn">Unlock as Admin</button>
           </div>
 
           <!-- 2. Warehouse -->
           <div class="role-selection-card" onclick="promptPinForRole('warehouse')">
             <div class="rsc-header">
-              <span class="rsc-icon" style="background:#fef3c7;color:#d97706">🏭</span>
+              <span class="rsc-icon" style="background:#fef3c7;color:#d97706">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"></rect><path d="M3 9h18M9 21V9"></path></svg>
+              </span>
               <span class="rsc-badge" style="background:#fef3c7;color:#92400e">PIN: 2222</span>
             </div>
             <h3 class="rsc-title">2. Warehouse Manager</h3>
             <p class="rsc-desc">Batch shelf-life tracking (FEFO), cold-chain storage status, warehouse inventory value, and outbound manifests.</p>
             <div class="rsc-features">
-              <span>✓ Warehouse Batches</span>
-              <span>✓ FEFO Expiry Radar</span>
-              <span>✓ Outbound Manifest</span>
+              <span>• Warehouse Batches</span>
+              <span>• FEFO Expiry Radar</span>
+              <span>• Outbound Manifest</span>
             </div>
-            <button class="btn btn-outline btn-full rsc-btn">Unlock as Warehouse 🔒</button>
+            <button class="btn btn-outline btn-full rsc-btn">Unlock as Warehouse</button>
           </div>
 
           <!-- 3. Retail -->
           <div class="role-selection-card" onclick="promptPinForRole('retail')">
             <div class="rsc-header">
-              <span class="rsc-icon" style="background:#dcfce7;color:#16a34a">🏪</span>
+              <span class="rsc-icon" style="background:#dcfce7;color:#16a34a">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+              </span>
               <span class="rsc-badge" style="background:#dcfce7;color:#166534">PIN: 3333</span>
             </div>
             <h3 class="rsc-title">3. Retail Store Manager</h3>
             <p class="rsc-desc">Store-level health, Days of Cover, Reorder Points (ROP), stockout prevention, and ML demand forecasts.</p>
             <div class="rsc-features">
-              <span>✓ Store Stock &amp; Cover</span>
-              <span>✓ Safety Stock &amp; ROP</span>
-              <span>✓ ML Demand Forecast</span>
+              <span>• Store Stock &amp; Cover</span>
+              <span>• Safety Stock &amp; ROP</span>
+              <span>• ML Demand Forecast</span>
             </div>
-            <button class="btn btn-outline btn-full rsc-btn">Unlock as Retail 🔒</button>
+            <button class="btn btn-outline btn-full rsc-btn">Unlock as Retail</button>
           </div>
 
           <!-- 4. Delivery -->
           <div class="role-selection-card" onclick="promptPinForRole('delivery')">
             <div class="rsc-header">
-              <span class="rsc-icon" style="background:#f3e8ff;color:#7c3aed">🚚</span>
+              <span class="rsc-icon" style="background:#f3e8ff;color:#7c3aed">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="3" width="15" height="13"></rect><polygon points="16 8 20 8 23 11 23 16 16 16 16 8"></polygon><circle cx="5.5" cy="18.5" r="2.5"></circle><circle cx="18.5" cy="18.5" r="2.5"></circle></svg>
+              </span>
               <span class="rsc-badge" style="background:#f3e8ff;color:#6b21a8">PIN: 4444</span>
             </div>
             <h3 class="rsc-title">4. Delivery Fleet / Driver</h3>
             <p class="rsc-desc">Road transit routes, live delivery status for Pune, Satara, Kolhapur, Sangli, Karad, and dispatch sheets.</p>
             <div class="rsc-features">
-              <span>✓ Live Route Map</span>
-              <span>✓ Pune-Kolhapur Corridor</span>
-              <span>✓ Stop Status Updates</span>
+              <span>• Live Route Map</span>
+              <span>• Pune-Kolhapur Corridor</span>
+              <span>• Stop Status Updates</span>
             </div>
-            <button class="btn btn-outline btn-full rsc-btn">Unlock as Delivery 🔒</button>
+            <button class="btn btn-outline btn-full rsc-btn">Unlock as Delivery</button>
           </div>
         </div>
       </div>
@@ -905,12 +950,14 @@
             <h2 class="modal-title" id="pin-modal-title">Enter 4-Digit Security PIN</h2>
             <p class="modal-subtitle" id="pin-modal-subtitle">Authorized access only</p>
           </div>
-          <button class="modal-close" onclick="cancelPinPrompt()">✕</button>
+          <button class="modal-close" onclick="cancelPinPrompt()">&times;</button>
         </div>
 
         <div class="pin-entry-body">
           <div class="pin-role-preview">
-            <div class="pin-role-icon" id="pin-role-icon">👑</div>
+            <div class="pin-role-icon" id="pin-role-icon">
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path></svg>
+            </div>
             <div>
               <strong id="pin-role-name">Administrator</strong>
               <small id="pin-role-desc">Requires 4-digit PIN verification</small>
@@ -927,7 +974,7 @@
             <div class="pin-box" id="pin-box-3"></div>
           </div>
 
-          <p class="pin-hint-text" id="pin-hint-text">💡 Demo PIN: <strong>1111</strong></p>
+          <p class="pin-hint-text" id="pin-hint-text">Demo PIN: <strong>1111</strong></p>
 
           <!-- On-screen PIN Keypad -->
           <div class="pin-numpad">
@@ -947,7 +994,7 @@
 
           <div class="pin-footer-actions">
             <button type="button" class="btn btn-outline" onclick="cancelPinPrompt()">← Back to Roles</button>
-            <button type="button" class="btn btn-primary" id="btn-submit-pin" onclick="verifyEnteredPin()">Unlock Workspace 🔓</button>
+            <button type="button" class="btn btn-primary" id="btn-submit-pin" onclick="verifyEnteredPin()">Unlock Workspace</button>
           </div>
         </div>
       </div>
@@ -963,8 +1010,21 @@
           <h2 class="modal-title" id="action-dialog-title">Manager Authorization</h2>
           <p class="modal-subtitle" id="action-dialog-subtitle">Review details and submit decision notes</p>
         </div>
-        <button class="modal-close" onclick="closeActionDialog(false)">✕</button>
+        <button class="modal-close" onclick="closeActionDialog(false)">&times;</button>
       </div>
+      <div class="prompt-modal-body">
+        <div id="action-dialog-message" class="prompt-message-box"></div>
+        <div class="control-group" id="action-dialog-input-group" style="margin-top:1rem;">
+          <label class="control-label" id="action-dialog-input-label" for="action-dialog-input">Manager Notes / Rationale:</label>
+          <input type="text" id="action-dialog-input" class="search-input" style="width:100%" placeholder="Enter audit notes..." />
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:.65rem;padding:1rem 1.5rem;border-top:1px solid var(--border);">
+        <button type="button" class="btn btn-outline" onclick="closeActionDialog(false)">Cancel</button>
+        <button type="button" class="btn btn-primary" id="action-dialog-confirm-btn" onclick="closeActionDialog(true)">Confirm Decision</button>
+      </div>
+    </div>
+  </div>
       <div class="prompt-modal-body">
         <div id="action-dialog-message" class="prompt-message-box"></div>
         <div class="control-group" id="action-dialog-input-group" style="margin-top:1rem;">

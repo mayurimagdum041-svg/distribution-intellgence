@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" fill="none">
+  <defs>
+    <linearGradient id="icon-bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a"/>
+      <stop offset="100%" stop-color="#1e293b"/>
+    </linearGradient>
+    <linearGradient id="cube-t" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#60a5fa"/>
+      <stop offset="100%" stop-color="#2563eb"/>
+    </linearGradient>
+    <linearGradient id="cube-l" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d4ed8"/>
+      <stop offset="100%" stop-color="#0f172a"/>
+    </linearGradient>
+    <linearGradient id="cube-r" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#1e40af"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Modern Rounded Black Slate Container -->
+  <rect width="64" height="64" rx="16" fill="url(#icon-bg)"/>
+  <rect x="0.5" y="0.5" width="63" height="63" rx="15.5" stroke="#334155" stroke-width="1"/>
+
+  <!-- Isometric Neural Cube -->
+  <g transform="translate(10, 8)">
+    <path d="M22 8 L38 17 L22 26 L6 17 Z" fill="url(#cube-t)"/>
+    <path d="M6 17 L22 26 L22 41 L6 32 Z" fill="url(#cube-l)"/>
+    <path d="M22 26 L38 17 L38 32 L22 41 Z" fill="url(#cube-r)"/>
+
+    <!-- Neural Circuit Lines -->
+    <path d="M14 12.5 L22 17 L30 12.5" stroke="#bfdbfe" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M22 17 L22 26" stroke="#93c5fd" stroke-width="2" stroke-linecap="round"/>
+    
+    <!-- Central Node -->
+    <circle cx="22" cy="17" r="3" fill="#38bdf8"/>
+    <circle cx="14" cy="12.5" r="1.5" fill="#ffffff"/>
+    <circle cx="30" cy="12.5" r="1.5" fill="#ffffff"/>
+  </g>
+</svg>
