@@ -89,7 +89,7 @@ USERS = {
         "badge": "Retail Store Manager",
         "avatar": "RT",
         "color": "#16a34a",
-        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast"],
+        "allowed_sections": ["inventory", "approvals", "alerts", "distribution", "forecast", "map"],
         "description": "Store stock levels, Days of Cover, Reorder Points (ROP), auto-replenishment requests, and ML demand forecasts."
     },
     "delivery": {

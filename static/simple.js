@@ -39,7 +39,7 @@ const USER_ROLES = {
     badge: 'Retail Store Manager',
     avatar: 'RT',
     color: '#16a34a',
-    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'forecast'],
+    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'forecast', 'map'],
     defaultSection: 'inventory',
     defaultSubTab: 'stores',
     bannerIcon: '',
@@ -972,12 +972,12 @@ function renderForecastKPIs(data) {
   const totalExpected = forecast.reduce((s, f) => s + (f.predicted_demand || 0), 0);
   const dailyAvg      = forecast.length ? totalExpected / forecast.length : 0;
   const mae           = data.metrics?.mae  ?? data.mae  ?? null;
-  const mape          = data.metrics?.mape ?? data.mape ?? null;
+  const mape          = data.metrics?.mape ?? data.metrics?.mape_percent ?? data.mape ?? data.mape_percent ?? null;
   const cards = [
     { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path></svg>', label: 'Total Expected (units)', value: fmtNum(Math.round(totalExpected)), accent: 'kpi-primary' },
     { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>', label: 'Daily Avg Demand',        value: fmtNum(Math.round(dailyAvg)),     accent: 'kpi-primary' },
     { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>', label: 'MAE (units)',              value: mae  != null ? Number(mae).toFixed(1) : '—', accent: '' },
-    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>', label: 'MAPE',                    value: mape != null ? Number(mape).toFixed(1) + '%' : '—', accent: '' },
+    { icon: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 14 14"></polyline></svg>', label: 'MAPE',                    value: mape != null ? Number(mape).toFixed(1) + '%' : '—', accent: mape != null ? 'kpi-success' : '' },
   ];
   kpiDiv.innerHTML = cards.map(c => `
     <div class="kpi-card ${c.accent}">
@@ -988,6 +988,14 @@ function renderForecastKPIs(data) {
       </div>
     </div>
   `).join('');
+}
+
+function viewForecastOnMap() {
+  const storeId = document.getElementById('fc-store')?.value;
+  navigate('map');
+  setTimeout(() => {
+    initMap(storeId);
+  }, 120);
 }
 
 function renderForecastChart(data) {
@@ -1160,10 +1168,17 @@ const STORES_STATIC = [
   { id: 'ST-VAD',   name: 'Vadodara Express Outlet',     city: 'Vadodara',   lat: 22.3072, lng: 73.1812, type: 'store' },
 ];
 
-function initMap() {
+function initMap(focusStoreId = null) {
+  const container = document.getElementById('shipment-map');
+  if (!container) return;
+
   // Destroy existing map instance if re-entering the section
   if (state.leafletMap) {
-    state.leafletMap.remove();
+    try {
+      state.leafletMap.remove();
+    } catch (e) {
+      console.warn('Error removing old map instance:', e);
+    }
     state.leafletMap = null;
   }
 
@@ -1176,6 +1191,10 @@ function initMap() {
     attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 18,
   }).addTo(map);
+
+  // Invalidate map dimensions on next event loops to ensure tiles render immediately
+  setTimeout(() => { if (map) map.invalidateSize(); }, 100);
+  setTimeout(() => { if (map) map.invalidateSize(); }, 350);
 
   // Custom icons
   const warehouseIcon = L.divIcon({
@@ -1214,14 +1233,24 @@ function initMap() {
 
   // Plot existing stores
   STORES_STATIC.forEach(st => {
+    const isTarget = focusStoreId && st.id === focusStoreId;
     const marker = L.marker([st.lat, st.lng], { icon: storeIcon }).addTo(map);
+    const storeBadge = isTarget ?
+      '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#16a34a;color:#fff;border-radius:4px;font-size:11px">Forecasted Store</span>' :
+      '<span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#2563eb;color:#fff;border-radius:4px;font-size:11px">Retail Store</span>';
+
     marker.bindPopup(`
       <div style="font-family:Inter,sans-serif;min-width:160px">
         <strong style="font-size:13px">${st.name}</strong><br/>
         <span style="color:#64748b;font-size:12px">${st.city}</span><br/>
-        <span style="display:inline-block;margin-top:6px;padding:2px 8px;background:#2563eb;color:#fff;border-radius:4px;font-size:11px">Retail Store</span>
+        ${storeBadge}
       </div>
     `);
+
+    if (isTarget) {
+      map.setView([st.lat, st.lng], 9);
+      setTimeout(() => marker.openPopup(), 400);
+    }
   });
 
   // Plot NEW delivery locations

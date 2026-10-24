@@ -195,10 +195,13 @@ class DemandForecaster:
             "metrics": {
                 "mae": round(mae, 2),
                 "rmse": round(rmse, 2),
+                "mape": round(mape, 1),
                 "mape_percent": round(mape, 1),
                 "baseline_mae": round(stat_mae, 2),
                 "accuracy_improvement_pct": round(max(0, (stat_mae - mae) / stat_mae * 100), 1),
             },
+            "mae": round(mae, 2),
+            "mape": round(mape, 1),
             "feature_importance": feature_weights,
             "history": history_series,
             "forecast": future_records,
