@@ -126,18 +126,18 @@ def run_auto_replenishment(dry_run: bool = False, db_path: Optional[str] = None)
                 if risk_status not in ("Critical", "Warning") and current_stock >= rop:
                     continue
 
-                # Idempotency key for pending recommendation
+                # Idempotency key for recommendation
                 rec_key = generate_idempotency_hash("REPLENISH", store_id, product_id)
 
-                # Check if a pending recommendation already exists
+                # Check if a pending or active recommendation already exists
                 existing = conn.execute("""
                 SELECT id, suggested_quantity, status FROM replenishment_requests
-                WHERE idempotency_key = ? AND status = 'PENDING_APPROVAL';
+                WHERE idempotency_key = ? AND status IN ('PENDING_APPROVAL', 'APPROVED', 'DISPATCHED');
                 """, (rec_key,)).fetchone()
 
                 if existing:
-                    logger.debug("Pending replenishment request already active for %s - Product %s (ID %s)",
-                                 store_id, product_id, existing["id"])
+                    logger.debug("Active replenishment request already exists for %s - Product %s (ID %s, status %s)",
+                                 store_id, product_id, existing["id"], existing["status"])
                     continue
 
                 # Calculate suggested order quantity
@@ -162,9 +162,9 @@ def run_auto_replenishment(dry_run: bool = False, db_path: Optional[str] = None)
                     })
                     continue
 
-                # Insert recommendation requiring manager approval
-                conn.execute("""
-                INSERT INTO replenishment_requests (
+                # Insert recommendation requiring manager approval (idempotent)
+                cursor = conn.execute("""
+                INSERT OR IGNORE INTO replenishment_requests (
                     store_id, store_name, product_id, product_name, category,
                     current_stock, daily_demand, safety_stock, reorder_point,
                     lead_time_days, suggested_quantity, risk_status, status,
@@ -176,6 +176,9 @@ def run_auto_replenishment(dry_run: bool = False, db_path: Optional[str] = None)
                     rec["safety_stock"], rop, 1.0, suggested_quantity,
                     risk_status, rec_key, now_iso, now_iso
                 ))
+
+                if cursor.rowcount == 0:
+                    continue
 
                 # Create corresponding alert
                 severity = "CRITICAL" if risk_status == "Critical" else "WARNING"
@@ -300,10 +303,10 @@ def run_expiry_rescue(dry_run: bool = False, db_path: Optional[str] = None) -> D
 
                 rescue_key = generate_idempotency_hash("RESCUE", batch_id, dest_id)
 
-                # Check for existing pending rescue transfer
+                # Check for existing pending or active rescue transfer
                 existing = conn.execute("""
                 SELECT id FROM expiry_rescue_transfers
-                WHERE idempotency_key = ? AND status = 'PENDING_APPROVAL';
+                WHERE idempotency_key = ? AND status IN ('PENDING_APPROVAL', 'APPROVED', 'EXECUTED');
                 """, (rescue_key,)).fetchone()
 
                 if existing:
@@ -326,8 +329,8 @@ def run_expiry_rescue(dry_run: bool = False, db_path: Optional[str] = None) -> D
                     })
                     continue
 
-                conn.execute("""
-                INSERT INTO expiry_rescue_transfers (
+                cursor = conn.execute("""
+                INSERT OR IGNORE INTO expiry_rescue_transfers (
                     batch_id, product_id, product_name, category,
                     source_warehouse_id, source_warehouse_name,
                     destination_store_id, destination_store_name,
@@ -346,6 +349,9 @@ def run_expiry_rescue(dry_run: bool = False, db_path: Optional[str] = None) -> D
                     best_store["daily_demand"],
                     reason, rescue_key, now_iso, now_iso
                 ))
+
+                if cursor.rowcount == 0:
+                    continue
 
                 # Create Alert
                 severity = "CRITICAL" if expiry_days <= 3 else "WARNING"
