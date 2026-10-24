@@ -5,9 +5,66 @@
  */
 
 /* ══════════════════════════════════════
+   USER ROLES & AUTHENTICATION
+══════════════════════════════════════ */
+const USER_ROLES = {
+  admin: {
+    key: 'admin',
+    name: 'System Administrator',
+    badge: '👑 Administrator',
+    avatar: 'AD',
+    color: '#2563eb',
+    allowedSections: ['overview', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
+    defaultSection: 'overview',
+    bannerIcon: '👑',
+    bannerTitle: 'Logged in as Administrator (Full Access)',
+    bannerDesc: 'Full executive control: global network KPIs, SciPy HiGHS MILP solver, What-If simulation sandbox, and all reports.'
+  },
+  warehouse: {
+    key: 'warehouse',
+    name: 'Pune Regional DC Head',
+    badge: '🏭 Warehouse Manager',
+    avatar: 'WH',
+    color: '#d97706',
+    allowedSections: ['inventory', 'distribution', 'map'],
+    defaultSection: 'inventory',
+    defaultSubTab: 'warehouses',
+    bannerIcon: '🏭',
+    bannerTitle: 'Logged in as Warehouse Manager (Pune Hub)',
+    bannerDesc: 'Monitoring batch shelf-life (FEFO radar), cold-chain pallet storage, warehouse valuation, and outbound manifests.'
+  },
+  retail: {
+    key: 'retail',
+    name: 'Store Operations Head',
+    badge: '🏪 Retail Store Manager',
+    avatar: 'RT',
+    color: '#16a34a',
+    allowedSections: ['inventory', 'distribution', 'forecast'],
+    defaultSection: 'inventory',
+    defaultSubTab: 'stores',
+    bannerIcon: '🏪',
+    bannerTitle: 'Logged in as Retail Store Manager',
+    bannerDesc: 'Tracking store on-hand stock, Days of Cover, Reorder Points (ROP), stockout prevention, and ML demand forecasts.'
+  },
+  delivery: {
+    key: 'delivery',
+    name: 'Maharashtra Corridor Fleet',
+    badge: '🚚 Delivery Fleet',
+    avatar: 'DL',
+    color: '#7c3aed',
+    allowedSections: ['map', 'distribution'],
+    defaultSection: 'map',
+    bannerIcon: '🚚',
+    bannerTitle: 'Logged in as Delivery Partner & Driver Fleet',
+    bannerDesc: 'Live GPS dispatch route navigation, driver assignments, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, and Karad.'
+  }
+};
+
+/* ══════════════════════════════════════
    STATE
 ══════════════════════════════════════ */
 const state = {
+  currentUser: 'admin',
   currentSection: 'overview',
   horizon: 3,
   summary: null,
@@ -24,6 +81,17 @@ const state = {
 };
 
 /* ══════════════════════════════════════
+   LIVE DELIVERY STOPS (Pune, Satara, Kolhapur, Sangli, Karad)
+══════════════════════════════════════ */
+let liveDeliveryStops = {
+  "LOC-PUNE":     { city: "Pune",     status: "In Transit",        eta: "45 mins",        driver: "Rajesh Shinde", vehicle: "MH-12-Q-4021" },
+  "LOC-SATARA":   { city: "Satara",   status: "Dispatched",        eta: "2 hrs 10 mins",  driver: "Sachin Kadam",  vehicle: "MH-11-V-8812" },
+  "LOC-KOLHAPUR": { city: "Kolhapur", status: "Out for Delivery",  eta: "3 hrs 30 mins",  driver: "Amit Patil",    vehicle: "MH-09-AA-1004" },
+  "LOC-SANGLI":   { city: "Sangli",   status: "In Transit",        eta: "3 hrs 45 mins",  driver: "Sunil More",    vehicle: "MH-10-CX-9421" },
+  "LOC-KARAD":    { city: "Karad",    status: "Scheduled",         eta: "2 hrs 40 mins",  driver: "Nitin Sawant",  vehicle: "MH-50-B-3100" }
+};
+
+/* ══════════════════════════════════════
    NEW DELIVERY LOCATIONS — Maharashtra
    Pune, Satara, Kolhapur, Sangli, Karad
 ══════════════════════════════════════ */
@@ -34,6 +102,102 @@ const NEW_LOCATIONS = [
   { id: 'LOC-SANGLI',   name: 'Sangli Distribution Centre',  city: 'Sangli',   lat: 16.8524, lng: 74.5815, type: 'New Delivery' },
   { id: 'LOC-KARAD',    name: 'Karad Logistics Point',       city: 'Karad',    lat: 17.2882, lng: 74.1836, type: 'New Delivery' },
 ];
+
+/* ══════════════════════════════════════
+   ROLE SWITCHING & ACCESS CONTROL
+══════════════════════════════════════ */
+function switchUserRole(roleKey) {
+  const role = USER_ROLES[roleKey];
+  if (!role) return;
+
+  state.currentUser = roleKey;
+  try {
+    localStorage.setItem('optistock_user_role', roleKey);
+  } catch(e) {}
+
+  updateRoleUI(role);
+
+  // If the current section is not allowed in this role, navigate to default
+  if (!role.allowedSections.includes(state.currentSection)) {
+    const defaultNav = document.querySelector(`.nav-link[data-nav="${role.defaultSection}"]`);
+    navigate(role.defaultSection, defaultNav);
+  } else {
+    // Re-highlight active nav link
+    const currentNav = document.querySelector(`.nav-link[data-nav="${state.currentSection}"]`);
+    if (currentNav) {
+      document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
+      currentNav.classList.add('active');
+    }
+  }
+
+  // Handle specific sub-tab landing preferences
+  if (role.defaultSubTab && state.currentSection === 'inventory') {
+    switchSubTab(role.defaultSubTab);
+  }
+
+  // If map section is active, re-render fleet stops
+  if (state.currentSection === 'map') {
+    renderFleetStops();
+  }
+}
+
+function updateRoleUI(role) {
+  // Update Topbar Chips
+  document.querySelectorAll('.role-chip').forEach(btn => btn.classList.remove('active'));
+  const activeChip = document.getElementById(`btn-role-${role.key}`);
+  if (activeChip) activeChip.classList.add('active');
+
+  // Update Sidebar Profile Card
+  const avatarEl = document.getElementById('sidebar-user-avatar');
+  const nameEl   = document.getElementById('sidebar-user-name');
+  const badgeEl  = document.getElementById('sidebar-user-badge');
+
+  if (avatarEl) {
+    avatarEl.textContent = role.avatar;
+    avatarEl.style.background = role.color;
+  }
+  if (nameEl) nameEl.textContent = role.name;
+  if (badgeEl) badgeEl.textContent = role.badge;
+
+  // Filter Sidebar Nav Links according to permissions
+  document.querySelectorAll('.nav-link').forEach(link => {
+    const navKey = link.getAttribute('data-nav');
+    if (!navKey) return;
+    if (role.allowedSections.includes(navKey)) {
+      link.style.display = 'flex';
+    } else {
+      link.style.display = 'none';
+    }
+  });
+
+  // Update Role Notification Banner
+  const banner = document.getElementById('role-welcome-banner');
+  const iconEl = document.getElementById('rwb-icon');
+  const titleEl= document.getElementById('rwb-title');
+  const descEl = document.getElementById('rwb-desc');
+
+  if (banner) {
+    banner.style.borderLeftColor = role.color;
+  }
+  if (iconEl) iconEl.textContent = role.bannerIcon;
+  if (titleEl) titleEl.textContent = role.bannerTitle;
+  if (descEl) descEl.textContent = role.bannerDesc;
+}
+
+function openRoleModal() {
+  const modal = document.getElementById('role-modal');
+  if (modal) modal.classList.remove('hidden');
+}
+
+function closeRoleModal() {
+  const modal = document.getElementById('role-modal');
+  if (modal) modal.classList.add('hidden');
+}
+
+function selectRoleAndClose(roleKey) {
+  switchUserRole(roleKey);
+  closeRoleModal();
+}
 
 /* ══════════════════════════════════════
    NAVIGATION
@@ -48,16 +212,32 @@ const SECTION_META = {
 };
 
 function navigate(section, linkEl) {
-  if (event) event.preventDefault();
+  if (window.event) window.event.preventDefault();
+
+  // If user role does not allow this section, block navigation
+  const currentRole = USER_ROLES[state.currentUser];
+  if (currentRole && !currentRole.allowedSections.includes(section)) {
+    section = currentRole.defaultSection;
+    linkEl = document.querySelector(`.nav-link[data-nav="${section}"]`);
+  }
+
   document.querySelectorAll('.nav-link').forEach(el => el.classList.remove('active'));
-  if (linkEl) linkEl.classList.add('active');
+  if (linkEl) {
+    linkEl.classList.add('active');
+  } else {
+    const foundLink = document.querySelector(`.nav-link[data-nav="${section}"]`);
+    if (foundLink) foundLink.classList.add('active');
+  }
+
   document.querySelectorAll('.section').forEach(el => el.classList.remove('active'));
   const target = document.getElementById('section-' + section);
   if (target) target.classList.add('active');
+
   const meta = SECTION_META[section] || {};
   document.getElementById('page-title').textContent = meta.title || section;
   document.getElementById('page-subtitle').textContent = meta.subtitle || '';
   state.currentSection = section;
+
   lazyLoad(section);
 }
 
@@ -807,31 +987,124 @@ function initMap() {
 
   // Render the locations table
   renderLocationsTable();
+
+  // Render the live fleet stops cards
+  renderFleetStops();
 }
 
 function reloadMap() {
   initMap();
 }
 
+/* ══════════════════════════════════════
+   FLEET DISPATCH & STOPS TRACKER
+   (Pune, Satara, Kolhapur, Sangli, Karad)
+══════════════════════════════════════ */
+async function fetchDeliveryStops() {
+  try {
+    const data = await apiFetch('/api/delivery/stops');
+    if (data && typeof data === 'object') {
+      liveDeliveryStops = { ...liveDeliveryStops, ...data };
+    }
+  } catch (err) {
+    console.warn('[fetchDeliveryStops] Using in-memory fallback', err);
+  }
+}
+
+async function renderFleetStops() {
+  await fetchDeliveryStops();
+  const container = document.getElementById('fleet-stops-cards');
+  if (!container) return;
+
+  const stopKeys = Object.keys(liveDeliveryStops);
+  let completedCount = 0;
+
+  container.innerHTML = stopKeys.map(locId => {
+    const stop = liveDeliveryStops[locId];
+    const isDelivered = stop.status === 'Delivered';
+    if (isDelivered) completedCount++;
+
+    const statusChipClass = isDelivered ? 'chip-healthy' :
+      (stop.status === 'Out for Delivery' ? 'chip-warning' : 'chip-primary');
+
+    return `
+      <div class="fleet-stop-card" id="stop-card-${locId}" style="${isDelivered ? 'border-color:#86efac;background:#f0fdf4;' : ''}">
+        <div class="fsc-header">
+          <span class="fsc-city">📍 ${stop.city}</span>
+          <span class="chip ${statusChipClass}">${stop.status}</span>
+        </div>
+        <div class="fsc-meta">
+          <div><strong>Driver:</strong> ${stop.driver}</div>
+          <div><strong>Vehicle:</strong> ${stop.vehicle}</div>
+          <div><strong>ETA:</strong> ${stop.eta}</div>
+        </div>
+        <div class="fsc-actions">
+          <button class="fsc-btn" onclick="updateStopStatus('${locId}', 'In Transit')">In Transit</button>
+          <button class="fsc-btn delivered" onclick="updateStopStatus('${locId}', 'Delivered')">✓ Delivered</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+
+  const liveBadge = document.getElementById('fleet-live-badge');
+  if (liveBadge) {
+    liveBadge.textContent = `⚡ ${stopKeys.length - completedCount} In Progress · ${completedCount} Delivered`;
+  }
+}
+
+async function updateStopStatus(locId, newStatus) {
+  if (liveDeliveryStops[locId]) {
+    liveDeliveryStops[locId].status = newStatus;
+    if (newStatus === 'Delivered') {
+      liveDeliveryStops[locId].eta = 'Completed';
+    }
+  }
+
+  // Update UI immediately
+  renderFleetStops();
+  renderLocationsTable();
+
+  // Sync with backend API
+  try {
+    await fetch('/api/delivery/stops', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ loc_id: locId, status: newStatus })
+    });
+  } catch (err) {
+    console.error('[updateStopStatus]', err);
+  }
+}
+
 function renderLocationsTable() {
   const tbody = document.getElementById('locations-tbody');
+  if (!tbody) return;
+
   const allLocations = [
     ...WAREHOUSES_STATIC.map(w => ({ ...w, status: 'Active DC', shipments: 'Multiple' })),
     ...STORES_STATIC.map(s => ({ ...s, status: 'Active Store', shipments: 'Receiving' })),
-    ...NEW_LOCATIONS.map(l => ({ ...l, status: '🆕 New Route', shipments: 'Planned' })),
+    ...NEW_LOCATIONS.map(l => {
+      const live = liveDeliveryStops[l.id];
+      const liveStatus = live ? live.status : 'Planned';
+      return { ...l, status: liveStatus, shipments: live ? `${live.driver} (${live.vehicle})` : 'Dispatched' };
+    }),
   ];
 
   tbody.innerHTML = allLocations.map(loc => {
     const typeLabel = loc.type === 'warehouse' ? '🏭 Warehouse' :
                       loc.type === 'New Delivery' ? '📍 New Location' : '🏪 Store';
-    const rowClass  = loc.type === 'New Delivery' ? 'style="background:#f0fdf4"' : '';
+    const isNew = loc.type === 'New Delivery';
+    const rowClass  = isNew ? 'style="background:#f0fdf4"' : '';
+    const statusChip = loc.status === 'Delivered' ? 'chip-healthy' :
+                       (loc.status === 'Out for Delivery' ? 'chip-warning' : (isNew ? 'chip-primary' : 'chip'));
+
     return `
       <tr ${rowClass}>
         <td><strong>${loc.name}</strong></td>
         <td>${typeLabel}</td>
         <td>${loc.city}${loc.type === 'New Delivery' ? ', Maharashtra' : ''}</td>
         <td style="font-family:monospace;font-size:.8rem">${Number(loc.lat).toFixed(4)}, ${Number(loc.lng).toFixed(4)}</td>
-        <td><span class="chip ${loc.type === 'New Delivery' ? 'chip-healthy' : 'chip chip-primary'}">${loc.status}</span></td>
+        <td><span class="chip ${statusChip}">${loc.status}</span></td>
         <td>${loc.shipments}</td>
       </tr>
     `;
@@ -842,5 +1115,11 @@ function renderLocationsTable() {
    INIT
 ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
-  navigate('overview', document.querySelector('.nav-link.active'));
+  // Check for saved role preference
+  let savedRole = 'admin';
+  try {
+    savedRole = localStorage.getItem('optistock_user_role') || 'admin';
+  } catch(e) {}
+
+  switchUserRole(savedRole);
 });

@@ -24,25 +24,35 @@
       </div>
 
       <nav class="sidebar-nav">
-        <a href="#" class="nav-link active" onclick="navigate('overview', this)">
+        <a href="#" class="nav-link active" data-nav="overview" data-roles="admin" onclick="navigate('overview', this)">
           <span class="nav-icon">🏠</span> Overview
         </a>
-        <a href="#" class="nav-link" onclick="navigate('distribution', this)">
+        <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
           <span class="nav-icon">🚚</span> Distribution
         </a>
-        <a href="#" class="nav-link" onclick="navigate('inventory', this)">
+        <a href="#" class="nav-link" data-nav="inventory" data-roles="admin,warehouse,retail" onclick="navigate('inventory', this)">
           <span class="nav-icon">🏪</span> Inventory
         </a>
-        <a href="#" class="nav-link" onclick="navigate('forecast', this)">
+        <a href="#" class="nav-link" data-nav="forecast" data-roles="admin,retail" onclick="navigate('forecast', this)">
           <span class="nav-icon">📈</span> Forecast
         </a>
-        <a href="#" class="nav-link" onclick="navigate('whatif', this)">
+        <a href="#" class="nav-link" data-nav="whatif" data-roles="admin" onclick="navigate('whatif', this)">
           <span class="nav-icon">🔬</span> What-If
         </a>
-        <a href="#" class="nav-link" onclick="navigate('map', this)">
+        <a href="#" class="nav-link" data-nav="map" data-roles="admin,warehouse,delivery" onclick="navigate('map', this)">
           <span class="nav-icon">🗺️</span> Shipment Map
         </a>
       </nav>
+
+      <!-- Sidebar User Profile Card -->
+      <div class="sidebar-user" id="sidebar-user-card" onclick="openRoleModal()">
+        <div class="user-avatar" id="sidebar-user-avatar">AD</div>
+        <div class="user-info">
+          <div class="user-name" id="sidebar-user-name">System Administrator</div>
+          <div class="user-role-badge" id="sidebar-user-badge">👑 Administrator</div>
+        </div>
+        <button class="user-switch-btn" title="Switch User Role">⇆</button>
+      </div>
 
       <div class="sidebar-footer">
         <span class="sidebar-footer-text">AI Powered by MILP + ML</span>
@@ -59,7 +69,24 @@
           <span class="page-subtitle" id="page-subtitle">Key performance indicators at a glance</span>
         </div>
         <div class="topbar-right">
-          <label class="horizon-label" for="horizon-select">Planning horizon:</label>
+          <!-- 4 User Roles Quick Switcher -->
+          <div class="role-selector-bar">
+            <span class="role-bar-label">Role:</span>
+            <button class="role-chip active" id="btn-role-admin" onclick="switchUserRole('admin')">
+              👑 Admin
+            </button>
+            <button class="role-chip" id="btn-role-warehouse" onclick="switchUserRole('warehouse')">
+              🏭 Warehouse
+            </button>
+            <button class="role-chip" id="btn-role-retail" onclick="switchUserRole('retail')">
+              🏪 Retail
+            </button>
+            <button class="role-chip" id="btn-role-delivery" onclick="switchUserRole('delivery')">
+              🚚 Delivery
+            </button>
+          </div>
+
+          <label class="horizon-label" for="horizon-select">Horizon:</label>
           <select id="horizon-select" class="select-control" onchange="onHorizonChange()">
             <option value="1">1 Day</option>
             <option value="3" selected>3 Days</option>
@@ -69,6 +96,18 @@
           <button class="btn btn-primary" onclick="refreshCurrentSection()">🔄 Refresh</button>
         </div>
       </header>
+
+      <!-- Role Notification & Context Banner -->
+      <div id="role-welcome-banner" class="role-welcome-banner">
+        <div class="rwb-icon" id="rwb-icon">👑</div>
+        <div class="rwb-content">
+          <strong id="rwb-title">Logged in as Administrator</strong>
+          <p id="rwb-desc">Full access to global executive KPIs, MILP optimizer, What-If simulation and live shipment map.</p>
+        </div>
+        <div class="rwb-actions">
+          <button class="btn-subtle" onclick="openRoleModal()">Switch Account</button>
+        </div>
+      </div>
 
       <!-- ─────────── SECTION: OVERVIEW ─────────── -->
       <section id="section-overview" class="section active">
@@ -361,6 +400,20 @@
           <div id="shipment-map" style="height:520px;border-radius:8px;margin-top:.75rem;border:1px solid #e2e8f0;"></div>
         </div>
 
+        <!-- Live Delivery Stops & Fleet Tracker (Interactive for Delivery & Admin) -->
+        <div class="card" style="margin-bottom:1.5rem">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">🚚 Maharashtra Corridor Active Dispatches</h2>
+              <span class="card-subtitle">Live status tracking for Pune, Satara, Kolhapur, Sangli, and Karad</span>
+            </div>
+            <span class="chip chip-primary" id="fleet-live-badge">⚡ 5 Active Dispatches</span>
+          </div>
+          <div class="fleet-stops-grid" id="fleet-stops-cards">
+            <!-- Dynamic stop cards rendered by JS -->
+          </div>
+        </div>
+
         <!-- Route Details Table -->
         <div class="card">
           <div class="card-header">
@@ -388,6 +441,84 @@
       </section>
 
     </main>
+  </div>
+
+  <!-- ═══════════════════════ ROLE SELECTION MODAL ═══════════════════════ -->
+  <div class="modal-backdrop hidden" id="role-modal">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title">Select User Role &amp; Perspective</h2>
+          <p class="modal-subtitle">Choose from 4 pre-configured user workspaces</p>
+        </div>
+        <button class="modal-close" onclick="closeRoleModal()">✕</button>
+      </div>
+      <div class="role-cards-grid">
+        <!-- 1. Admin -->
+        <div class="role-selection-card" onclick="selectRoleAndClose('admin')">
+          <div class="rsc-header">
+            <span class="rsc-icon" style="background:#dbeafe;color:#2563eb">👑</span>
+            <span class="rsc-badge" style="background:#dbeafe;color:#1e40af">Full Access</span>
+          </div>
+          <h3 class="rsc-title">1. Administrator</h3>
+          <p class="rsc-desc">Executive tower with global network KPIs, SciPy MILP optimizer, What-If simulator, and all reports.</p>
+          <div class="rsc-features">
+            <span>✓ All 6 Modules</span>
+            <span>✓ SciPy MILP Solver</span>
+            <span>✓ What-If Sandbox</span>
+          </div>
+          <button class="btn btn-primary btn-full rsc-btn">Login as Admin</button>
+        </div>
+
+        <!-- 2. Warehouse -->
+        <div class="role-selection-card" onclick="selectRoleAndClose('warehouse')">
+          <div class="rsc-header">
+            <span class="rsc-icon" style="background:#fef3c7;color:#d97706">🏭</span>
+            <span class="rsc-badge" style="background:#fef3c7;color:#92400e">DC Operations</span>
+          </div>
+          <h3 class="rsc-title">2. Warehouse Manager</h3>
+          <p class="rsc-desc">Batch shelf-life tracking (FEFO), cold-chain storage status, warehouse inventory value, and outbound manifests.</p>
+          <div class="rsc-features">
+            <span>✓ Warehouse Batches</span>
+            <span>✓ FEFO Expiry Radar</span>
+            <span>✓ Outbound Manifest</span>
+          </div>
+          <button class="btn btn-outline btn-full rsc-btn">Login as Warehouse</button>
+        </div>
+
+        <!-- 3. Retail -->
+        <div class="role-selection-card" onclick="selectRoleAndClose('retail')">
+          <div class="rsc-header">
+            <span class="rsc-icon" style="background:#dcfce7;color:#16a34a">🏪</span>
+            <span class="rsc-badge" style="background:#dcfce7;color:#166534">Store Ops</span>
+          </div>
+          <h3 class="rsc-title">3. Retail Store Manager</h3>
+          <p class="rsc-desc">Store-level health, Days of Cover, Reorder Points (ROP), stockout prevention, and ML demand forecasts.</p>
+          <div class="rsc-features">
+            <span>✓ Store Stock &amp; Cover</span>
+            <span>✓ Safety Stock &amp; ROP</span>
+            <span>✓ ML Demand Forecast</span>
+          </div>
+          <button class="btn btn-outline btn-full rsc-btn">Login as Retail</button>
+        </div>
+
+        <!-- 4. Delivery -->
+        <div class="role-selection-card" onclick="selectRoleAndClose('delivery')">
+          <div class="rsc-header">
+            <span class="rsc-icon" style="background:#f3e8ff;color:#7c3aed">🚚</span>
+            <span class="rsc-badge" style="background:#f3e8ff;color:#6b21a8">Fleet &amp; Dispatch</span>
+          </div>
+          <h3 class="rsc-title">4. Delivery Fleet / Driver</h3>
+          <p class="rsc-desc">Road transit routes, live delivery status for Pune, Satara, Kolhapur, Sangli, Karad, and dispatch sheets.</p>
+          <div class="rsc-features">
+            <span>✓ Live Route Map</span>
+            <span>✓ Pune-Kolhapur Corridor</span>
+            <span>✓ Stop Status Updates</span>
+          </div>
+          <button class="btn btn-outline btn-full rsc-btn">Login as Delivery</button>
+        </div>
+      </div>
+    </div>
   </div>
 
   <script src="/static/simple.js"></script>
