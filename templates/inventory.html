@@ -238,8 +238,15 @@
       </button>
     </div>
 
-    <div class="map-floating-panel" style="gap: 0.5rem;">
-      <span style="font-size: 0.74rem; color: #94a3b8;">Click map when adding to set pin</span>
+    <div class="map-floating-panel" style="gap: 0.65rem;">
+      <button type="button" class="btn btn-outline btn-sm" style="padding: 0.25rem 0.65rem; font-size: 0.74rem; background: #ffffff; display: flex; align-items: center; gap: 0.35rem;" onclick="openModal('mapApiKeyModal')">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="12" cy="12" r="3"></circle>
+          <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+        </svg>
+        <span id="mapProviderBadge">Map Provider &amp; API Key</span>
+      </button>
+      <span style="font-size: 0.74rem; color: #64748b;">Click map to pin coordinates</span>
     </div>
   </div>
 
@@ -611,11 +618,78 @@
     </form>
   </div>
 </div>
+
+<!-- Map Provider & Custom API Key Modal -->
+<div class="modal-backdrop" id="mapApiKeyModal">
+  <div class="modal-box" style="max-width: 540px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.65rem;">
+        <div style="width: 36px; height: 36px; border-radius: 10px; background: #eff6ff; color: #2563eb; display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+        </div>
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0;">Map Tile Provider &amp; API Key</h3>
+          <p style="font-size: 0.8rem; color: #64748b; margin: 0;">Join Mapbox, Google Maps, or MapTiler keys or use Free OpenStreetMap</p>
+        </div>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeModal('mapApiKeyModal')">&times;</button>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 1.25rem;">
+      <!-- Active Provider Selection -->
+      <div class="form-group" style="margin-bottom: 0;">
+        <label class="form-label" for="mapProviderSelect">Select Map Layer Provider</label>
+        <select id="mapProviderSelect" class="form-control" onchange="handleMapProviderChange()">
+          <option value="osm">OpenStreetMap Standard (Free, 100% Reliable, No API Key Required)</option>
+          <option value="carto_voyager">CartoDB Voyager (Light SaaS Style)</option>
+          <option value="carto_dark">CartoDB Dark Matter (Dark Operations Style)</option>
+          <option value="mapbox">Mapbox Streets (Requires Mapbox Access Token pk.xxx)</option>
+          <option value="maptiler">MapTiler (Requires MapTiler API Key)</option>
+          <option value="google">Google Maps Roadmap (Requires Google Maps Key)</option>
+          <option value="stadia">Stadia Maps Alidade (Requires Stadia Key)</option>
+        </select>
+      </div>
+
+      <!-- API Key Input Field -->
+      <div class="form-group" id="apiKeyInputGroup" style="margin-bottom: 0;">
+        <label class="form-label" for="mapApiKeyInput" id="apiKeyLabel">API Key / Access Token</label>
+        <input 
+          type="text" 
+          id="mapApiKeyInput" 
+          class="form-control" 
+          placeholder="Paste your API key or token here..." 
+          autocomplete="off"
+        />
+        <div id="apiKeyHint" style="font-size: 0.74rem; color: #64748b; margin-top: 0.35rem;">
+          OpenStreetMap works automatically without any API key. If you select Mapbox, paste your public token (starts with <code style="background:#f1f5f9; padding:1px 4px; border-radius:4px;">pk.</code>).
+        </div>
+      </div>
+
+      <!-- Current Status Banner -->
+      <div id="mapStatusBanner" style="padding: 0.85rem 1rem; background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 12px; font-size: 0.82rem; color: #065f46; display: flex; align-items: center; gap: 0.5rem;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span id="mapStatusText">Active Layer: OpenStreetMap Standard (Online &amp; Active)</span>
+      </div>
+
+      <!-- Actions -->
+      <div style="display: flex; justify-content: flex-end; gap: 0.65rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('mapApiKeyModal')">Close</button>
+        <button type="button" class="btn btn-primary" onclick="applyMapApiKeyAndReload()">Save &amp; Connect Key</button>
+      </div>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>
   let mapInstance = null;
+  let activeTileLayer = null;
   let markersLayer = null;
   let routesLayer = null;
   let vehiclesLayer = null;
@@ -623,25 +697,144 @@
 
   document.addEventListener('DOMContentLoaded', () => {
     initFmcgMap();
+    initMapSettingsUI();
   });
 
+  /**
+   * Reads saved map configuration from localStorage
+   */
+  function getMapConfig() {
+    return {
+      provider: localStorage.getItem('optistock_map_provider') || 'osm',
+      apiKey: localStorage.getItem('optistock_map_api_key') || ''
+    };
+  }
+
+  /**
+   * Applies the requested tile layer with API key support & automatic error fallback
+   */
+  function applyMapTileLayer(provider, apiKey) {
+    if (!mapInstance) return;
+
+    if (activeTileLayer) {
+      mapInstance.removeLayer(activeTileLayer);
+    }
+
+    let tileUrl = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+    let tileOptions = {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank">OpenStreetMap</a> contributors',
+      maxZoom: 19,
+    };
+    let providerLabel = 'OpenStreetMap';
+
+    if (provider === 'carto_voyager') {
+      tileUrl = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+      tileOptions = {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      };
+      providerLabel = 'CartoDB Voyager';
+    } else if (provider === 'carto_dark') {
+      tileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+      tileOptions = {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd',
+        maxZoom: 19
+      };
+      providerLabel = 'CartoDB Dark';
+    } else if (provider === 'mapbox') {
+      const token = apiKey || 'pk.eyJ1Ijoib3B0aXN0b2NrIiwiYSI6ImNsdWVkZW1vMCJ9.demo';
+      tileUrl = `https://api.mapbox.com/styles/v1/mapbox/streets-v12/tiles/{z}/{x}/{y}?access_token=${token}`;
+      tileOptions = {
+        attribution: '&copy; Mapbox &copy; OpenStreetMap',
+        tileSize: 512,
+        zoomOffset: -1,
+        maxZoom: 19
+      };
+      providerLabel = 'Mapbox Streets';
+    } else if (provider === 'maptiler') {
+      const key = apiKey || 'get_your_own_OpIi6ZULNHzrESv6T2vL';
+      tileUrl = `https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=${key}`;
+      tileOptions = {
+        attribution: '&copy; MapTiler &copy; OpenStreetMap',
+        tileSize: 512,
+        zoomOffset: -1,
+        maxZoom: 19
+      };
+      providerLabel = 'MapTiler';
+    } else if (provider === 'google') {
+      tileUrl = apiKey 
+        ? `https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}&key=${apiKey}`
+        : 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+      tileOptions = {
+        attribution: '&copy; Google Maps',
+        maxZoom: 20
+      };
+      providerLabel = 'Google Maps';
+    } else if (provider === 'stadia') {
+      tileUrl = apiKey 
+        ? `https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png?api_key=${apiKey}`
+        : 'https://tiles.stadiamaps.com/tiles/alidade_smooth/{z}/{x}/{y}{r}.png';
+      tileOptions = {
+        attribution: '&copy; Stadia Maps &copy; OpenStreetMap',
+        maxZoom: 20
+      };
+      providerLabel = 'Stadia Maps';
+    }
+
+    activeTileLayer = L.tileLayer(tileUrl, tileOptions);
+
+    // Automatic fallback if provider or API key encounters load errors
+    let errorCount = 0;
+    activeTileLayer.on('tileerror', function() {
+      errorCount++;
+      if (errorCount > 3 && provider !== 'osm') {
+        console.warn(`Tile provider '${provider}' tile error. Falling back to OpenStreetMap standard.`);
+        mapInstance.removeLayer(activeTileLayer);
+        activeTileLayer = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; OpenStreetMap contributors (Auto-Fallback)',
+          maxZoom: 19
+        }).addTo(mapInstance);
+        const badge = document.getElementById('mapProviderBadge');
+        if (badge) badge.textContent = 'OSM Fallback Active';
+      }
+    });
+
+    activeTileLayer.addTo(mapInstance);
+
+    const badge = document.getElementById('mapProviderBadge');
+    if (badge) {
+      badge.textContent = apiKey ? `${providerLabel} (Key Connected)` : providerLabel;
+    }
+  }
+
   function initFmcgMap() {
+    if (typeof L === 'undefined') {
+      console.error("Leaflet library not loaded yet.");
+      setTimeout(initFmcgMap, 200);
+      return;
+    }
+
     // 1. Initialize Leaflet Map centered on Maharashtra & Gujarat corridor
     mapInstance = L.map('fmcgMap', {
       zoomControl: true,
       scrollWheelZoom: true,
     }).setView([19.2, 73.8], 7);
 
-    // Dark sleek OpenStreetMap tiles (CartoDB Dark Matter)
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-      attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
-      subdomains: 'abcd',
-      maxZoom: 19,
-    }).addTo(mapInstance);
+    // Apply configured tile provider & API key
+    const cfg = getMapConfig();
+    applyMapTileLayer(cfg.provider, cfg.apiKey);
 
     markersLayer = L.layerGroup().addTo(mapInstance);
     routesLayer = L.layerGroup().addTo(mapInstance);
     vehiclesLayer = L.layerGroup().addTo(mapInstance);
+
+    // Critical resize recalculation: ensures tiles render immediately without gray boxes
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 150);
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 500);
+    setTimeout(() => { if (mapInstance) mapInstance.invalidateSize(); }, 1200);
+    window.addEventListener('resize', () => { if (mapInstance) mapInstance.invalidateSize(); });
 
     // Map Click Listener to pick coordinates for Add Location Modal!
     mapInstance.on('click', (e) => {
@@ -659,6 +852,91 @@
 
     // Load Geo Data from API
     loadMapGeoData();
+  }
+
+  /**
+   * Initializes the Map Settings Modal controls with saved values
+   */
+  function initMapSettingsUI() {
+    const cfg = getMapConfig();
+    const select = document.getElementById('mapProviderSelect');
+    const input = document.getElementById('mapApiKeyInput');
+    const badge = document.getElementById('mapProviderBadge');
+
+    if (select) select.value = cfg.provider;
+    if (input) input.value = cfg.apiKey;
+    if (badge) {
+      badge.textContent = cfg.apiKey ? `${select.options[select.selectedIndex].text.split(' ')[0]} (Key Connected)` : 'Map Provider & API Key';
+    }
+
+    handleMapProviderChange();
+  }
+
+  function handleMapProviderChange() {
+    const select = document.getElementById('mapProviderSelect');
+    const keyGroup = document.getElementById('apiKeyInputGroup');
+    const hint = document.getElementById('apiKeyHint');
+    const label = document.getElementById('apiKeyLabel');
+    const statusText = document.getElementById('mapStatusText');
+    const statusBanner = document.getElementById('mapStatusBanner');
+    if (!select) return;
+
+    const val = select.value;
+    if (val === 'osm') {
+      label.textContent = 'API Key (Not Required for OpenStreetMap)';
+      hint.innerHTML = 'OpenStreetMap works automatically for free without needing any API key.';
+      statusBanner.style.background = '#ecfdf5';
+      statusBanner.style.borderColor = '#a7f3d0';
+      statusBanner.style.color = '#065f46';
+      statusText.textContent = 'Active Layer: OpenStreetMap Standard (Online & Ready)';
+    } else if (val === 'mapbox') {
+      label.textContent = 'Mapbox Access Token (pk.xxx) *';
+      hint.innerHTML = 'Enter your public access token from <a href="https://account.mapbox.com/" target="_blank">mapbox.com</a> (starts with <code>pk.</code>).';
+      statusBanner.style.background = '#eff6ff';
+      statusBanner.style.borderColor = '#bfdbfe';
+      statusBanner.style.color = '#1e40af';
+      statusText.textContent = 'Provider: Mapbox Vector/Raster Engine';
+    } else if (val === 'maptiler') {
+      label.textContent = 'MapTiler API Key *';
+      hint.innerHTML = 'Enter your API key from <a href="https://cloud.maptiler.com/" target="_blank">cloud.maptiler.com</a>.';
+      statusBanner.style.background = '#eff6ff';
+      statusBanner.style.borderColor = '#bfdbfe';
+      statusBanner.style.color = '#1e40af';
+      statusText.textContent = 'Provider: MapTiler Cloud';
+    } else if (val === 'google') {
+      label.textContent = 'Google Maps API Key (Optional)';
+      hint.innerHTML = 'Google Maps standard roadmap tiles. Add your Google Cloud API key if your account enforces key restrictions.';
+      statusBanner.style.background = '#eff6ff';
+      statusBanner.style.borderColor = '#bfdbfe';
+      statusBanner.style.color = '#1e40af';
+      statusText.textContent = 'Provider: Google Maps';
+    } else {
+      label.textContent = 'API Key (Optional)';
+      hint.innerHTML = 'CartoDB / Stadia map tiles. Works without key or with account token.';
+      statusBanner.style.background = '#ecfdf5';
+      statusBanner.style.borderColor = '#a7f3d0';
+      statusBanner.style.color = '#065f46';
+      statusText.textContent = `Provider: ${select.options[select.selectedIndex].text.split(' ')[0]}`;
+    }
+  }
+
+  function applyMapApiKeyAndReload() {
+    const select = document.getElementById('mapProviderSelect');
+    const input = document.getElementById('mapApiKeyInput');
+
+    const provider = select ? select.value : 'osm';
+    const apiKey = input ? input.value.trim() : '';
+
+    localStorage.setItem('optistock_map_provider', provider);
+    localStorage.setItem('optistock_map_api_key', apiKey);
+
+    applyMapTileLayer(provider, apiKey);
+    closeModal('mapApiKeyModal');
+
+    // Trigger size invalidation to refresh tiles
+    if (mapInstance) {
+      mapInstance.invalidateSize();
+    }
   }
 
   async function loadMapGeoData() {

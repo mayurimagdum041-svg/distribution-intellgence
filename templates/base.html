@@ -13,9 +13,15 @@
   <!-- Main Stylesheet (Pastel Canvas + White Dashboard Panel) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   
-  <!-- Leaflet.js Interactive Map CDN -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <!-- Leaflet.js Interactive Map (CDNJS Primary + unpkg Fallback) -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script>
+    if (typeof L === 'undefined') {
+      document.write('<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />');
+      document.write('<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"><\/script>');
+    }
+  </script>
 
   <!-- Chart.js CDN -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -347,6 +353,19 @@
               <div style="font-size: 0.76rem; color: #64748b;">Notify when stores approach safety stock thresholds</div>
             </div>
             <input type="checkbox" checked style="accent-color: #0f172a; width: 18px; height: 18px;" />
+          </div>
+
+          <div style="padding: 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-top: 0.25rem;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
+              <div style="font-weight: 600; color: #0f172a; font-size: 0.86rem;">Map Provider &amp; API Key</div>
+              <span class="badge" style="background:#ecfdf5; color:#059669; font-size:0.7rem;">Free OSM Ready</span>
+            </div>
+            <div style="font-size: 0.75rem; color: #64748b; margin-bottom: 0.5rem;">
+              Connect custom Mapbox (pk.xxx), Google Maps, or MapTiler keys, or use free OpenStreetMap.
+            </div>
+            <a href="{{ url_for('inventory') }}" class="btn btn-outline btn-sm" style="font-size: 0.76rem; width: 100%; text-align: center;">
+              Open Map &amp; Connect API Key &rarr;
+            </a>
           </div>
         </div>
 
