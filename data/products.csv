@@ -1,0 +1,13 @@
+id,name,sku,category,storage,shelf_life_days,unit_cost,unit_price,weight_kg,min_batch_size
+1,Fresh Pasteurised Milk (1L),DAIRY-MLK-01,Perishable Dairy,Cold Chain,6,32.0,54.0,1.0,20
+2,Artisanal Greek Yogurt (400g),DAIRY-YGT-02,Perishable Dairy,Cold Chain,14,45.0,85.0,0.4,15
+3,Farm Fresh Malai Paneer (500g),DAIRY-PNR-03,Perishable Dairy,Cold Chain,10,95.0,160.0,0.5,10
+4,Cold-Pressed Orange Juice (1L),BEV-OJC-04,Perishable Dairy,Cold Chain,21,65.0,120.0,1.0,12
+5,Whole Wheat Brown Bread (400g),BKRY-BRD-05,Bakery & Snacks,Ambient Dry,7,22.0,45.0,0.4,25
+6,Digestive Fibre Biscuits (300g),SNK-BSC-06,Bakery & Snacks,Ambient Dry,120,28.0,60.0,0.3,20
+7,Rich Tomato Ketchup (1kg),GROC-KCH-07,Bakery & Snacks,Ambient Dry,180,68.0,130.0,1.0,10
+8,Crunchy Peanut Butter (500g),GROC-PBT-08,Bakery & Snacks,Ambient Dry,150,85.0,175.0,0.5,10
+9,Refined Sunflower Cooking Oil (5L),GROC-OIL-09,Ambient Groceries,Ambient Dry,365,480.0,690.0,4.6,6
+10,Royal Basmati Rice (5kg Bag),GROC-RCE-10,Ambient Groceries,Ambient Dry,365,310.0,499.0,5.0,5
+11,Citrus Surface Disinfectant (1L),HCARE-DSF-11,Ambient Groceries,Ambient Dry,365,82.0,165.0,1.0,15
+12,Advanced Laundry Detergent (2kg),HCARE-DTG-12,Ambient Groceries,Ambient Dry,365,140.0,280.0,2.0,10

@@ -1,0 +1,5 @@
+id,name,city,state,type,has_cold_chain,capacity_pallets,lat,lng,operating_cost_per_day
+WH-MUM,Mumbai Central Mega-DC,Mumbai,Maharashtra,Primary CDC,True,15000,19.076,72.8777,24000
+WH-PUN,Pune Regional Distribution Hub,Pune,Maharashtra,Regional RDC,True,11000,18.5204,73.8567,18000
+WH-AHM,Ahmedabad Logistics Hub,Ahmedabad,Gujarat,Regional RDC,True,12500,23.0225,72.5714,16500
+WH-SUR,Surat Coastal Depot,Surat,Gujarat,Secondary Transit Depot,True,8000,21.1702,72.8311,12000

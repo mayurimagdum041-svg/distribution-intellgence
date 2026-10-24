@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptiStock AI | Distribution Intelligence</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">O</div>
+        <div><div class="brand-name">OptiStock<span>AI</span></div><div class="brand-sub">DISTRIBUTION INTELLIGENCE</div></div>
+      </div>
+      <div class="workspace-label">WORKSPACE</div>
+      <nav class="nav">
+        <button class="nav-item active" data-section="overview"><span>▦</span> Overview</button>
+        <button class="nav-item" data-section="distribution"><span>⇄</span> Distribution plan</button>
+        <button class="nav-item" data-section="inventory"><span>▤</span> Inventory</button>
+        <button class="nav-item" data-section="forecast"><span>⌁</span> Demand forecast</button>
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="demo-badge"><span class="pulse"></span> DEMO ENVIRONMENT</div>
+        <div class="profile"><div class="avatar">OS</div><div><strong>Operations Team</strong><small>Supply chain manager</small></div><span class="dots">•••</span></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">SUPPLY CHAIN / INTELLIGENCE</div>
+          <h1 id="page-title">Distribution overview</h1>
+          <p class="subheading" id="page-subtitle">A clearer view of inventory, demand and delivery decisions.</p>
+        </div>
+        <div class="top-actions">
+          <span class="status-pill"><span class="status-dot"></span> System operational</span>
+          <button class="primary-btn" id="generate-btn">✦ Generate plan</button>
+        </div>
+      </header>
+
+      <section class="section-view active" id="overview-section">
+        <div class="welcome-banner">
+          <div>
+            <div class="banner-kicker">INTELLIGENCE BRIEFING <span>• LIVE DEMO DATA</span></div>
+            <h2>Move inventory with <em>purpose.</em></h2>
+            <p>Balance product availability, transport cost and shelf life with data-backed distribution recommendations.</p>
+          </div>
+          <div class="banner-art"><div class="orbit orbit-one"></div><div class="orbit orbit-two"></div><div class="orb-center">↗</div><div class="orb-dot dot-a"></div><div class="orb-dot dot-b"></div><div class="orb-dot dot-c"></div></div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card"><div class="metric-top"><span>Total inventory</span><span class="metric-icon purple">▤</span></div><div class="metric-value" id="total-inventory">—</div><div class="metric-foot">Units across all warehouses</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Stockout risk</span><span class="metric-icon orange">!</span></div><div class="metric-value" id="stockout-risk">—</div><div class="metric-foot">Stores with unmet demand</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Recommended shipments</span><span class="metric-icon blue">⇄</span></div><div class="metric-value" id="shipment-count">—</div><div class="metric-foot">Allocation lines in current plan</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Estimated transport</span><span class="metric-icon green">₹</span></div><div class="metric-value" id="transport-cost">—</div><div class="metric-foot">Based on simulated route costs</div></article>
+        </div>
+
+        <div class="content-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading"><div><h3>Demand intelligence</h3><p>Historical sample vs forecasted demand</p></div><span class="tiny-tag">7 DAY VIEW</span></div>
+            <div class="chart-wrap"><canvas id="demandChart"></canvas></div>
+            <div class="chart-legend"><span><i class="legend-dot history-dot"></i> Simulated history</span><span><i class="legend-dot forecast-dot"></i> Forecast</span></div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><h3>Inventory health</h3><p>Expiry-aware stock overview</p></div><span class="tiny-tag">BY STATUS</span></div>
+            <div class="chart-wrap doughnut-wrap"><canvas id="healthChart"></canvas></div>
+            <div class="health-legend"><div><span class="legend-label"><i class="legend-dot healthy-dot"></i> Healthy stock</span><strong id="healthy-count">—</strong></div><div><span class="legend-label"><i class="legend-dot warning-dot"></i> Expiring soon</span><strong id="expiring-count">—</strong></div><div><span class="legend-label"><i class="legend-dot urgent-dot"></i> Urgent</span><strong id="urgent-count">—</strong></div></div>
+          </article>
+        </div>
+
+        <div class="bottom-grid">
+          <article class="panel">
+            <div class="panel-heading"><div><h3>Priority actions</h3><p>Items that need operations attention</p></div><button class="text-btn" data-goto="inventory">View inventory ↗</button></div>
+            <div id="priority-list" class="priority-list"><div class="loading">Loading alerts…</div></div>
+          </article>
+          <article class="panel savings-panel">
+            <div class="panel-heading"><div><h3>Optimization impact</h3><p>Estimated comparison with a simple baseline</p></div><span class="metric-icon green">↗</span></div>
+            <div class="savings-value" id="estimated-savings">₹—</div>
+            <div class="savings-label">Estimated transport cost difference</div>
+            <div class="compare-bar"><div class="compare-fill" id="compare-fill"></div></div>
+            <div class="compare-labels"><span>Baseline <strong id="baseline-cost">₹—</strong></span><span>Plan <strong id="plan-cost">₹—</strong></span></div>
+            <p class="disclaimer">Demo estimate only. Compare on the same demand, stock and route assumptions before claiming savings.</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section-view" id="distribution-section">
+        <div class="toolbar panel">
+          <div><h3>Recommended distribution plan</h3><p>Suggested product, source, destination and shipment quantity.</p></div>
+          <div class="toolbar-controls"><label for="horizon">Planning horizon</label><select id="horizon"><option value="1">1 day</option><option value="3" selected>3 days</option><option value="7">7 days</option><option value="14">14 days</option></select><button class="primary-btn" id="refresh-plan">Recalculate</button></div>
+        </div>
+        <div class="metric-grid compact-grid">
+          <article class="metric-card"><div class="metric-top"><span>Units allocated</span><span class="metric-icon blue">⇄</span></div><div class="metric-value" id="units-shipped">—</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Unmet demand</span><span class="metric-icon orange">!</span></div><div class="metric-value" id="unmet-demand">—</div></article>
+          <article class="metric-card"><div class="metric-top"><span>Expiry alerts</span><span class="metric-icon purple">◷</span></div><div class="metric-value" id="expiry-count">—</div></article>
+        </div>
+        <article class="panel table-panel"><div class="panel-heading"><div><h3>Shipment recommendations</h3><p id="plan-caption">Calculated from simulated demand and inventory.</p></div><button class="secondary-btn" id="download-csv">↓ Export CSV</button></div>
+          <div class="table-scroll"><table><thead><tr><th>PRODUCT</th><th>FROM WAREHOUSE</th><th>DESTINATION</th><th>QUANTITY</th><th>TRANSPORT COST</th><th>RATIONALE</th></tr></thead><tbody id="shipment-table"></tbody></table></div>
+        </article>
+        <article class="panel table-panel"><div class="panel-heading"><div><h3>Unmet demand alerts</h3><p>Demand that available stock could not fully cover.</p></div></div><div class="table-scroll"><table><thead><tr><th>PRODUCT</th><th>STORE</th><th>CITY</th><th>UNMET UNITS</th></tr></thead><tbody id="unmet-table"></tbody></table></div></article>
+        <div class="assumption-note"><strong>Optimization assumptions:</strong> demand is average daily demand × selected horizon; route costs are illustrative ₹/unit; estimated transit is at most one day; stock with expiry in one day or less is excluded; allocations use a transparent greedy heuristic, not a guaranteed global optimum.</div>
+      </section>
+
+      <section class="section-view" id="inventory-section">
+        <div class="toolbar panel"><div><h3>Inventory control tower</h3><p>Stock levels and shelf-life signals across the warehouse network.</p></div><div class="toolbar-controls"><input id="inventory-search" class="search-input" placeholder="Search product or warehouse…"><select id="inventory-status"><option value="all">All statuses</option><option value="Healthy">Healthy</option><option value="Expiring soon">Expiring soon</option><option value="Urgent">Urgent</option></select></div></div>
+        <article class="panel table-panel"><div class="panel-heading"><div><h3>Stock register</h3><p>Simulated inventory by product and warehouse.</p></div><span class="tiny-tag" id="inventory-record-count">0 RECORDS</span></div><div class="table-scroll"><table><thead><tr><th>PRODUCT</th><th>CATEGORY</th><th>WAREHOUSE</th><th>AVAILABLE UNITS</th><th>EXPIRY IN</th><th>STATUS</th></tr></thead><tbody id="inventory-table"></tbody></table></div></article>
+      </section>
+
+      <section class="section-view" id="forecast-section">
+        <div class="forecast-intro"><div class="eyebrow">DEMAND PLANNING</div><h2>Plan ahead, not after a stockout.</h2><p>Use the demo forecast to understand how estimated demand could guide replenishment decisions.</p></div>
+        <article class="panel chart-panel forecast-panel"><div class="panel-heading"><div><h3>Weekly demand forecast</h3><p id="forecast-method">Calculating forecast…</p></div><span class="tiny-tag">ILLUSTRATIVE</span></div><div class="forecast-chart-wrap"><canvas id="forecastChart"></canvas></div></article>
+        <div class="assumption-note"><strong>Model note:</strong> This prototype uses a simple 3-day moving average with a small illustrative day-of-week adjustment. The generated history is simulated, so this is a demonstration of the workflow, not a validated prediction. Production forecasting should use actual sales history, promotions, seasonality and forecast-error evaluation.</div>
+      </section>
+
+      <footer class="footer"><span>OptiStock AI © 2026</span><span>Built for supply-chain decision support · Demo data</span></footer>
+    </main>
+  </div>
+  <div class="toast" id="toast"></div>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

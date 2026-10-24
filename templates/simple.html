@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>OptiStock AI — Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="/static/simple.css" />
+  <!-- Leaflet.js for map (free, no API key needed) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+  <div class="shell">
+
+    <!-- ═══════════════════════ SIDEBAR ═══════════════════════ -->
+    <aside class="sidebar">
+      <div class="sidebar-logo">
+        <span class="logo-icon">📦</span>
+        <span class="logo-text">OptiStock <span class="logo-accent">AI</span></span>
+      </div>
+
+      <nav class="sidebar-nav">
+        <a href="#" class="nav-link active" onclick="navigate('overview', this)">
+          <span class="nav-icon">🏠</span> Overview
+        </a>
+        <a href="#" class="nav-link" onclick="navigate('distribution', this)">
+          <span class="nav-icon">🚚</span> Distribution
+        </a>
+        <a href="#" class="nav-link" onclick="navigate('inventory', this)">
+          <span class="nav-icon">🏪</span> Inventory
+        </a>
+        <a href="#" class="nav-link" onclick="navigate('forecast', this)">
+          <span class="nav-icon">📈</span> Forecast
+        </a>
+        <a href="#" class="nav-link" onclick="navigate('whatif', this)">
+          <span class="nav-icon">🔬</span> What-If
+        </a>
+        <a href="#" class="nav-link" onclick="navigate('map', this)">
+          <span class="nav-icon">🗺️</span> Shipment Map
+        </a>
+      </nav>
+
+      <div class="sidebar-footer">
+        <span class="sidebar-footer-text">AI Powered by MILP + ML</span>
+      </div>
+    </aside>
+
+    <!-- ═══════════════════════ MAIN ═══════════════════════ -->
+    <main class="main">
+
+      <!-- Global Header -->
+      <header class="topbar">
+        <div class="topbar-left">
+          <h1 class="page-title" id="page-title">Overview</h1>
+          <span class="page-subtitle" id="page-subtitle">Key performance indicators at a glance</span>
+        </div>
+        <div class="topbar-right">
+          <label class="horizon-label" for="horizon-select">Planning horizon:</label>
+          <select id="horizon-select" class="select-control" onchange="onHorizonChange()">
+            <option value="1">1 Day</option>
+            <option value="3" selected>3 Days</option>
+            <option value="7">7 Days</option>
+            <option value="14">14 Days</option>
+          </select>
+          <button class="btn btn-primary" onclick="refreshCurrentSection()">🔄 Refresh</button>
+        </div>
+      </header>
+
+      <!-- ─────────── SECTION: OVERVIEW ─────────── -->
+      <section id="section-overview" class="section active">
+        <div id="kpi-grid" class="kpi-grid">
+          <!-- KPI cards injected by JS -->
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+          <div class="kpi-skeleton"></div>
+        </div>
+
+        <!-- Economic Benefit Banner -->
+        <div id="benefit-banner" class="benefit-banner hidden">
+          <span class="benefit-label">💡 Net Economic Benefit (AI vs. Baseline)</span>
+          <span class="benefit-value" id="benefit-value">—</span>
+        </div>
+
+        <!-- Bar chart -->
+        <div class="card chart-card">
+          <div class="card-header">
+            <h2 class="card-title">AI vs Baseline Performance</h2>
+            <span class="card-subtitle">Fulfillment rate and cost comparison</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="overview-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: DISTRIBUTION ─────────── -->
+      <section id="section-distribution" class="section">
+        <div class="toolbar">
+          <input type="text" id="plan-search" class="search-input" placeholder="🔍  Search product, warehouse, store…" oninput="filterPlanTable()" />
+          <select id="plan-category" class="select-control" onchange="filterPlanTable()">
+            <option value="">All Categories</option>
+          </select>
+          <button class="btn btn-outline" onclick="exportShipmentsCSV()">⬇️ Export CSV</button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Shipment Plan</h2>
+            <span id="plan-count" class="card-subtitle"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="plan-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>From Warehouse</th>
+                  <th>To Store</th>
+                  <th>Qty</th>
+                  <th>Expiry (days)</th>
+                  <th>Freight Cost</th>
+                  <th>Reason</th>
+                </tr>
+              </thead>
+              <tbody id="plan-tbody">
+                <tr><td colspan="7" class="loading-row">Loading shipment plan…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card" id="unmet-card" style="margin-top:1.5rem">
+          <div class="card-header">
+            <h2 class="card-title">⚠️ Unmet Demand</h2>
+            <span id="unmet-count" class="card-subtitle"></span>
+          </div>
+          <div class="table-wrap">
+            <table id="unmet-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Product</th>
+                  <th>Store</th>
+                  <th>City</th>
+                  <th>Unmet Units</th>
+                </tr>
+              </thead>
+              <tbody id="unmet-tbody">
+                <tr><td colspan="4" class="loading-row">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: INVENTORY ─────────── -->
+      <section id="section-inventory" class="section">
+        <div class="sub-tabs">
+          <button class="sub-tab active" id="subtab-stores" onclick="switchSubTab('stores')">🏪 Store Health</button>
+          <button class="sub-tab" id="subtab-warehouses" onclick="switchSubTab('warehouses')">🏭 Warehouse Batches</button>
+        </div>
+
+        <!-- Store Health -->
+        <div id="inv-stores-panel" class="sub-panel">
+          <div class="toolbar">
+            <input type="text" id="store-search" class="search-input" placeholder="🔍  Search store, city, product…" oninput="filterStoreTable()" />
+            <select id="store-status-filter" class="select-control" onchange="filterStoreTable()">
+              <option value="">All Statuses</option>
+              <option value="Critical">🔴 Critical</option>
+              <option value="Warning">🟡 Warning</option>
+              <option value="Healthy">🟢 Healthy</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Store Inventory Health</h2>
+              <span id="store-count-label" class="card-subtitle"></span>
+            </div>
+            <div class="table-wrap">
+              <table id="store-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Store</th>
+                    <th>City</th>
+                    <th>Product</th>
+                    <th>On Hand</th>
+                    <th>Daily Use</th>
+                    <th>Safety Stock</th>
+                    <th>Days Cover</th>
+                    <th>Status</th>
+                  </tr>
+                </thead>
+                <tbody id="store-tbody">
+                  <tr><td colspan="8" class="loading-row">Loading store inventory…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Warehouse Batches -->
+        <div id="inv-warehouses-panel" class="sub-panel hidden">
+          <div class="toolbar">
+            <input type="text" id="wh-search" class="search-input" placeholder="🔍  Search batch, warehouse, product…" oninput="filterWhTable()" />
+            <select id="wh-status-filter" class="select-control" onchange="filterWhTable()">
+              <option value="">All Statuses</option>
+              <option value="Urgent">🔴 Urgent</option>
+              <option value="Expiring-soon">🟡 Expiring Soon</option>
+              <option value="Healthy">🟢 Healthy</option>
+            </select>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Warehouse Batches</h2>
+              <span id="wh-count-label" class="card-subtitle"></span>
+            </div>
+            <div class="table-wrap">
+              <table id="wh-table" class="data-table">
+                <thead>
+                  <tr>
+                    <th>Batch ID</th>
+                    <th>Warehouse</th>
+                    <th>Product</th>
+                    <th>Storage</th>
+                    <th>Units</th>
+                    <th>Expires In</th>
+                    <th>Status</th>
+                    <th>Value</th>
+                  </tr>
+                </thead>
+                <tbody id="wh-tbody">
+                  <tr><td colspan="8" class="loading-row">Loading warehouse batches…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: FORECAST ─────────── -->
+      <section id="section-forecast" class="section">
+        <div class="card forecast-controls-card">
+          <div class="forecast-controls">
+            <div class="control-group">
+              <label class="control-label" for="fc-store">Store</label>
+              <select id="fc-store" class="select-control"></select>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="fc-product">Product</label>
+              <select id="fc-product" class="select-control"></select>
+            </div>
+            <div class="control-group">
+              <label class="control-label" for="fc-days">Forecast Days</label>
+              <select id="fc-days" class="select-control">
+                <option value="7" selected>7 Days</option>
+                <option value="14">14 Days</option>
+                <option value="30">30 Days</option>
+              </select>
+            </div>
+            <button class="btn btn-primary" onclick="runForecast()">📈 Run Forecast</button>
+          </div>
+        </div>
+
+        <div id="forecast-kpis" class="kpi-grid kpi-grid-4 hidden">
+          <!-- 4 forecast KPI cards injected by JS -->
+        </div>
+
+        <div class="card chart-card" id="forecast-chart-card" style="margin-top:1.5rem">
+          <div class="card-header">
+            <h2 class="card-title">Demand Forecast</h2>
+            <span id="forecast-subtitle" class="card-subtitle">Select a store and product above, then click Run Forecast</span>
+          </div>
+          <div class="chart-wrapper">
+            <canvas id="forecast-chart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: WHAT-IF ─────────── -->
+      <section id="section-whatif" class="section">
+        <div class="whatif-layout">
+          <div class="card whatif-controls-card">
+            <div class="card-header">
+              <h2 class="card-title">🔬 Scenario Parameters</h2>
+              <span class="card-subtitle">Adjust variables and run the simulation</span>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">
+                Demand Surge
+                <span class="slider-value" id="demand-val">+0%</span>
+              </label>
+              <input type="range" id="demand-slider" class="slider" min="-30" max="60" value="0" step="5"
+                     oninput="document.getElementById('demand-val').textContent = (this.value > 0 ? '+' : '') + this.value + '%'" />
+              <div class="slider-ticks"><span>-30%</span><span>0%</span><span>+60%</span></div>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">
+                Fuel Cost Multiplier
+                <span class="slider-value" id="fuel-val">1.0×</span>
+              </label>
+              <input type="range" id="fuel-slider" class="slider" min="1.0" max="1.5" value="1.0" step="0.05"
+                     oninput="document.getElementById('fuel-val').textContent = parseFloat(this.value).toFixed(2) + '×'" />
+              <div class="slider-ticks"><span>1.0×</span><span>1.25×</span><span>1.5×</span></div>
+            </div>
+
+            <div class="control-group">
+              <label class="control-label">Disable Warehouses</label>
+              <div id="wh-checkboxes" class="checkbox-group">
+                <!-- Populated by JS from /api/meta -->
+                <span class="loading-inline">Loading warehouses…</span>
+              </div>
+            </div>
+
+            <button class="btn btn-primary btn-full" onclick="runWhatIf()">🚀 Run Simulation</button>
+          </div>
+
+          <div class="whatif-results">
+            <div id="whatif-kpis" class="kpi-grid kpi-grid-2">
+              <div class="kpi-card placeholder-card">
+                <div class="kpi-icon">📊</div>
+                <div class="kpi-body">
+                  <div class="kpi-value">—</div>
+                  <div class="kpi-label">Run simulation to see results</div>
+                </div>
+              </div>
+            </div>
+            <div id="whatif-message" class="whatif-message hidden"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: SHIPMENT MAP ─────────── -->
+      <section id="section-map" class="section">
+        <div class="card" style="margin-bottom:1rem">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">🗺️ Live Shipment Route Map</h2>
+              <span class="card-subtitle">Warehouses (🏭) → Delivery locations across Maharashtra. Routes shown based on active shipment plan.</span>
+            </div>
+            <div style="display:flex;gap:.6rem;align-items:center">
+              <button class="btn btn-primary" onclick="reloadMap()">🔄 Reload Map</button>
+            </div>
+          </div>
+          <!-- Map legend -->
+          <div class="map-legend">
+            <span class="legend-item"><span class="legend-dot legend-wh"></span> Warehouse (DC)</span>
+            <span class="legend-item"><span class="legend-dot legend-store"></span> Existing Store</span>
+            <span class="legend-item"><span class="legend-dot legend-new"></span> New Delivery Location</span>
+            <span class="legend-item"><span class="legend-line legend-route"></span> Shipment Route</span>
+          </div>
+          <!-- Leaflet map container -->
+          <div id="shipment-map" style="height:520px;border-radius:8px;margin-top:.75rem;border:1px solid #e2e8f0;"></div>
+        </div>
+
+        <!-- Route Details Table -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">📋 Active Delivery Locations</h2>
+            <span class="card-subtitle">All shipment destinations including new Maharashtra locations</span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Location</th>
+                  <th>Type</th>
+                  <th>City / District</th>
+                  <th>Coordinates</th>
+                  <th>Status</th>
+                  <th>Shipments</th>
+                </tr>
+              </thead>
+              <tbody id="locations-tbody">
+                <tr><td colspan="6" class="loading-row">Loading locations…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="/static/simple.js"></script>
+</body>
+</html>

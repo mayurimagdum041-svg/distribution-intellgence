@@ -1,0 +1,733 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OptiStock AI | Distribution Intelligence & Inventory Optimization Engine</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400..700;1,9..40,400..700&family=Space+Grotesk:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <div class="app-shell">
+    <!-- Sidebar Navigation -->
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">O</div>
+        <div>
+          <div class="brand-name">OptiStock<span>AI</span></div>
+          <div class="brand-sub">FMCG DISTRIBUTION INTELLIGENCE</div>
+        </div>
+      </div>
+
+      <div class="workspace-label">INTELLIGENCE PLATFORM</div>
+      <nav class="nav">
+        <button class="nav-item active" data-section="overview">
+          <span class="nav-icon">▦</span> Overview & ROI
+        </button>
+        <button class="nav-item" data-section="distribution">
+          <span class="nav-icon">⇄</span> Distribution Plan
+        </button>
+        <button class="nav-item" data-section="inventory">
+          <span class="nav-icon">▤</span> Inventory Control Tower
+        </button>
+        <button class="nav-item" data-section="forecast">
+          <span class="nav-icon">⌁</span> AI Demand Forecaster
+        </button>
+        <button class="nav-item" data-section="simulator">
+          <span class="nav-icon">⚡</span> What-If Sandbox
+        </button>
+        <button class="nav-item" data-section="network">
+          <span class="nav-icon">◈</span> Supply Chain Flow
+        </button>
+      </nav>
+
+      <div class="sidebar-bottom">
+        <button class="doc-btn" id="open-docs-btn">
+          <span>ⓘ</span> Model Assumptions & Math
+        </button>
+        <div class="demo-badge">
+          <span class="pulse"></span>
+          <div>
+            <strong>HiGHS MILP SOLVER</strong>
+            <small>Active · Mathematical Optimum</small>
+          </div>
+        </div>
+        <div class="profile">
+          <div class="avatar">OS</div>
+          <div>
+            <strong>Supply Chain Leadership</strong>
+            <small>Regional Distribution Office</small>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <main class="main">
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">FMCG SUPPLY CHAIN ENGINE · PROBLEM STATEMENT 2</div>
+          <h1 id="page-title">Distribution Overview & ROI</h1>
+          <p class="subheading" id="page-subtitle">Multi-echelon allocation, FEFO perishability optimization, and ML-powered replenishment.</p>
+        </div>
+        <div class="top-actions">
+          <div class="selector-group">
+            <label for="global-horizon">Horizon</label>
+            <select id="global-horizon">
+              <option value="1">1 Day</option>
+              <option value="3" selected>3 Days</option>
+              <option value="7">7 Days</option>
+              <option value="14">14 Days</option>
+            </select>
+          </div>
+          <div class="selector-group">
+            <label for="global-service-level">Service Target</label>
+            <select id="global-service-level">
+              <option value="90">90% Target</option>
+              <option value="95" selected>95% Target (1.645σ)</option>
+              <option value="98">98% Target</option>
+              <option value="99">99% Target</option>
+            </select>
+          </div>
+          <button class="primary-btn" id="recalc-global-btn">✦ Run Optimization</button>
+        </div>
+      </header>
+
+      <!-- SECTION 1: OVERVIEW & ROI -->
+      <section class="section-view active" id="overview-section">
+        <div class="welcome-banner">
+          <div>
+            <div class="banner-kicker">AI DECISION INTELLIGENCE <span>• 4 DISTRIBUTION CENTERS · 10 STORES · 12 FMCG SKUS</span></div>
+            <h2>Smarter distribution. <em>Zero stockouts. Minimal wastage.</em></h2>
+            <p>Our mathematical MILP engine simultaneously minimizes transportation freight, prioritizes batches nearing expiry via First-Expired-First-Out (FEFO), and guarantees target service level fulfillment.</p>
+          </div>
+          <div class="banner-pills">
+            <div class="pill-metric">
+              <span class="pm-val" id="banner-benefit">₹0</span>
+              <span class="pm-lbl">Net Economic Benefit</span>
+            </div>
+            <div class="pill-metric">
+              <span class="pm-val" id="banner-service">0%</span>
+              <span class="pm-lbl">AI Fulfillment Rate</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="metric-grid">
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Total Network Stock</span>
+              <span class="metric-icon purple">▤</span>
+            </div>
+            <div class="metric-value" id="kpi-total-inventory">—</div>
+            <div class="metric-foot" id="kpi-inventory-val">Valued at ₹— across 4 DCs</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Stockout Prevention</span>
+              <span class="metric-icon orange">!</span>
+            </div>
+            <div class="metric-value" id="kpi-stockouts-prevented">—</div>
+            <div class="metric-foot" id="kpi-stockout-status">Critical risks resolved</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Allocated Shipments</span>
+              <span class="metric-icon blue">⇄</span>
+            </div>
+            <div class="metric-value" id="kpi-shipments-count">—</div>
+            <div class="metric-foot" id="kpi-units-shipped">— units in active manifest</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top">
+              <span>Freight Cost (AI Plan)</span>
+              <span class="metric-icon green">₹</span>
+            </div>
+            <div class="metric-value" id="kpi-transport-cost">—</div>
+            <div class="metric-foot" id="kpi-transport-savings">₹— saved vs baseline</div>
+          </article>
+        </div>
+
+        <div class="content-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Supply Chain Economic Impact</h3>
+                <p>OptiStock AI Optimization vs Traditional Nearest-Warehouse Baseline</p>
+              </div>
+              <span class="tiny-tag green-tag">FINANCIAL DELTA</span>
+            </div>
+            <div class="impact-cards">
+              <div class="impact-box">
+                <span class="ib-title">Logistics Freight Savings</span>
+                <strong class="ib-num green-text" id="imp-freight-savings">₹—</strong>
+                <small id="imp-freight-pct">—% logistics reduction</small>
+              </div>
+              <div class="impact-box">
+                <span class="ib-title">Spoilage Averted (FEFO)</span>
+                <strong class="ib-num purple-text" id="imp-spoilage-savings">₹—</strong>
+                <small>Expiring stock routed to high-velocity stores</small>
+              </div>
+              <div class="impact-box">
+                <span class="ib-title">Fulfillment Improvement</span>
+                <strong class="ib-num blue-text" id="imp-fulfillment-gain">+0%</strong>
+                <small id="imp-fulfillment-desc">Service level boost</small>
+              </div>
+            </div>
+            <div class="chart-wrap" style="height: 180px;">
+              <canvas id="costComparisonChart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Batch Shelf-Life Health</h3>
+                <p>Expiry categorization across all warehouse inventory</p>
+              </div>
+              <span class="tiny-tag">FEFO RADAR</span>
+            </div>
+            <div class="chart-wrap doughnut-wrap">
+              <canvas id="overviewHealthChart"></canvas>
+            </div>
+            <div class="health-legend">
+              <div>
+                <span class="legend-label"><i class="legend-dot healthy-dot"></i> Healthy (&gt;7 days)</span>
+                <strong id="hl-healthy-count">—</strong>
+              </div>
+              <div>
+                <span class="legend-label"><i class="legend-dot warning-dot"></i> Expiring Soon (4–7d)</span>
+                <strong id="hl-expiring-count">—</strong>
+              </div>
+              <div>
+                <span class="legend-label"><i class="legend-dot urgent-dot"></i> Urgent Attention (≤3d)</span>
+                <strong id="hl-urgent-count">—</strong>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <div class="bottom-grid">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Urgent Operations Alerts</h3>
+                <p>Batches nearing expiration or stores facing critical stockout risk</p>
+              </div>
+              <button class="text-btn" data-goto="inventory">Inspect Control Tower ↗</button>
+            </div>
+            <div id="overview-alerts-list" class="priority-list">
+              <div class="loading">Evaluating network alerts…</div>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Mathematical Optimization Solver</h3>
+                <p>SciPy HiGHS Mixed-Integer LP (MILP)</p>
+              </div>
+              <span class="tiny-tag blue-tag">GLOBAL OPTIMUM</span>
+            </div>
+            <div class="solver-specs" id="solver-specs-box">
+              <div class="spec-row"><span>Solver Architecture</span><strong>SciPy HiGHS Dual Simplex &amp; Branch-and-Cut</strong></div>
+              <div class="spec-row"><span>Objective Function</span><strong>Min Freight Cost + Min FEFO Penalty + Min Stockouts</strong></div>
+              <div class="spec-row"><span>Decision Variables</span><strong id="spec-variables">—</strong></div>
+              <div class="spec-row"><span>Constraint Equations</span><strong id="spec-constraints">—</strong></div>
+              <div class="spec-row"><span>Transit &amp; Feasibility</span><strong>Filtered for Shelf-Life &gt; Transit Time</strong></div>
+              <div class="spec-row"><span>Execution Speed</span><strong>&lt; 1.5 seconds</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- SECTION 2: DISTRIBUTION PLAN -->
+      <section class="section-view" id="distribution-section">
+        <div class="toolbar panel">
+          <div>
+            <h3>Actionable Product Distribution Plan</h3>
+            <p>Specific batch allocations, quantities, freight costs, and explainable decision rationales.</p>
+          </div>
+          <div class="toolbar-controls">
+            <input type="text" id="shipment-search" class="search-input" placeholder="Search product, warehouse or store…">
+            <select id="shipment-category-filter">
+              <option value="all">All Categories</option>
+              <option value="Perishable Dairy">Perishable Dairy</option>
+              <option value="Bakery &amp; Snacks">Bakery &amp; Snacks</option>
+              <option value="Ambient Groceries">Ambient Groceries</option>
+            </select>
+            <button class="secondary-btn" id="export-shipments-btn">↓ Export Manifest CSV</button>
+          </div>
+        </div>
+
+        <div class="metric-grid compact-grid">
+          <article class="metric-card">
+            <div class="metric-top"><span>Total Units Allocated</span><span class="metric-icon blue">⇄</span></div>
+            <div class="metric-value" id="dist-units-allocated">—</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Total Freight Cost</span><span class="metric-icon green">₹</span></div>
+            <div class="metric-value" id="dist-total-cost">—</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Unmet Store Demand</span><span class="metric-icon orange">!</span></div>
+            <div class="metric-value" id="dist-unmet-demand">—</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Near-Expiry Batches Managed</span><span class="metric-icon purple">◷</span></div>
+            <div class="metric-value" id="dist-fefo-count">—</div>
+          </article>
+        </div>
+
+        <article class="panel table-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Shipment Recommendation Manifest</h3>
+              <p id="shipment-count-caption">Generated from mathematical optimization and FEFO prioritization.</p>
+            </div>
+            <span class="tiny-tag green-tag">ACTIONABLE RECOMMENDATIONS</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>PRODUCT / SKU</th>
+                  <th>SOURCE WAREHOUSE</th>
+                  <th>DESTINATION STORE</th>
+                  <th>BATCH ID</th>
+                  <th>QUANTITY</th>
+                  <th>EXPIRY</th>
+                  <th>UNIT FREIGHT</th>
+                  <th>TOTAL FREIGHT</th>
+                  <th>AI DECISION RATIONALE</th>
+                </tr>
+              </thead>
+              <tbody id="shipment-table-body">
+                <tr><td colspan="9" class="loading">Loading shipment recommendations…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <article class="panel table-panel" id="unmet-panel">
+          <div class="panel-heading">
+            <div>
+              <h3>Unmet Demand &amp; Stockout Risk Flags</h3>
+              <p>Store demand that exceeded currently available network inventory.</p>
+            </div>
+            <span class="tiny-tag orange-tag" id="unmet-count-tag">0 CASES</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>PRODUCT NAME</th>
+                  <th>STORE LOCATION</th>
+                  <th>CITY</th>
+                  <th>UNMET UNITS</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="unmet-table-body">
+                <tr><td colspan="5" class="empty-row">All estimated store demand is 100% fulfilled by current inventory.</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- SECTION 3: INVENTORY CONTROL TOWER -->
+      <section class="section-view" id="inventory-section">
+        <div class="toolbar panel">
+          <div>
+            <h3>Inventory Control Tower &amp; Safety Stock Monitor</h3>
+            <p>Track store-level days of cover, reorder points (ROP), and warehouse shelf life.</p>
+          </div>
+          <div class="toolbar-controls">
+            <input type="text" id="inventory-search" class="search-input" placeholder="Search store or product…">
+            <select id="inventory-risk-filter">
+              <option value="all">All Risk Levels</option>
+              <option value="Critical">Critical (&lt; Lead Time)</option>
+              <option value="Warning">Warning (&lt; ROP)</option>
+              <option value="Healthy">Healthy Stock</option>
+            </select>
+            <button class="secondary-btn" id="export-inventory-btn">↓ Export Inventory CSV</button>
+          </div>
+        </div>
+
+        <div class="tabs-sub">
+          <button class="sub-tab-btn active" data-subtab="stores-stock">Store Replenishment &amp; Safety Stocks</button>
+          <button class="sub-tab-btn" data-subtab="warehouse-batches">Warehouse Batches &amp; Expiry Monitor</button>
+        </div>
+
+        <!-- Store Health Table -->
+        <article class="panel table-panel subtab-content active" id="subtab-stores-stock">
+          <div class="panel-heading">
+            <div>
+              <h3>Store Replenishment Status</h3>
+              <p>On-hand inventory vs statistical Safety Stock (SS) and Reorder Point (ROP)</p>
+            </div>
+            <span class="tiny-tag" id="store-records-count">120 RECORDS</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>STORE</th>
+                  <th>CITY / TIER</th>
+                  <th>PRODUCT</th>
+                  <th>ON-HAND UNITS</th>
+                  <th>DAILY DEMAND</th>
+                  <th>SAFETY STOCK</th>
+                  <th>REORDER POINT</th>
+                  <th>DAYS OF COVER</th>
+                  <th>NET DEMAND NEEDED</th>
+                  <th>RISK STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="store-inventory-body">
+                <tr><td colspan="10" class="loading">Loading store health telemetry…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+
+        <!-- Warehouse Batches Table -->
+        <article class="panel table-panel subtab-content" id="subtab-warehouse-batches">
+          <div class="panel-heading">
+            <div>
+              <h3>Warehouse Batch Register &amp; Shelf-Life Tracker</h3>
+              <p>Lot-level tracking, storage conditions (Cold Chain vs Ambient), and spoilage risk.</p>
+            </div>
+            <span class="tiny-tag" id="batch-records-count">44 BATCHES</span>
+          </div>
+          <div class="table-scroll">
+            <table>
+              <thead>
+                <tr>
+                  <th>BATCH ID</th>
+                  <th>WAREHOUSE</th>
+                  <th>PRODUCT</th>
+                  <th>STORAGE</th>
+                  <th>AVAILABLE UNITS</th>
+                  <th>EXPIRY REMAINING</th>
+                  <th>DAYS TO ABSORB</th>
+                  <th>SPOILAGE RISK</th>
+                  <th>BATCH VALUE</th>
+                  <th>STATUS</th>
+                </tr>
+              </thead>
+              <tbody id="batch-inventory-body">
+                <tr><td colspan="10" class="loading">Loading warehouse batches…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </article>
+      </section>
+
+      <!-- SECTION 4: DEMAND FORECASTER -->
+      <section class="section-view" id="forecast-section">
+        <div class="forecast-intro">
+          <div class="eyebrow">PREDICTIVE ANALYTICS ENGINE</div>
+          <h2>Machine Learning Demand Forecaster</h2>
+          <p>Autoregressive multi-feature Ridge Regression model trained on 180 days of realistic sales data. Incorporates weekly seasonality, promotional calendar lifts, and 95% Confidence Intervals.</p>
+        </div>
+
+        <div class="toolbar panel">
+          <div class="toolbar-controls" style="width: 100%; justify-content: flex-start; gap: 14px;">
+            <div class="selector-group">
+              <label for="fc-store-select">Retail Store / Node</label>
+              <select id="fc-store-select"></select>
+            </div>
+            <div class="selector-group">
+              <label for="fc-product-select">Product SKU</label>
+              <select id="fc-product-select"></select>
+            </div>
+            <div class="selector-group">
+              <label for="fc-horizon-select">Forecast Window</label>
+              <select id="fc-horizon-select">
+                <option value="7" selected>7 Days Ahead</option>
+                <option value="14">14 Days Ahead</option>
+              </select>
+            </div>
+            <button class="primary-btn" id="run-forecast-btn" style="margin-left: auto;">Compute Forecast</button>
+          </div>
+        </div>
+
+        <div class="metric-grid compact-grid">
+          <article class="metric-card">
+            <div class="metric-top"><span>Expected Demand (Horizon)</span><span class="metric-icon blue">⌁</span></div>
+            <div class="metric-value" id="fc-metric-total">—</div>
+            <div class="metric-foot" id="fc-metric-daily">— units / day</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Mean Absolute Error (MAE)</span><span class="metric-icon green">✓</span></div>
+            <div class="metric-value" id="fc-metric-mae">—</div>
+            <div class="metric-foot">Hold-out backtest error</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>MAPE Accuracy Error</span><span class="metric-icon purple">%</span></div>
+            <div class="metric-value" id="fc-metric-mape">—%</div>
+            <div class="metric-foot">Mean absolute percentage error</div>
+          </article>
+          <article class="metric-card">
+            <div class="metric-top"><span>Gain over Naive Baseline</span><span class="metric-icon orange">↗</span></div>
+            <div class="metric-value" id="fc-metric-improvement">+—%</div>
+            <div class="metric-foot">Accuracy improvement</div>
+          </article>
+        </div>
+
+        <div class="content-grid">
+          <article class="panel chart-panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Historical Actuals vs Forecast with 95% Confidence Bounds</h3>
+                <p>Solid blue: Historical sales · Dashed green: Point prediction · Shaded green: 95% CI</p>
+              </div>
+              <span class="tiny-tag green-tag">UNCERTAINTY BOUNDS</span>
+            </div>
+            <div class="chart-wrap" style="height: 290px;">
+              <canvas id="forecastTimelineChart"></canvas>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>ML Feature Importance Analysis</h3>
+                <p>Relative weight of predictors in the regression engine</p>
+              </div>
+              <span class="tiny-tag">EXPLAINABILITY</span>
+            </div>
+            <div class="chart-wrap" style="height: 290px;">
+              <canvas id="featureImportanceChart"></canvas>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- SECTION 5: WHAT-IF SCENARIO SANDBOX -->
+      <section class="section-view" id="simulator-section">
+        <div class="forecast-intro">
+          <div class="eyebrow">STRESS TESTING &amp; POLICY BENCHMARKING</div>
+          <h2>What-If Operational Scenario Sandbox</h2>
+          <p>Simulate demand surges, fuel price spikes, and warehouse shutdowns in real-time. Instantly see how OptiStock AI reallocates stock to maintain supply chain resilience.</p>
+        </div>
+
+        <div class="content-grid" style="grid-template-columns: 1fr 1.3fr;">
+          <!-- Controls Panel -->
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Configure Stress Scenarios</h3>
+                <p>Adjust levers and trigger real-time re-optimization</p>
+              </div>
+              <span class="tiny-tag orange-tag">INTERACTIVE</span>
+            </div>
+
+            <div class="sandbox-controls">
+              <div class="slider-control">
+                <div class="slider-header">
+                  <label for="sb-demand-slider">Regional Demand Surge / Drop</label>
+                  <strong id="sb-demand-val">0%</strong>
+                </div>
+                <input type="range" id="sb-demand-slider" min="-30" max="60" step="5" value="0">
+                <small class="slider-hint">Simulate festival buying spikes (+30%) or regional slowdowns</small>
+              </div>
+
+              <div class="slider-control">
+                <div class="slider-header">
+                  <label for="sb-fuel-slider">Fuel / Freight Cost Index</label>
+                  <strong id="sb-fuel-val">1.0x (Standard)</strong>
+                </div>
+                <input type="range" id="sb-fuel-slider" min="1.0" max="1.5" step="0.05" value="1.0">
+                <small class="slider-hint">Simulate diesel price hikes (+25% fuel cost)</small>
+              </div>
+
+              <div class="disruption-control">
+                <label>Warehouse Disruption / Shutdown Toggles</label>
+                <div class="wh-toggles">
+                  <label class="toggle-card">
+                    <input type="checkbox" class="wh-disable-chk" value="WH-MUM">
+                    <span>Mumbai Central Mega-DC</span>
+                  </label>
+                  <label class="toggle-card">
+                    <input type="checkbox" class="wh-disable-chk" value="WH-PUN">
+                    <span>Pune Regional Distribution Hub</span>
+                  </label>
+                  <label class="toggle-card">
+                    <input type="checkbox" class="wh-disable-chk" value="WH-AHM">
+                    <span>Ahmedabad Logistics Hub</span>
+                  </label>
+                  <label class="toggle-card">
+                    <input type="checkbox" class="wh-disable-chk" value="WH-SUR">
+                    <span>Surat Coastal Depot</span>
+                  </label>
+                </div>
+              </div>
+
+              <button class="primary-btn" id="run-sandbox-btn" style="width: 100%; margin-top: 15px;">
+                ⚡ Simulate Scenario Impact
+              </button>
+            </div>
+          </article>
+
+          <!-- Results Panel -->
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3 id="scenario-result-title">Standard Operational Baseline</h3>
+                <p id="scenario-result-subtitle">Network running under nominal conditions</p>
+              </div>
+              <div class="resilience-badge">
+                <span>Resilience Index</span>
+                <strong id="sb-resilience-score">98.5</strong>
+              </div>
+            </div>
+
+            <div class="metric-grid compact-grid" style="margin-top: 15px;">
+              <div class="metric-card">
+                <div class="metric-top"><span>Units Shipped</span></div>
+                <div class="metric-value" id="sb-units">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-top"><span>Freight Cost</span></div>
+                <div class="metric-value green-text" id="sb-cost">₹—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-top"><span>Unmet Demand</span></div>
+                <div class="metric-value orange-text" id="sb-unmet">—</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-top"><span>Fulfillment Rate</span></div>
+                <div class="metric-value blue-text" id="sb-fulfillment">—%</div>
+              </div>
+            </div>
+
+            <div class="comparison-summary-card">
+              <h4>Economic Advantage under this Scenario</h4>
+              <div class="delta-row">
+                <span>Logistics Transport Savings vs Heuristic:</span>
+                <strong class="green-text" id="sb-transport-savings">₹—</strong>
+              </div>
+              <div class="delta-row">
+                <span>Spoilage Averted via FEFO Prioritization:</span>
+                <strong class="purple-text" id="sb-spoilage-savings">₹—</strong>
+              </div>
+              <div class="delta-row total-row">
+                <span>Total Net Benefit to Company:</span>
+                <strong class="green-text" id="sb-total-benefit">₹—</strong>
+              </div>
+            </div>
+
+            <div class="chart-wrap" style="height: 160px; margin-top: 15px;">
+              <canvas id="scenarioComparisonChart"></canvas>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <!-- SECTION 6: SUPPLY CHAIN NETWORK MAP / FLOW -->
+      <section class="section-view" id="network-section">
+        <div class="forecast-intro">
+          <div class="eyebrow">MULTI-ECHELON TOPOLOGY</div>
+          <h2>Supply Chain Network Flow &amp; Distribution Corridors</h2>
+          <p>Interactive visualization of primary distribution centers and retail store demand points across Western India (Mumbai, Pune, Ahmedabad, Surat, Nashik, Kolhapur).</p>
+        </div>
+
+        <div class="content-grid" style="grid-template-columns: 1.6fr 1fr;">
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Network Corridors &amp; Dispatch Flows</h3>
+                <p>Curved lines represent active freight routes sized by shipment volume</p>
+              </div>
+              <div class="network-legend">
+                <span><i class="legend-dot" style="background: #a3e635;"></i> Warehouse Hub</span>
+                <span><i class="legend-dot" style="background: #68b9ff;"></i> Retail Store</span>
+              </div>
+            </div>
+            <div class="network-canvas-wrap">
+              <svg id="network-svg" width="100%" height="480" viewBox="0 0 760 480"></svg>
+            </div>
+          </article>
+
+          <article class="panel">
+            <div class="panel-heading">
+              <div>
+                <h3>Active Route Distances &amp; Transit Times</h3>
+                <p>Road network logistics characteristics</p>
+              </div>
+            </div>
+            <div class="route-list-wrap">
+              <div id="route-cards-list" class="route-cards-list">
+                <div class="loading">Loading network routes…</div>
+              </div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <footer class="footer">
+        <span>OptiStock AI · Distribution Intelligence &amp; Inventory Optimization Engine</span>
+        <span>Problem Statement 2 Solution · Built with SciPy HiGHS MILP, ML Forecaster &amp; Pure-NumPy Architecture</span>
+      </footer>
+    </main>
+  </div>
+
+  <!-- MODAL: MATHEMATICAL MODEL & ASSUMPTIONS REFERENCE -->
+  <div class="modal-backdrop" id="docs-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <div>
+          <h2>Mathematical Formulation &amp; Operational Assumptions</h2>
+          <p>Complete documentation of objective functions, constraints, and methodologies</p>
+        </div>
+        <button class="modal-close-btn" id="close-docs-btn">✕</button>
+      </div>
+      <div class="modal-body">
+        <h3>1. Problem Formulation (Mixed-Integer Linear Program)</h3>
+        <p>The distribution optimization problem is formulated as a multi-echelon cost-minimization Mixed-Integer Linear Program (MILP):</p>
+        <div class="math-box">
+          $$\min \sum_{w \in W, s \in S, b \in B} \Big( c_{trans}(w,s,p) + \text{Penalty}_{FEFO}(b,s) \Big) \cdot X_{w,s,b} + \sum_{s \in S, p \in P} \text{Penalty}_{stockout}(p) \cdot U_{s,p}$$
+        </div>
+
+        <h3>2. Decision Variables</h3>
+        <ul>
+          <li><strong>\(X_{w, s, b}\) (Integer \(\ge 0\)):</strong> Units of inventory batch \(b\) (of product \(p\)) transported from warehouse \(w\) to store \(s\).</li>
+          <li><strong>\(U_{s, p}\) (Continuous \(\ge 0\)):</strong> Unmet customer demand (slack variable) for product \(p\) at store \(s\).</li>
+        </ul>
+
+        <h3>3. Operational Constraints</h3>
+        <ul>
+          <li><strong>Warehouse Batch Supply Constraint:</strong>
+            $$\sum_{s \in S} X_{w, s, b} \le \text{BatchQuantity}(b) \quad \forall (w, b)$$
+          </li>
+          <li><strong>Store Replenishment Demand Balance:</strong>
+            $$\sum_{w \in W, b \in B_{p}} X_{w, s, b} + U_{s, p} = \text{NetDemandNeeded}(s, p) \quad \forall (s, p)$$
+          </li>
+          <li><strong>Transit Feasibility Constraint:</strong> If \(\text{TransitTime}(w, s) \ge \text{ExpiryDays}(b) - 0.5\), the variable is excluded (preventing transit spoilage).</li>
+        </ul>
+
+        <h3>4. First-Expired-First-Out (FEFO) Perishability Prioritization</h3>
+        <p>For inventory batches with shelf life \(\le 4\) days, routing them to high-velocity stores that sell them immediately incurs a negative penalty (priority bonus), while routing them to slow stores incurs an economic spoilage penalty.</p>
+
+        <h3>5. Multi-Echelon Safety Stock Formula</h3>
+        <div class="math-box">
+          $$SS = Z \times \sqrt{L \cdot \sigma_D^2 + \bar{D}^2 \cdot \sigma_L^2}, \quad ROP = (\bar{D} \times L) + SS$$
+        </div>
+        <p>Where \(Z = 1.645\) (95% service level), \(L\) is lead time, \(\bar{D}\) is daily demand rate, \(\sigma_D\) is demand standard deviation, and \(\sigma_L\) is lead time uncertainty.</p>
+
+        <h3>6. Demand Forecasting Model</h3>
+        <p>Autoregressive Ridge Regression with feature engineering including 1-day, 7-day, 14-day lags, 7-day rolling means and standard deviations, day-of-week seasonality, and promotional calendar lifts with 95% Confidence Intervals.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
