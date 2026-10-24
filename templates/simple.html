@@ -27,6 +27,15 @@
         <a href="#" class="nav-link active" data-nav="overview" data-roles="admin" onclick="navigate('overview', this)">
           <span class="nav-icon">🏠</span> Overview
         </a>
+        <a href="#" class="nav-link" data-nav="automation" data-roles="admin" onclick="navigate('automation', this)">
+          <span class="nav-icon">🤖</span> Automation
+        </a>
+        <a href="#" class="nav-link" data-nav="approvals" data-roles="admin,warehouse,retail" onclick="navigate('approvals', this)">
+          <span class="nav-icon">📋</span> Approvals <span class="nav-badge" id="nav-approvals-count" style="display:none;">0</span>
+        </a>
+        <a href="#" class="nav-link" data-nav="alerts" data-roles="admin,warehouse,retail,delivery" onclick="navigate('alerts', this)">
+          <span class="nav-icon">🔔</span> Alerts <span class="nav-badge alert-badge" id="nav-alerts-count" style="display:none;">0</span>
+        </a>
         <a href="#" class="nav-link" data-nav="distribution" data-roles="admin,warehouse,retail,delivery" onclick="navigate('distribution', this)">
           <span class="nav-icon">🚚</span> Distribution
         </a>
@@ -144,6 +153,280 @@
         </div>
       </section>
 
+      <!-- ─────────── SECTION: AUTOMATION CONTROL PANEL ─────────── -->
+      <section id="section-automation" class="section">
+        <!-- Automation Summary KPIs -->
+        <div class="kpi-grid kpi-grid-4" id="automation-kpi-grid">
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#eff6ff;color:#2563eb">🤖</div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-auto-workflows">4 / 4</div>
+              <div class="kpi-label">Active Workflows</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#dcfce7;color:#16a34a">📦</div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-pending-replenish">—</div>
+              <div class="kpi-label">Pending Replenishments</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#fef3c7;color:#d97706">⏳</div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-pending-rescue">—</div>
+              <div class="kpi-label">Pending Expiry Rescues</div>
+            </div>
+          </div>
+          <div class="kpi-card">
+            <div class="kpi-icon" style="background:#fee2e2;color:#dc2626">🔔</div>
+            <div class="kpi-body">
+              <div class="kpi-value" id="kpi-active-alerts">—</div>
+              <div class="kpi-label">Active Alert Items</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Automation Notice Banner -->
+        <div class="automation-security-banner">
+          <div class="asb-icon">🛡️</div>
+          <div class="asb-text">
+            <strong>Production Safety System Active</strong>:
+            Scheduled tasks run safely with distributed mutex locking and idempotency deduplication.
+            Autonomous decisions are strictly non-destructive recommendations — manager approval is required before purchasing or dispatch.
+          </div>
+          <div class="asb-actions">
+            <button class="btn btn-outline btn-sm" onclick="loadAutomationHistory()">📜 View Execution Logs</button>
+            <button class="btn btn-primary btn-sm" onclick="loadAutomationStatus()">🔄 Refresh Status</button>
+          </div>
+        </div>
+
+        <!-- Workflow Cards Grid -->
+        <div class="automation-cards-grid" id="automation-cards-container">
+          <div class="kpi-skeleton" style="height:220px"></div>
+          <div class="kpi-skeleton" style="height:220px"></div>
+          <div class="kpi-skeleton" style="height:220px"></div>
+          <div class="kpi-skeleton" style="height:220px"></div>
+        </div>
+
+        <!-- Execution History Card -->
+        <div class="card" style="margin-top:1.5rem">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">📜 Automation Execution History &amp; Audit Trail</h2>
+              <span class="card-subtitle">Complete run log with execution times, dry-run flags, action counts and errors</span>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+              <select id="history-filter-wf" class="select-control" onchange="loadAutomationHistory()">
+                <option value="">All Workflows</option>
+                <option value="auto_replenishment">Auto-Replenishment</option>
+                <option value="expiry_rescue">Expiry Rescue</option>
+                <option value="distribution_optimization">Distribution Optimization</option>
+                <option value="delivery_monitoring">Delivery Monitoring</option>
+              </select>
+              <button class="btn btn-outline btn-sm" onclick="loadAutomationHistory()">Refresh Log</button>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="automation-history-table">
+              <thead>
+                <tr>
+                  <th>Workflow</th>
+                  <th>Trigger</th>
+                  <th>Mode</th>
+                  <th>Status</th>
+                  <th>Actions Generated</th>
+                  <th>Errors / Details</th>
+                  <th>Started At</th>
+                  <th>Duration</th>
+                </tr>
+              </thead>
+              <tbody id="automation-history-tbody">
+                <tr><td colspan="8" class="loading-row">Loading execution history…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: APPROVALS INBOX ─────────── -->
+      <section id="section-approvals" class="section">
+        <!-- Safety Banner -->
+        <div class="automation-security-banner" style="margin-bottom:1.25rem;">
+          <div class="asb-icon">✍️</div>
+          <div class="asb-text">
+            <strong>Manager Action Required</strong>:
+            OptiStock AI identifies deficits and expiring stock, generating actionable proposals.
+            Select <strong>Approve</strong> to authorize purchase orders or dispatch manifests, or <strong>Reject</strong> with an audit reason.
+          </div>
+        </div>
+
+        <div class="sub-tabs">
+          <button class="sub-tab active" id="subtab-replenish" onclick="switchApprovalTab('replenish')">
+            📦 Replenishment Requests (<span id="count-tab-replenish">0</span>)
+          </button>
+          <button class="sub-tab" id="subtab-rescue" onclick="switchApprovalTab('rescue')">
+            ⏳ Expiry Rescue Transfers (<span id="count-tab-rescue">0</span>)
+          </button>
+        </div>
+
+        <!-- Replenishment Approval Panel -->
+        <div id="approvals-replenish-panel" class="sub-panel">
+          <div class="toolbar">
+            <input type="text" id="replenish-search" class="search-input" placeholder="🔍  Search store, product, rationale…" oninput="filterReplenishTable()" />
+            <select id="replenish-status-filter" class="select-control" onchange="loadReplenishments()">
+              <option value="PENDING_APPROVAL" selected>Pending Approval</option>
+              <option value="APPROVED">Approved Orders</option>
+              <option value="REJECTED">Rejected Orders</option>
+              <option value="all">All Records</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadReplenishments()">🔄 Refresh</button>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">Store Replenishment Proposals</h2>
+              <span id="replenish-count-label" class="card-subtitle"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="replenish-table">
+                <thead>
+                  <tr>
+                    <th>Req #</th>
+                    <th>Store &amp; City</th>
+                    <th>Product</th>
+                    <th>Stock / ROP</th>
+                    <th>Safety Stock</th>
+                    <th>Suggested Qty</th>
+                    <th>Est. Cost</th>
+                    <th>Calculated Rationale</th>
+                    <th>Status</th>
+                    <th>Manager Decision</th>
+                  </tr>
+                </thead>
+                <tbody id="replenish-tbody">
+                  <tr><td colspan="10" class="loading-row">Loading replenishment requests…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Expiry Rescue Approval Panel -->
+        <div id="approvals-rescue-panel" class="sub-panel hidden">
+          <div class="toolbar">
+            <input type="text" id="rescue-search" class="search-input" placeholder="🔍  Search batch, warehouse, destination store…" oninput="filterRescueTable()" />
+            <select id="rescue-status-filter" class="select-control" onchange="loadExpiryRescue()">
+              <option value="PENDING_APPROVAL" selected>Pending Approval</option>
+              <option value="APPROVED">Authorized Transfers</option>
+              <option value="REJECTED">Rejected Transfers</option>
+              <option value="all">All Records</option>
+            </select>
+            <button class="btn btn-primary" onclick="loadExpiryRescue()">🔄 Refresh</button>
+          </div>
+          <div class="card">
+            <div class="card-header">
+              <h2 class="card-title">FEFO Expiry Rescue Stock Offloads</h2>
+              <span id="rescue-count-label" class="card-subtitle"></span>
+            </div>
+            <div class="table-wrap">
+              <table class="data-table" id="rescue-table">
+                <thead>
+                  <tr>
+                    <th>Transfer #</th>
+                    <th>Batch ID</th>
+                    <th>Product</th>
+                    <th>From Warehouse</th>
+                    <th>To Target Store</th>
+                    <th>Batch Expiry</th>
+                    <th>Est. Transit</th>
+                    <th>Transfer Qty</th>
+                    <th>Value at Risk</th>
+                    <th>Safety Constraints Verified</th>
+                    <th>Status</th>
+                    <th>Manager Decision</th>
+                  </tr>
+                </thead>
+                <tbody id="rescue-tbody">
+                  <tr><td colspan="12" class="loading-row">Loading expiry rescue transfers…</td></tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ─────────── SECTION: AUTOMATED ALERT CENTER ─────────── -->
+      <section id="section-alerts" class="section">
+        <!-- Alert Metrics Row -->
+        <div class="alert-stats-row">
+          <div class="alert-stat-card stat-critical" onclick="setAlertSeverityFilter('CRITICAL')">
+            <div class="asc-number" id="alert-stat-critical">0</div>
+            <div class="asc-label">🔴 Critical Priority</div>
+          </div>
+          <div class="alert-stat-card stat-warning" onclick="setAlertSeverityFilter('WARNING')">
+            <div class="asc-number" id="alert-stat-warning">0</div>
+            <div class="asc-label">🟡 Warning Level</div>
+          </div>
+          <div class="alert-stat-card stat-total" onclick="setAlertSeverityFilter('all')">
+            <div class="asc-number" id="alert-stat-total">0</div>
+            <div class="asc-label">Total Open Alerts</div>
+          </div>
+        </div>
+
+        <!-- Alert Filter Bar -->
+        <div class="toolbar" style="margin-top:1rem">
+          <input type="text" id="alert-search" class="search-input" placeholder="🔍  Search alert message, store, product, shipment…" oninput="filterAlertTable()" />
+          <select id="alert-severity-filter" class="select-control" onchange="loadAlerts()">
+            <option value="all">All Severities</option>
+            <option value="CRITICAL">🔴 Critical Only</option>
+            <option value="WARNING">🟡 Warning Only</option>
+            <option value="INFO">🔵 Info Only</option>
+          </select>
+          <select id="alert-status-filter" class="select-control" onchange="loadAlerts()">
+            <option value="" selected>Open &amp; Acknowledged</option>
+            <option value="OPEN">Open Only</option>
+            <option value="ACKNOWLEDGED">Acknowledged</option>
+            <option value="RESOLVED">Resolved</option>
+            <option value="all">All Records</option>
+          </select>
+          <select id="alert-type-filter" class="select-control" onchange="loadAlerts()">
+            <option value="all">All Categories</option>
+            <option value="LOW_STOCK">Low Stock</option>
+            <option value="EXPIRY_RISK">Expiry Risk</option>
+            <option value="DELAYED_SHIPMENT">Delayed Delivery</option>
+            <option value="REPLENISHMENT_NEEDED">Urgent Replenishment</option>
+          </select>
+          <button class="btn btn-primary" onclick="loadAlerts()">🔄 Refresh Alerts</button>
+        </div>
+
+        <!-- Alert Data Table -->
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title">Live Automated Alerts</h2>
+            <span id="alert-count-label" class="card-subtitle"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="alerts-table">
+              <thead>
+                <tr>
+                  <th>Severity</th>
+                  <th>Category</th>
+                  <th>Entity Reference</th>
+                  <th>Condition &amp; Message</th>
+                  <th>Recommended Action</th>
+                  <th>Logged At</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody id="alerts-tbody">
+                <tr><td colspan="8" class="loading-row">Loading alerts…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
       <!-- ─────────── SECTION: DISTRIBUTION ─────────── -->
       <section id="section-distribution" class="section">
         <div class="toolbar">
@@ -196,6 +479,44 @@
               </thead>
               <tbody id="unmet-tbody">
                 <tr><td colspan="4" class="loading-row">Loading…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Ranked Warehouse Candidate Options (Distribution Optimization) -->
+        <div class="card" id="ranked-dist-card" style="margin-top:1.5rem">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">🎯 Multi-Echelon Sourcing Recommendations</h2>
+              <span class="card-subtitle">Automated warehouse ranking comparing road distance, transport tariffs, and stock availability</span>
+            </div>
+            <div style="display:flex;gap:.5rem;align-items:center;">
+              <span class="chip chip-warning">⚠️ SIMULATED_SAMPLE DATA</span>
+              <button class="btn btn-outline btn-sm" onclick="loadDistributionOptions()">🔄 Refresh</button>
+            </div>
+          </div>
+          <div class="banner-subtle" style="margin: 0 1.25rem 1rem; padding: .65rem .9rem; background: #fffbeb; border: 1px solid #fef3c7; border-radius: 8px; font-size: .8rem; color: #92400e;">
+            <strong>Data Disclosure</strong>: Warehouse sourcing rankings utilize road distance matrices, cold-chain tariff models, and batch availability. Indicated metrics are simulated estimates for decision support.
+          </div>
+          <div class="table-wrap">
+            <table id="ranked-dist-table" class="data-table">
+              <thead>
+                <tr>
+                  <th>Target Store</th>
+                  <th>Product</th>
+                  <th>Deficit Qty</th>
+                  <th>Rank</th>
+                  <th>Candidate Warehouse</th>
+                  <th>Distance</th>
+                  <th>Est. Freight</th>
+                  <th>Transit Time</th>
+                  <th>Warehouse Stock</th>
+                  <th>Optimization Rationale</th>
+                </tr>
+              </thead>
+              <tbody id="ranked-dist-tbody">
+                <tr><td colspan="10" class="loading-row">Loading distribution recommendations…</td></tr>
               </tbody>
             </table>
           </div>
@@ -437,6 +758,40 @@
               </thead>
               <tbody id="locations-tbody">
                 <tr><td colspan="6" class="loading-row">Loading locations…</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Automated Delivery Delay Monitoring Card -->
+        <div class="card" style="margin-top:1.5rem">
+          <div class="card-header">
+            <div>
+              <h2 class="card-title">⏱️ Shipment Deadline &amp; Delay Monitoring</h2>
+              <span class="card-subtitle">Automated SLA tracker evaluating dispatch milestones against expected delivery times</span>
+            </div>
+            <button class="btn btn-outline btn-sm" onclick="loadDeliveryMonitoring()">🔄 Refresh Shipments</button>
+          </div>
+          <div class="banner-subtle" style="margin: 0 1.25rem 1rem; padding: .65rem .9rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 8px; font-size: .8rem; color: #1e40af;">
+            <strong>Audit Disclosure</strong>: Milestone tracking is captured via driver manifest checkpoints at transit toll gates and store receiving docks. No live continuous GPS hardware claimed.
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" id="delivery-monitor-table">
+              <thead>
+                <tr>
+                  <th>Shipment ID</th>
+                  <th>Route</th>
+                  <th>Driver &amp; Vehicle</th>
+                  <th>Dispatched At</th>
+                  <th>Expected Delivery</th>
+                  <th>Actual / Est Delivery</th>
+                  <th>Delay (Mins)</th>
+                  <th>Checkpoint Status</th>
+                  <th>Delay Alert Status</th>
+                </tr>
+              </thead>
+              <tbody id="delivery-monitor-tbody">
+                <tr><td colspan="9" class="loading-row">Loading delivery shipments…</td></tr>
               </tbody>
             </table>
           </div>

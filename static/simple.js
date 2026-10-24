@@ -14,11 +14,11 @@ const USER_ROLES = {
     badge: '👑 Administrator',
     avatar: 'AD',
     color: '#2563eb',
-    allowedSections: ['overview', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
+    allowedSections: ['overview', 'automation', 'approvals', 'alerts', 'distribution', 'inventory', 'forecast', 'whatif', 'map'],
     defaultSection: 'overview',
     bannerIcon: '👑',
     bannerTitle: 'Logged in as Administrator (Full Access)',
-    bannerDesc: 'Full executive control: global network KPIs, SciPy HiGHS MILP solver, What-If simulation sandbox, and all reports.'
+    bannerDesc: 'Full executive control: global network KPIs, SciPy HiGHS MILP solver, automation engine, manager approvals, and all reports.'
   },
   warehouse: {
     key: 'warehouse',
@@ -26,12 +26,12 @@ const USER_ROLES = {
     badge: '🏭 Warehouse Manager',
     avatar: 'WH',
     color: '#d97706',
-    allowedSections: ['inventory', 'distribution', 'map'],
+    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'map'],
     defaultSection: 'inventory',
     defaultSubTab: 'warehouses',
     bannerIcon: '🏭',
     bannerTitle: 'Logged in as Warehouse Manager (Pune Hub)',
-    bannerDesc: 'Monitoring batch shelf-life (FEFO radar), cold-chain pallet storage, warehouse valuation, and outbound manifests.'
+    bannerDesc: 'Monitoring batch shelf-life (FEFO radar), FEFO expiry rescue offloading, cold-chain pallet storage, and outbound manifests.'
   },
   retail: {
     key: 'retail',
@@ -39,12 +39,12 @@ const USER_ROLES = {
     badge: '🏪 Retail Store Manager',
     avatar: 'RT',
     color: '#16a34a',
-    allowedSections: ['inventory', 'distribution', 'forecast'],
+    allowedSections: ['inventory', 'approvals', 'alerts', 'distribution', 'forecast'],
     defaultSection: 'inventory',
     defaultSubTab: 'stores',
     bannerIcon: '🏪',
     bannerTitle: 'Logged in as Retail Store Manager',
-    bannerDesc: 'Tracking store on-hand stock, Days of Cover, Reorder Points (ROP), stockout prevention, and ML demand forecasts.'
+    bannerDesc: 'Tracking store on-hand stock, Days of Cover, Reorder Points (ROP), auto-replenishment approvals, and ML demand forecasts.'
   },
   delivery: {
     key: 'delivery',
@@ -52,11 +52,11 @@ const USER_ROLES = {
     badge: '🚚 Delivery Fleet',
     avatar: 'DL',
     color: '#7c3aed',
-    allowedSections: ['map', 'distribution'],
+    allowedSections: ['map', 'alerts', 'distribution'],
     defaultSection: 'map',
     bannerIcon: '🚚',
     bannerTitle: 'Logged in as Delivery Partner & Driver Fleet',
-    bannerDesc: 'Live GPS dispatch route navigation, driver assignments, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, and Karad.'
+    bannerDesc: 'Live dispatch route navigation, SLA deadline audit monitoring, and delivery checkpoints for Pune, Satara, Kolhapur, Sangli, and Karad.'
   }
 };
 
@@ -432,11 +432,14 @@ document.addEventListener('keydown', (e) => {
 ══════════════════════════════════════ */
 const SECTION_META = {
   overview:     { title: 'Overview',      subtitle: 'Key performance indicators at a glance' },
-  distribution: { title: 'Distribution',  subtitle: 'AI-optimised shipment plan for the selected horizon' },
+  automation:   { title: 'Automation Engine', subtitle: 'Autonomous background workflows, scheduling controls, and dry-run execution engine' },
+  approvals:    { title: 'Manager Approvals', subtitle: 'Authorize or reject store replenishment orders and FEFO expiry rescue transfers' },
+  alerts:       { title: 'Alert Center', subtitle: 'Automated database-backed alerts with deduplication, severity ranking, and action recommendations' },
+  distribution: { title: 'Distribution',  subtitle: 'AI-optimised shipment plan and multi-echelon sourcing recommendations' },
   inventory:    { title: 'Inventory',     subtitle: 'Store health and warehouse batch status' },
   forecast:     { title: 'Forecast',      subtitle: 'ML-driven demand forecast by store and product' },
   whatif:       { title: 'What-If',       subtitle: 'Run scenario simulations with custom shocks' },
-  map:          { title: 'Shipment Map',  subtitle: 'Live route map — Warehouses to delivery locations across Maharashtra' },
+  map:          { title: 'Shipment Map',  subtitle: 'Live route map and automated delivery delay monitoring across Maharashtra' },
 };
 
 function navigate(section, linkEl) {
@@ -483,17 +486,21 @@ function refreshCurrentSection() {
   state.plan = null;
   state.storeInventory = null;
   state.whInventory = null;
+  updateGlobalBadges();
   lazyLoad(state.currentSection);
 }
 
 function lazyLoad(section) {
   switch (section) {
-    case 'overview':     if (!state.summary)       loadSummary();      break;
-    case 'distribution': if (!state.plan)           loadPlan();         break;
-    case 'inventory':    if (!state.storeInventory) loadInventory();    break;
-    case 'forecast':     if (!state.meta)           loadForecastMeta(); break;
-    case 'whatif':       if (!state.meta)           loadWhatIfMeta();   break;
-    case 'map':          initMap();                                      break;
+    case 'overview':     if (!state.summary)       loadSummary();             break;
+    case 'automation':   loadAutomationStatus();   loadAutomationHistory();   break;
+    case 'approvals':    loadApprovals();                                     break;
+    case 'alerts':       loadAlerts();                                        break;
+    case 'distribution': if (!state.plan) loadPlan(); loadDistributionOptions(); break;
+    case 'inventory':    if (!state.storeInventory) loadInventory();           break;
+    case 'forecast':     if (!state.meta)           loadForecastMeta();        break;
+    case 'whatif':       if (!state.meta)           loadWhatIfMeta();          break;
+    case 'map':          initMap(); loadDeliveryMonitoring();                 break;
   }
 }
 
@@ -1340,6 +1347,764 @@ function renderLocationsTable() {
 }
 
 /* ══════════════════════════════════════
+   AUTOMATION ENGINE & WORKFLOWS
+══════════════════════════════════════ */
+let automationState = {
+  workflows: [],
+  history: [],
+  replenishments: [],
+  expiryTransfers: [],
+  alerts: [],
+  distributionOptions: [],
+  deliveries: [],
+};
+
+const WORKFLOW_ICONS = {
+  auto_replenishment: { icon: '📦', bg: '#eff6ff', color: '#2563eb' },
+  expiry_rescue:      { icon: '⏳', bg: '#fef3c7', color: '#d97706' },
+  distribution_optimization: { icon: '🚚', bg: '#dcfce7', color: '#16a34a' },
+  delivery_monitoring: { icon: '⏱️', bg: '#f3e8ff', color: '#7c3aed' }
+};
+
+async function updateGlobalBadges() {
+  try {
+    const res = await fetch('/api/automation/status');
+    if (!res.ok) return;
+    const data = await res.json();
+    const m = data.metrics || {};
+
+    const alertCount = m.active_alerts || 0;
+    const pendingTotal = (m.pending_replenishments || 0) + (m.pending_expiry_rescues || 0);
+
+    const alertBadge = document.getElementById('nav-alerts-count');
+    if (alertBadge) {
+      alertBadge.textContent = alertCount;
+      alertBadge.style.display = alertCount > 0 ? 'inline-block' : 'none';
+    }
+
+    const appBadge = document.getElementById('nav-approvals-count');
+    if (appBadge) {
+      appBadge.textContent = pendingTotal;
+      appBadge.style.display = pendingTotal > 0 ? 'inline-block' : 'none';
+    }
+
+    const repTabCount = document.getElementById('count-tab-replenish');
+    if (repTabCount) repTabCount.textContent = m.pending_replenishments || 0;
+
+    const resTabCount = document.getElementById('count-tab-rescue');
+    if (resTabCount) resTabCount.textContent = m.pending_expiry_rescues || 0;
+
+    // Update KPI grid in automation view if present
+    const elWorkflows = document.getElementById('kpi-auto-workflows');
+    const elReplenish = document.getElementById('kpi-pending-replenish');
+    const elRescue = document.getElementById('kpi-pending-rescue');
+    const elAlerts = document.getElementById('kpi-active-alerts');
+
+    if (elWorkflows && data.workflows) {
+      const enabled = data.workflows.filter(w => w.enabled).length;
+      elWorkflows.textContent = `${enabled} / ${data.workflows.length}`;
+    }
+    if (elReplenish) elReplenish.textContent = m.pending_replenishments || 0;
+    if (elRescue) elRescue.textContent = m.pending_expiry_rescues || 0;
+    if (elAlerts) elAlerts.textContent = alertCount;
+  } catch (err) {
+    console.warn('[updateGlobalBadges] error:', err);
+  }
+}
+
+async function loadAutomationStatus() {
+  const container = document.getElementById('automation-cards-container');
+  if (!container) return;
+
+  try {
+    const res = await fetch('/api/automation/status');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    automationState.workflows = data.workflows || [];
+
+    updateGlobalBadges();
+    renderWorkflowCards(automationState.workflows);
+  } catch (err) {
+    container.innerHTML = `<div class="card" style="padding:1rem;color:#dc2626;">Error loading automation status: ${err.message}</div>`;
+  }
+}
+
+function renderWorkflowCards(workflows) {
+  const container = document.getElementById('automation-cards-container');
+  if (!container) return;
+
+  if (!workflows || workflows.length === 0) {
+    container.innerHTML = '<div class="card"><p style="padding:1rem">No automation workflows found.</p></div>';
+    return;
+  }
+
+  container.innerHTML = workflows.map(w => {
+    const meta = WORKFLOW_ICONS[w.id] || { icon: '⚙️', bg: '#f1f5f9', color: '#475569' };
+    const isEnabled = w.enabled;
+    const statusClass = !isEnabled ? 'status-disabled' :
+                        (w.last_status === 'ERROR' ? 'status-error' : 'status-enabled');
+    const statusText = !isEnabled ? 'Disabled' :
+                       (w.last_status === 'ERROR' ? 'Error' : 'Enabled & Active');
+
+    const intervalMinutes = Math.round((w.interval_seconds || 0) / 60);
+    const cadenceLabel = intervalMinutes >= 60 ? `Every ${(intervalMinutes/60).toFixed(1)} hrs` : `Every ${intervalMinutes} mins`;
+
+    const lastRunDisplay = w.last_run_at ? new Date(w.last_run_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : 'Never';
+    const nextRunDisplay = w.next_run_at ? new Date(w.next_run_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : 'Scheduled';
+
+    const errorAlertHtml = w.last_error ? `
+      <div style="margin-top:.5rem;padding:.4rem .6rem;background:#fee2e2;border:1px solid #fca5a5;border-radius:6px;font-size:.72rem;color:#991b1b;">
+        <strong>Error:</strong> ${w.last_error}
+      </div>` : '';
+
+    return `
+      <div class="workflow-card">
+        <div class="wf-header">
+          <div class="wf-icon-wrap" style="background:${meta.bg};color:${meta.color}">${meta.icon}</div>
+          <div class="wf-info">
+            <h3 class="wf-title">${w.name}</h3>
+            <p class="wf-desc">${w.description}</p>
+          </div>
+          <span class="status-pill ${statusClass}">${statusText}</span>
+        </div>
+
+        <div class="wf-meta">
+          <div class="wf-meta-row">
+            <span class="wf-meta-label">Schedule Cadence:</span>
+            <span class="wf-meta-val">${cadenceLabel}</span>
+          </div>
+          <div class="wf-meta-row">
+            <span class="wf-meta-label">Last Execution:</span>
+            <span class="wf-meta-val">${lastRunDisplay} (${w.last_status || 'IDLE'})</span>
+          </div>
+          <div class="wf-meta-row">
+            <span class="wf-meta-label">Next Scheduled Run:</span>
+            <span class="wf-meta-val">${nextRunDisplay}</span>
+          </div>
+          <div class="wf-meta-row">
+            <span class="wf-meta-label">Actions Generated:</span>
+            <span class="wf-meta-val" style="color:#2563eb">${w.actions_count || 0}</span>
+          </div>
+        </div>
+
+        ${errorAlertHtml}
+
+        <div class="wf-controls">
+          <label class="dryrun-toggle" title="Dry run evaluates rules without committing DB changes">
+            <input type="checkbox" id="dryrun-${w.id}">
+            <span>🧪 Dry Run</span>
+          </label>
+          <div class="wf-btn-group">
+            <button class="btn btn-outline btn-sm" id="btn-toggle-${w.id}" onclick="toggleWorkflow('${w.id}', ${!isEnabled})">
+              ${isEnabled ? 'Disable' : 'Enable'}
+            </button>
+            <button class="btn btn-primary btn-sm" id="btn-run-${w.id}" onclick="runWorkflow('${w.id}')">
+              ▶ Run Now
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+async function runWorkflow(workflowId) {
+  const btn = document.getElementById(`btn-run-${workflowId}`);
+  const dryRunBox = document.getElementById(`dryrun-${workflowId}`);
+  const isDryRun = dryRunBox ? dryRunBox.checked : false;
+
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = '⏳ Executing…';
+  }
+
+  try {
+    const res = await fetch('/api/automation/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflow_id: workflowId, dry_run: isDryRun })
+    });
+    const result = await res.json();
+
+    if (result.success) {
+      const modeText = result.dry_run ? '🧪 DRY-RUN COMPLETED' : '✅ EXECUTION COMPLETED';
+      alert(`${modeText}\n\nWorkflow: ${result.workflow_id}\nActions Generated: ${result.actions_generated}\nDetails: ${result.summary || 'Completed successfully'}`);
+    } else {
+      alert(`⚠️ Workflow Error:\n\n${result.error || 'Execution encountered an issue'}`);
+    }
+
+    // Refresh UI components
+    await loadAutomationStatus();
+    await loadAutomationHistory();
+    await updateGlobalBadges();
+  } catch (err) {
+    alert(`Network Error running workflow: ${err.message}`);
+  } finally {
+    if (btn) {
+      btn.disabled = false;
+      btn.textContent = '▶ Run Now';
+    }
+  }
+}
+
+async function toggleWorkflow(workflowId, targetEnabled) {
+  const btn = document.getElementById(`btn-toggle-${workflowId}`);
+  if (btn) btn.disabled = true;
+
+  try {
+    const res = await fetch('/api/automation/toggle', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ workflow_id: workflowId, enabled: targetEnabled })
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    await loadAutomationStatus();
+  } catch (err) {
+    alert(`Error updating workflow status: ${err.message}`);
+  } finally {
+    if (btn) btn.disabled = false;
+  }
+}
+
+async function loadAutomationHistory() {
+  const tbody = document.getElementById('automation-history-tbody');
+  if (!tbody) return;
+
+  const filterSelect = document.getElementById('history-filter-wf');
+  const wfId = filterSelect ? filterSelect.value : '';
+
+  let url = '/api/automation/history?limit=30';
+  if (wfId) url += `&workflow_id=${encodeURIComponent(wfId)}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    automationState.history = data.history || [];
+
+    if (automationState.history.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="8" class="loading-row">No execution logs found. Run a workflow above to generate audit logs.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = automationState.history.map(h => {
+      const isDry = Boolean(h.is_dry_run);
+      const isSuccess = h.status === 'SUCCESS';
+      const statusPill = isSuccess ? 'status-active' : 'status-error';
+      const modePill = isDry ? 'status-dryrun' : 'status-disabled';
+
+      const durationSec = ((h.duration_ms || 0) / 1000).toFixed(2);
+      const startTime = h.started_at ? new Date(h.started_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '—';
+
+      return `
+        <tr>
+          <td><strong>${h.workflow_id}</strong></td>
+          <td><span class="chip chip-subtle">${h.trigger_type}</span></td>
+          <td><span class="status-pill ${modePill}">${isDry ? 'Dry-Run' : 'Live'}</span></td>
+          <td><span class="status-pill ${statusPill}">${h.status}</span></td>
+          <td style="font-weight:600;color:#2563eb">${h.actions_generated}</td>
+          <td style="font-size:.78rem;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${h.error_message || ''}">
+            ${h.error_message ? `<span style="color:#dc2626">${h.error_message}</span>` : '<span style="color:#16a34a">✓ Clean execution</span>'}
+          </td>
+          <td style="font-size:.8rem;color:#64748b">${startTime}</td>
+          <td style="font-size:.8rem">${durationSec}s</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:#dc2626;padding:1rem;">Error loading history: ${err.message}</td></tr>`;
+  }
+}
+
+/* ══════════════════════════════════════
+   MANAGER APPROVAL INBOX
+══════════════════════════════════════ */
+function switchApprovalTab(tab) {
+  const tabRep = document.getElementById('subtab-replenish');
+  const tabRes = document.getElementById('subtab-rescue');
+  const panelRep = document.getElementById('approvals-replenish-panel');
+  const panelRes = document.getElementById('approvals-rescue-panel');
+
+  if (tab === 'replenish') {
+    if (tabRep) tabRep.classList.add('active');
+    if (tabRes) tabRes.classList.remove('active');
+    if (panelRep) panelRep.classList.remove('hidden');
+    if (panelRes) panelRes.classList.add('hidden');
+    loadReplenishments();
+  } else {
+    if (tabRep) tabRep.classList.remove('active');
+    if (tabRes) tabRes.classList.add('active');
+    if (panelRep) panelRep.classList.add('hidden');
+    if (panelRes) panelRes.classList.remove('hidden');
+    loadExpiryRescue();
+  }
+}
+
+async function loadApprovals() {
+  await loadReplenishments();
+  await loadExpiryRescue();
+  await updateGlobalBadges();
+}
+
+async function loadReplenishments() {
+  const tbody = document.getElementById('replenish-tbody');
+  if (!tbody) return;
+
+  const statusFilter = document.getElementById('replenish-status-filter');
+  const status = statusFilter ? statusFilter.value : 'PENDING_APPROVAL';
+
+  try {
+    const res = await fetch(`/api/automation/replenishment?status=${encodeURIComponent(status)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    automationState.replenishments = data.requests || [];
+
+    renderReplenishmentsTable(automationState.replenishments);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:#dc2626;padding:1rem;">Error loading replenishment requests: ${err.message}</td></tr>`;
+  }
+}
+
+function filterReplenishTable() {
+  const query = (document.getElementById('replenish-search').value || '').toLowerCase();
+  const filtered = automationState.replenishments.filter(r =>
+    (r.store_name || '').toLowerCase().includes(query) ||
+    (r.city || '').toLowerCase().includes(query) ||
+    (r.product_name || '').toLowerCase().includes(query) ||
+    (r.reason || '').toLowerCase().includes(query)
+  );
+  renderReplenishmentsTable(filtered);
+}
+
+function renderReplenishmentsTable(requests) {
+  const tbody = document.getElementById('replenish-tbody');
+  const countLabel = document.getElementById('replenish-count-label');
+  if (!tbody) return;
+
+  if (countLabel) countLabel.textContent = `${requests.length} records shown`;
+
+  if (requests.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="10" class="loading-row">No replenishment requests match the selected status. Run Auto-Replenishment to scan stores.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = requests.map(r => {
+    const isPending = r.status === 'PENDING_APPROVAL';
+    const statusClass = r.status === 'APPROVED' ? 'status-active' :
+                        (r.status === 'REJECTED' ? 'status-error' : 'status-warning');
+
+    const actionCell = isPending ? `
+      <div style="display:flex;gap:.35rem">
+        <button class="btn-approve" onclick="handleReplenishAction(${r.id}, 'approve')">✓ Approve PO</button>
+        <button class="btn-reject" onclick="handleReplenishAction(${r.id}, 'reject')">✕ Reject</button>
+      </div>` : `
+      <div class="text-muted-xs">
+        <strong>${r.approved_by || 'Manager'}</strong><br>
+        ${r.approval_notes ? `<em>"${r.approval_notes}"</em>` : ''}
+      </div>`;
+
+    return `
+      <tr>
+        <td><strong>#${r.id}</strong></td>
+        <td><strong>${r.store_name}</strong><br><small style="color:#64748b">${r.city}</small></td>
+        <td>${r.product_name}</td>
+        <td>
+          <span style="color:#dc2626;font-weight:700">${r.current_stock}</span> /
+          <span style="color:#64748b">${r.reorder_point} ROP</span>
+        </td>
+        <td>${r.safety_stock}</td>
+        <td style="font-weight:700;color:#2563eb;font-size:.95rem">+${r.suggested_order_qty} units</td>
+        <td>${fmtINR(r.estimated_total_cost)}</td>
+        <td style="font-size:.78rem;max-width:240px;line-height:1.3">${r.reason}</td>
+        <td><span class="status-pill ${statusClass}">${r.status}</span></td>
+        <td>${actionCell}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function handleReplenishAction(requestId, action) {
+  const currentRole = USER_ROLES[state.currentUser] || {};
+  const defaultManager = `${currentRole.name || 'Duty Manager'} (${currentRole.badge || 'Admin'})`;
+
+  let notes = '';
+  if (action === 'approve') {
+    notes = prompt('Manager approval note (Optional, e.g. "Approved for Pune Hub dispatch"):', 'Approved for procurement');
+    if (notes === null) return; // Cancelled
+  } else {
+    notes = prompt('Please provide reason for rejecting this replenishment request:', 'Stock surplus at neighboring store');
+    if (notes === null) return; // Cancelled
+  }
+
+  try {
+    const res = await fetch('/api/automation/replenishment/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        request_id: requestId,
+        action: action,
+        manager_name: defaultManager,
+        notes: notes
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`Success: Replenishment request #${requestId} ${action}d successfully.`);
+      await loadReplenishments();
+      await updateGlobalBadges();
+    } else {
+      alert(`Error: ${result.error || 'Failed to update request'}`);
+    }
+  } catch (err) {
+    alert(`Network error: ${err.message}`);
+  }
+}
+
+async function loadExpiryRescue() {
+  const tbody = document.getElementById('rescue-tbody');
+  if (!tbody) return;
+
+  const statusFilter = document.getElementById('rescue-status-filter');
+  const status = statusFilter ? statusFilter.value : 'PENDING_APPROVAL';
+
+  try {
+    const res = await fetch(`/api/automation/expiry-rescue?status=${encodeURIComponent(status)}`);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    automationState.expiryTransfers = data.transfers || [];
+
+    renderRescueTable(automationState.expiryTransfers);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="12" style="color:#dc2626;padding:1rem;">Error loading expiry rescues: ${err.message}</td></tr>`;
+  }
+}
+
+function filterRescueTable() {
+  const query = (document.getElementById('rescue-search').value || '').toLowerCase();
+  const filtered = automationState.expiryTransfers.filter(r =>
+    (r.batch_id || '').toLowerCase().includes(query) ||
+    (r.source_warehouse || '').toLowerCase().includes(query) ||
+    (r.target_store || '').toLowerCase().includes(query) ||
+    (r.product_name || '').toLowerCase().includes(query)
+  );
+  renderRescueTable(filtered);
+}
+
+function renderRescueTable(transfers) {
+  const tbody = document.getElementById('rescue-tbody');
+  const countLabel = document.getElementById('rescue-count-label');
+  if (!tbody) return;
+
+  if (countLabel) countLabel.textContent = `${transfers.length} records shown`;
+
+  if (transfers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-row">No expiry rescue transfers found. Run Expiry Rescue to scan batches.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = transfers.map(t => {
+    const isPending = t.status === 'PENDING_APPROVAL';
+    const statusClass = t.status === 'APPROVED' ? 'status-active' :
+                        (t.status === 'REJECTED' ? 'status-error' : 'status-warning');
+
+    const marginDays = (t.batch_expiry_days - (t.estimated_transit_hours / 24)).toFixed(1);
+
+    const actionCell = isPending ? `
+      <div style="display:flex;gap:.35rem">
+        <button class="btn-approve" onclick="handleRescueAction(${t.id}, 'approve')">✓ Authorize</button>
+        <button class="btn-reject" onclick="handleRescueAction(${t.id}, 'reject')">✕ Reject</button>
+      </div>` : `
+      <div class="text-muted-xs">
+        <strong>${t.approved_by || 'Manager'}</strong><br>
+        ${t.approval_notes ? `<em>"${t.approval_notes}"</em>` : ''}
+      </div>`;
+
+    return `
+      <tr>
+        <td><strong>#${t.id}</strong></td>
+        <td><code>${t.batch_id}</code></td>
+        <td><strong>${t.product_name}</strong></td>
+        <td>${t.source_warehouse}</td>
+        <td><span style="color:#16a34a;font-weight:600">${t.target_store}</span></td>
+        <td style="color:#dc2626;font-weight:700">${t.batch_expiry_days} days</td>
+        <td>${t.estimated_transit_hours} hrs</td>
+        <td style="font-weight:700;color:#2563eb">${t.suggested_transfer_qty} units</td>
+        <td>${fmtINR(t.inventory_value)}</td>
+        <td>
+          <span class="chip chip-healthy" title="Remaining life after transit: ${marginDays} days">
+            ✓ Expiry &gt; Transit + 1.0d
+          </span>
+        </td>
+        <td><span class="status-pill ${statusClass}">${t.status}</span></td>
+        <td>${actionCell}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function handleRescueAction(transferId, action) {
+  const currentRole = USER_ROLES[state.currentUser] || {};
+  const defaultManager = `${currentRole.name || 'Warehouse Operations Head'} (${currentRole.badge || 'Admin'})`;
+
+  let notes = '';
+  if (action === 'approve') {
+    notes = prompt('Manager note for dispatching FEFO rescue stock:', 'Authorized for expedited store transfer');
+    if (notes === null) return;
+  } else {
+    notes = prompt('Reason for rejecting this stock transfer:', 'Store shelf capacity constrained');
+    if (notes === null) return;
+  }
+
+  try {
+    const res = await fetch('/api/automation/expiry-rescue/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transfer_id: transferId,
+        action: action,
+        manager_name: defaultManager,
+        notes: notes
+      })
+    });
+    const result = await res.json();
+    if (result.success) {
+      alert(`Success: Expiry rescue transfer #${transferId} ${action}d successfully.`);
+      await loadExpiryRescue();
+      await updateGlobalBadges();
+    } else {
+      alert(`Error: ${result.error || 'Failed to update transfer'}`);
+    }
+  } catch (err) {
+    alert(`Network error: ${err.message}`);
+  }
+}
+
+/* ══════════════════════════════════════
+   AUTOMATED ALERT CENTER
+══════════════════════════════════════ */
+async function loadAlerts() {
+  const tbody = document.getElementById('alerts-tbody');
+  if (!tbody) return;
+
+  const sevFilter = document.getElementById('alert-severity-filter');
+  const statFilter = document.getElementById('alert-status-filter');
+  const typeFilter = document.getElementById('alert-type-filter');
+
+  const severity = sevFilter ? sevFilter.value : 'all';
+  const status = statFilter ? statFilter.value : '';
+  const alertType = typeFilter ? typeFilter.value : 'all';
+
+  let url = `/api/automation/alerts?severity=${encodeURIComponent(severity)}&status=${encodeURIComponent(status)}&type=${encodeURIComponent(alertType)}`;
+
+  try {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    automationState.alerts = data.alerts || [];
+
+    // Update counters
+    const counts = data.counts || {};
+    const elCrit = document.getElementById('alert-stat-critical');
+    const elWarn = document.getElementById('alert-stat-warning');
+    const elTot  = document.getElementById('alert-stat-total');
+
+    if (elCrit) elCrit.textContent = counts.critical || 0;
+    if (elWarn) elWarn.textContent = counts.warning || 0;
+    if (elTot)  elTot.textContent = counts.total_open || 0;
+
+    updateGlobalBadges();
+    renderAlertsTable(automationState.alerts);
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="8" style="color:#dc2626;padding:1rem;">Error loading alerts: ${err.message}</td></tr>`;
+  }
+}
+
+function setAlertSeverityFilter(sev) {
+  const dropdown = document.getElementById('alert-severity-filter');
+  if (dropdown) dropdown.value = sev;
+  loadAlerts();
+}
+
+function filterAlertTable() {
+  const query = (document.getElementById('alert-search').value || '').toLowerCase();
+  const filtered = automationState.alerts.filter(a =>
+    (a.message || '').toLowerCase().includes(query) ||
+    (a.entity_id || '').toLowerCase().includes(query) ||
+    (a.alert_type || '').toLowerCase().includes(query) ||
+    (a.recommended_action || '').toLowerCase().includes(query)
+  );
+  renderAlertsTable(filtered);
+}
+
+function renderAlertsTable(alerts) {
+  const tbody = document.getElementById('alerts-tbody');
+  const countLabel = document.getElementById('alert-count-label');
+  if (!tbody) return;
+
+  if (countLabel) countLabel.textContent = `${alerts.length} alerts displayed`;
+
+  if (alerts.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="8" class="loading-row">No alerts found matching the active criteria. The supply network is healthy.</td></tr>';
+    return;
+  }
+
+  tbody.innerHTML = alerts.map(a => {
+    const sevPill = a.severity === 'CRITICAL' ? 'status-critical' :
+                    (a.severity === 'WARNING' ? 'status-warning' : 'status-disabled');
+
+    const statusPill = a.status === 'RESOLVED' ? 'status-active' :
+                       (a.status === 'ACKNOWLEDGED' ? 'status-warning' : 'status-critical');
+
+    const timeFormatted = a.created_at ? new Date(a.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit', second:'2-digit'}) : '—';
+
+    let actionBtns = '';
+    if (a.status === 'OPEN') {
+      actionBtns = `
+        <div style="display:flex;gap:.3rem">
+          <button class="btn-acknowledge" onclick="handleAlertAction(${a.id}, 'acknowledge')">👁️ Ack</button>
+          <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">✓ Resolve</button>
+        </div>`;
+    } else if (a.status === 'ACKNOWLEDGED') {
+      actionBtns = `
+        <button class="btn-resolve" onclick="handleAlertAction(${a.id}, 'resolve')">✓ Resolve</button>
+        <span class="text-muted-xs" style="display:block;margin-top:.2rem">by ${a.acknowledged_by || 'Staff'}</span>`;
+    } else {
+      actionBtns = `<span class="text-muted-xs">Resolved by ${a.resolved_by || 'Staff'}</span>`;
+    }
+
+    return `
+      <tr>
+        <td><span class="status-pill ${sevPill}">${a.severity}</span></td>
+        <td><span class="chip chip-subtle">${a.alert_type}</span></td>
+        <td><code>${a.entity_id || 'System'}</code></td>
+        <td style="font-size:.82rem;font-weight:500;line-height:1.35;max-width:280px">${a.message}</td>
+        <td style="font-size:.8rem;color:#2563eb;font-weight:600;max-width:240px">${a.recommended_action || '—'}</td>
+        <td style="font-size:.78rem;color:#64748b">${timeFormatted}</td>
+        <td><span class="status-pill ${statusPill}">${a.status}</span></td>
+        <td>${actionBtns}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+async function handleAlertAction(alertId, action) {
+  const currentRole = USER_ROLES[state.currentUser] || {};
+  const userName = currentRole.name || 'Duty Operations Manager';
+
+  try {
+    const res = await fetch('/api/automation/alerts/action', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ alert_id: alertId, action: action, user_name: userName })
+    });
+    const result = await res.json();
+    if (result.success) {
+      await loadAlerts();
+    } else {
+      alert(`Error updating alert: ${result.error || 'Failed'}`);
+    }
+  } catch (err) {
+    alert(`Network error: ${err.message}`);
+  }
+}
+
+/* ══════════════════════════════════════
+   DISTRIBUTION OPTIMIZATION OPTIONS
+══════════════════════════════════════ */
+async function loadDistributionOptions() {
+  const tbody = document.getElementById('ranked-dist-tbody');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/automation/distribution-options');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const rows = data.recommendations || [];
+
+    if (rows.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="10" class="loading-row">No active distribution options. Run Distribution Optimization workflow to compute rankings.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = rows.map(r => {
+      const isRank1 = r.warehouse_rank === 1;
+      const rankBadge = isRank1 ? '<span class="chip chip-healthy">🥇 Rank 1 (Optimal)</span>' :
+                                  `<span class="chip chip-subtle">🥈 Rank ${r.warehouse_rank}</span>`;
+      const rowStyle = isRank1 ? 'style="background:#f8fafc;font-weight:500"' : '';
+
+      return `
+        <tr ${rowStyle}>
+          <td><strong>${r.store_name}</strong></td>
+          <td>${r.product_name}</td>
+          <td style="color:#dc2626;font-weight:600">${r.deficit_units} units</td>
+          <td>${rankBadge}</td>
+          <td><strong>${r.candidate_warehouse}</strong></td>
+          <td>${r.distance_km} km</td>
+          <td>${fmtINR(r.estimated_freight_cost)}</td>
+          <td>${r.transit_time_hours} hrs</td>
+          <td style="color:#16a34a;font-weight:600">${r.available_units} units</td>
+          <td style="font-size:.78rem;color:#475569">${r.rationale}</td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="10" style="color:#dc2626;padding:1rem;">Error loading distribution options: ${err.message}</td></tr>`;
+  }
+}
+
+/* ══════════════════════════════════════
+   DELIVERY MONITORING (MANIFEST CHECKPOINTS)
+══════════════════════════════════════ */
+async function loadDeliveryMonitoring() {
+  const tbody = document.getElementById('delivery-monitor-tbody');
+  if (!tbody) return;
+
+  try {
+    const res = await fetch('/api/automation/deliveries');
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    const data = await res.json();
+    const shipments = data.shipments || [];
+
+    if (shipments.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="9" class="loading-row">No active delivery shipments tracked.</td></tr>';
+      return;
+    }
+
+    tbody.innerHTML = shipments.map(s => {
+      const isDelayed = s.status === 'DELAYED';
+      const statusPill = isDelayed ? 'status-critical' :
+                         (s.status === 'DELIVERED' ? 'status-active' : 'status-warning');
+
+      const delayMinutes = s.delay_minutes || 0;
+      const delayCell = delayMinutes > 0 ?
+        `<span style="color:#dc2626;font-weight:700">+${delayMinutes} mins overdue</span>` :
+        '<span style="color:#16a34a">On Time (0 mins)</span>';
+
+      const expDate = s.expected_delivery_at ? new Date(s.expected_delivery_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+      const dispDate = s.dispatched_at ? new Date(s.dispatched_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : '—';
+
+      return `
+        <tr ${isDelayed ? 'style="background:#fef2f2"' : ''}>
+          <td><strong>${s.shipment_code || s.shipment_id || ('SHP-' + s.id)}</strong></td>
+          <td>${s.origin_warehouse_id || s.source_warehouse} → <strong>${s.destination_city || s.destination_store}</strong></td>
+          <td><strong>${s.assigned_driver || s.driver_name}</strong><br><small style="color:#64748b">${s.vehicle_no || s.vehicle_number}</small></td>
+          <td>${dispDate}</td>
+          <td>${expDate}</td>
+          <td>${s.actual_delivery_at ? new Date(s.actual_delivery_at).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}) : 'In Transit'}</td>
+          <td>${delayCell}</td>
+          <td><span class="status-pill ${statusPill}">${s.status}</span></td>
+          <td>
+            ${isDelayed ? `<span class="chip chip-warning" title="${s.delay_reason || ''}">🚨 Delay Alert: ${s.delay_reason || 'Delayed'}</span>` : '<span class="chip chip-subtle">SLA Compliant</span>'}
+          </td>
+        </tr>
+      `;
+    }).join('');
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="9" style="color:#dc2626;padding:1rem;">Error loading deliveries: ${err.message}</td></tr>`;
+  }
+}
+
+/* ══════════════════════════════════════
    INIT
 ══════════════════════════════════════ */
 document.addEventListener('DOMContentLoaded', () => {
@@ -1355,4 +2120,8 @@ document.addEventListener('DOMContentLoaded', () => {
     applyUserRole('admin');
     promptPinForRole('admin');
   }
+
+  // Initial badge update and periodic polling
+  updateGlobalBadges();
+  setInterval(updateGlobalBadges, 30000);
 });

@@ -4,6 +4,7 @@ Flask Application & RESTful API Gateway
 """
 
 import json
+import os
 from flask import Flask, render_template, jsonify, request
 from engine.data_loader import (
     PRODUCTS,
@@ -22,13 +23,35 @@ from engine.inventory_optimizer import (
 )
 from engine.allocator import allocator
 from engine.simulator import simulator
+from engine.automation_db import init_db, get_db_connection
+from engine.automation_engine import (
+    execute_workflow,
+    approve_replenishment,
+    reject_replenishment,
+    approve_expiry_rescue,
+    reject_expiry_rescue,
+    resolve_alert,
+    acknowledge_alert,
+)
+from engine.automation_scheduler import start_in_process_scheduler
 
 app = Flask(__name__)
+
+# Initialize database on startup
+init_db()
+
+# Auto-start in-process background scheduler (if enabled and not disabled for testing)
+if os.environ.get("SCHEDULER_AUTOSTART", "1").lower() in ("1", "true", "yes"):
+    if not app.debug or os.environ.get("WERKZEUG_RUN_MAIN") == "true":
+        try:
+            start_in_process_scheduler()
+        except Exception as _e:
+            app.logger.warning("Could not auto-start in-process scheduler: %s", _e)
 
 
 @app.route("/")
 def index():
-    return render_template("index.html")
+    return render_template("simple.html")
 
 
 # 4 User Roles & Profiles
@@ -344,6 +367,278 @@ def api_network():
         })
 
     return jsonify({"nodes": nodes, "links": links})
+
+
+# ===========================================================================
+# AUTOMATION CONTROL PANEL & WORKFLOW API GATEWAYS
+# ===========================================================================
+
+@app.route("/api/automation/status")
+def api_automation_status():
+    """Returns status, run statistics and configs for all automated workflows."""
+    conn = get_db_connection()
+    try:
+        workflows = conn.execute("SELECT * FROM automation_configs ORDER BY id;").fetchall()
+        wf_list = []
+        for w in workflows:
+            wf_list.append({
+                "id": w["id"],
+                "name": w["name"],
+                "description": w["description"],
+                "enabled": bool(w["enabled"]),
+                "interval_seconds": w["interval_seconds"],
+                "last_run_at": w["last_run_at"],
+                "next_run_at": w["next_run_at"],
+                "last_status": w["last_status"],
+                "last_error": w["last_error"],
+                "actions_count": w["actions_count"],
+                "config": json.loads(w["config_json"] or "{}"),
+            })
+
+        # Summary statistics
+        total_alerts = conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED');").fetchone()["c"]
+        pending_replenish = conn.execute("SELECT COUNT(*) as c FROM replenishment_requests WHERE status = 'PENDING_APPROVAL';").fetchone()["c"]
+        pending_rescue = conn.execute("SELECT COUNT(*) as c FROM expiry_rescue_transfers WHERE status = 'PENDING_APPROVAL';").fetchone()["c"]
+        delayed_deliveries = conn.execute("SELECT COUNT(*) as c FROM delivery_shipments WHERE status = 'DELAYED';").fetchone()["c"]
+
+        return jsonify({
+            "workflows": wf_list,
+            "metrics": {
+                "active_alerts": total_alerts,
+                "pending_replenishments": pending_replenish,
+                "pending_expiry_rescues": pending_rescue,
+                "delayed_shipments": delayed_deliveries,
+            }
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/toggle", methods=["POST"])
+def api_automation_toggle():
+    """Enables or disables an automation workflow."""
+    body = request.get_json(silent=True) or {}
+    workflow_id = body.get("workflow_id")
+    enabled = int(bool(body.get("enabled", True)))
+
+    if not workflow_id:
+        return jsonify({"error": "workflow_id is required"}), 400
+
+    conn = get_db_connection()
+    try:
+        with conn:
+            cur = conn.execute("UPDATE automation_configs SET enabled = ?, updated_at = datetime('now') WHERE id = ?;", (enabled, workflow_id))
+            if cur.rowcount == 0:
+                return jsonify({"error": "Workflow not found"}), 404
+        return jsonify({"success": True, "workflow_id": workflow_id, "enabled": bool(enabled)})
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/run", methods=["POST"])
+def api_automation_run():
+    """Triggers immediate execution of a workflow (supports dry_run mode)."""
+    body = request.get_json(silent=True) or {}
+    workflow_id = body.get("workflow_id")
+    dry_run = bool(body.get("dry_run", False))
+
+    if not workflow_id:
+        return jsonify({"error": "workflow_id is required"}), 400
+
+    result = execute_workflow(workflow_id=workflow_id, dry_run=dry_run)
+    return jsonify(result)
+
+
+@app.route("/api/automation/history")
+def api_automation_history():
+    """Returns execution history logs for workflows."""
+    wf_id = request.args.get("workflow_id")
+    limit = int(request.args.get("limit", 30))
+
+    conn = get_db_connection()
+    try:
+        if wf_id:
+            rows = conn.execute("""
+            SELECT * FROM automation_execution_logs 
+            WHERE workflow_id = ? 
+            ORDER BY started_at DESC LIMIT ?;
+            """, (wf_id, limit)).fetchall()
+        else:
+            rows = conn.execute("""
+            SELECT * FROM automation_execution_logs 
+            ORDER BY started_at DESC LIMIT ?;
+            """, (limit,)).fetchall()
+
+        history = [dict(r) for r in rows]
+        return jsonify({"history": history})
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/replenishment")
+def api_automation_replenishment():
+    """Returns replenishment recommendations with status filter."""
+    status = request.args.get("status", "PENDING_APPROVAL")
+    conn = get_db_connection()
+    try:
+        if status and status != "all":
+            rows = conn.execute("SELECT * FROM replenishment_requests WHERE status = ? ORDER BY id DESC;", (status,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM replenishment_requests ORDER BY id DESC LIMIT 100;").fetchall()
+        return jsonify({"requests": [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/replenishment/action", methods=["POST"])
+def api_automation_replenishment_action():
+    """Approves or rejects a replenishment recommendation (Manager action)."""
+    body = request.get_json(silent=True) or {}
+    request_id = body.get("request_id")
+    action = (body.get("action") or "").lower()
+    manager_name = body.get("manager_name") or "Supply Chain Manager"
+    notes = body.get("notes")
+
+    if not request_id or action not in ("approve", "reject"):
+        return jsonify({"error": "request_id and valid action ('approve'|'reject') required"}), 400
+
+    if action == "approve":
+        result = approve_replenishment(request_id=request_id, manager_name=manager_name, notes=notes)
+    else:
+        result = reject_replenishment(request_id=request_id, manager_name=manager_name, reason=notes)
+
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/automation/expiry-rescue")
+def api_automation_expiry_rescue():
+    """Returns expiry rescue recommendations."""
+    status = request.args.get("status", "PENDING_APPROVAL")
+    conn = get_db_connection()
+    try:
+        if status and status != "all":
+            rows = conn.execute("SELECT * FROM expiry_rescue_transfers WHERE status = ? ORDER BY batch_expiry_days ASC;", (status,)).fetchall()
+        else:
+            rows = conn.execute("SELECT * FROM expiry_rescue_transfers ORDER BY id DESC LIMIT 100;").fetchall()
+        return jsonify({"transfers": [dict(r) for r in rows]})
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/expiry-rescue/action", methods=["POST"])
+def api_automation_expiry_rescue_action():
+    """Approves or rejects an expiry rescue transfer (Manager action)."""
+    body = request.get_json(silent=True) or {}
+    transfer_id = body.get("transfer_id")
+    action = (body.get("action") or "").lower()
+    manager_name = body.get("manager_name") or "Warehouse Operations Lead"
+    notes = body.get("notes")
+
+    if not transfer_id or action not in ("approve", "reject"):
+        return jsonify({"error": "transfer_id and valid action ('approve'|'reject') required"}), 400
+
+    if action == "approve":
+        result = approve_expiry_rescue(transfer_id=transfer_id, manager_name=manager_name, notes=notes)
+    else:
+        result = reject_expiry_rescue(transfer_id=transfer_id, manager_name=manager_name, reason=notes)
+
+    status_code = 200 if result.get("success") else 400
+    return jsonify(result), status_code
+
+
+@app.route("/api/automation/distribution-options")
+def api_automation_distribution_options():
+    """Returns ranked candidate warehouses for stores needing inventory."""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute("""
+        SELECT * FROM distribution_recommendations 
+        WHERE status = 'ACTIVE' 
+        ORDER BY store_name, product_name, warehouse_rank ASC;
+        """).fetchall()
+        return jsonify({
+            "recommendations": [dict(r) for r in rows],
+            "data_classification": "SIMULATED_SAMPLE",
+            "note": "Warehouse rankings are calculated from road distances, cold-chain rate models, and simulated batch availability."
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/deliveries")
+def api_automation_deliveries():
+    """Returns active delivery shipments and delay monitoring status."""
+    conn = get_db_connection()
+    try:
+        rows = conn.execute("SELECT * FROM delivery_shipments ORDER BY dispatched_at DESC;").fetchall()
+        return jsonify({
+            "shipments": [dict(r) for r in rows],
+            "note": "Shipment milestones are logged via checkpoint manifest status. No live GPS hardware claimed."
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/alerts")
+def api_automation_alerts():
+    """Returns database-backed alerts with optional filtering."""
+    status = request.args.get("status")
+    severity = request.args.get("severity")
+    alert_type = request.args.get("type")
+
+    query = "SELECT * FROM alerts WHERE 1=1"
+    params = []
+
+    if status and status != "all":
+        query += " AND status = ?"
+        params.append(status)
+    elif not status:
+        query += " AND status IN ('OPEN', 'ACKNOWLEDGED')"
+
+    if severity and severity != "all":
+        query += " AND severity = ?"
+        params.append(severity)
+
+    if alert_type and alert_type != "all":
+        query += " AND alert_type = ?"
+        params.append(alert_type)
+
+    query += " ORDER BY CASE severity WHEN 'CRITICAL' THEN 1 WHEN 'WARNING' THEN 2 ELSE 3 END, created_at DESC LIMIT 100;"
+
+    conn = get_db_connection()
+    try:
+        rows = conn.execute(query, params).fetchall()
+        counts = {
+            "critical": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED') AND severity = 'CRITICAL';").fetchone()["c"],
+            "warning": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED') AND severity = 'WARNING';").fetchone()["c"],
+            "total_open": conn.execute("SELECT COUNT(*) as c FROM alerts WHERE status IN ('OPEN', 'ACKNOWLEDGED');").fetchone()["c"],
+        }
+        return jsonify({
+            "alerts": [dict(r) for r in rows],
+            "counts": counts
+        })
+    finally:
+        conn.close()
+
+
+@app.route("/api/automation/alerts/action", methods=["POST"])
+def api_automation_alerts_action():
+    """Acknowledges or resolves an alert."""
+    body = request.get_json(silent=True) or {}
+    alert_id = body.get("alert_id")
+    action = (body.get("action") or "").lower()
+    user_name = body.get("user_name") or "Duty Manager"
+
+    if not alert_id or action not in ("acknowledge", "resolve"):
+        return jsonify({"error": "alert_id and valid action ('acknowledge'|'resolve') required"}), 400
+
+    if action == "acknowledge":
+        result = acknowledge_alert(alert_id=alert_id, user_name=user_name)
+    else:
+        result = resolve_alert(alert_id=alert_id, user_name=user_name)
+
+    return jsonify(result)
 
 
 if __name__ == "__main__":

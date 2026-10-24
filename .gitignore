@@ -38,3 +38,10 @@ desktop.ini
 # Environment variables
 .env
 .env.local
+
+# SQLite databases
+*.db
+*.sqlite
+*.sqlite3
+*.db-wal
+*.db-shm
