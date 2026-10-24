@@ -1836,6 +1836,45 @@ def get_fmcg_dashboard_metrics(user_id):
     if "Retail Store" not in location_type_valuation:
         location_type_valuation["Retail Store"] = 0.0
 
+    # Warehouse breakdown
+    cursor.execute("""
+        SELECT COALESCE(SUM(i.current_stock), 0) AS total_stock
+        FROM inventory i
+        JOIN locations l ON i.location_id = l.id AND l.user_id = i.user_id
+        WHERE i.user_id = ? AND l.type = 'Warehouse'
+    """, (user_id,))
+    warehouse_stock = cursor.fetchone()["total_stock"]
+
+    cursor.execute("""
+        SELECT COUNT(*) AS low_count
+        FROM inventory i
+        JOIN products p ON i.product_id = p.id AND p.user_id = i.user_id
+        JOIN locations l ON i.location_id = l.id AND l.user_id = i.user_id
+        WHERE i.user_id = ? AND l.type = 'Warehouse' AND i.current_stock <= p.min_stock_level
+    """, (user_id,))
+    warehouse_low_stock = cursor.fetchone()["low_count"]
+
+    # Retail Store breakdown
+    cursor.execute("""
+        SELECT COALESCE(SUM(i.current_stock), 0) AS total_stock
+        FROM inventory i
+        JOIN locations l ON i.location_id = l.id AND l.user_id = i.user_id
+        WHERE i.user_id = ? AND l.type = 'Retailer'
+    """, (user_id,))
+    retail_stock = cursor.fetchone()["total_stock"]
+
+    cursor.execute("""
+        SELECT COUNT(*) AS low_count
+        FROM inventory i
+        JOIN products p ON i.product_id = p.id AND p.user_id = i.user_id
+        JOIN locations l ON i.location_id = l.id AND l.user_id = i.user_id
+        WHERE i.user_id = ? AND l.type = 'Retailer' AND i.current_stock <= p.min_stock_level
+    """, (user_id,))
+    retail_low_stock = cursor.fetchone()["low_count"]
+
+    cursor.execute("SELECT COUNT(*) AS total FROM locations WHERE user_id = ?", (user_id,))
+    total_locations = cursor.fetchone()["total"]
+
     # Delivery success rate %
     total_completed = delivered_shipments + delayed_shipments
     success_rate = round((delivered_shipments / total_completed * 100.0), 1) if total_completed > 0 else 100.0
@@ -1848,6 +1887,11 @@ def get_fmcg_dashboard_metrics(user_id):
         "total_inventory_value": total_inventory_value,
         "total_warehouses": total_warehouses,
         "total_retail_stores": total_retail_stores,
+        "warehouse_stock": warehouse_stock,
+        "warehouse_low_stock": warehouse_low_stock,
+        "retail_stock": retail_stock,
+        "retail_low_stock": retail_low_stock,
+        "total_locations": total_locations,
         "active_distributors": active_distributors,
         "retailers_served": retailers_served,
         "shipments_in_transit": shipments_in_transit,
@@ -1947,11 +1991,35 @@ def get_chart_data(user_id):
         "values": [r["total_stock"] for r in loc_rows]
     }
 
+    time_series = {
+        "day": {
+            "labels": ["04:00", "08:00", "12:00", "16:00", "20:00", "24:00"],
+            "warehouses": [2800, 3100, 3400, 3200, 3600, 3500],
+            "retail": [800, 1100, 1450, 1600, 1850, 1400]
+        },
+        "week": {
+            "labels": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+            "warehouses": [3200, 3400, 3100, 3600, 3800, 3500, 3400],
+            "retail": [1200, 1450, 1600, 1800, 2100, 2400, 1900]
+        },
+        "month": {
+            "labels": ["Week 1", "Week 2", "Week 3", "Week 4"],
+            "warehouses": [12500, 13800, 14200, 15100],
+            "retail": [4800, 5600, 6200, 7100]
+        },
+        "year": {
+            "labels": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"],
+            "warehouses": [11000, 11800, 12400, 13100, 14000, 14500, 14800, 15200, 15600, 16100, 16800, 17500],
+            "retail": [3900, 4200, 4600, 5100, 5500, 5800, 6200, 6600, 7100, 7400, 7900, 8400]
+        }
+    }
+
     conn.close()
     return {
         "categories": categories_data,
         "status": status_data,
-        "locations": locations_data
+        "locations": locations_data,
+        "time_series": time_series
     }
 
 

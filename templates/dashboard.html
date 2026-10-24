@@ -1,10 +1,10 @@
 {% extends "base.html" %}
 
-{% block title %}Executive Dashboard{% endblock %}
+{% block title %}Dashboard{% endblock %}
 {% block header_title %}Inventory & Warehouse Operations Dashboard{% endblock %}
 
 {% block topbar_actions %}
-<div style="display: flex; gap: 0.65rem;">
+<div style="display: flex; gap: 0.65rem; align-items: center;">
   <a href="{{ url_for('transfers') }}" class="btn btn-outline btn-sm">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
       <polyline points="17 1 21 5 17 9"></polyline>
@@ -12,265 +12,621 @@
     </svg>
     <span>Transfer Stock</span>
   </a>
-  <a href="{{ url_for('predictions') }}" class="btn btn-primary btn-sm">
+  <button type="button" onclick="openModal('addProductModal')" class="btn btn-primary btn-sm">
     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
     </svg>
-    <span>AI Predictor</span>
-  </a>
+    <span>+ Add Product</span>
+  </button>
 </div>
 {% endblock %}
 
 {% block content %}
-<!-- FMCG Live Map Banner -->
-<div class="card" style="margin-bottom: 1.5rem; background: linear-gradient(135deg, rgba(30, 58, 138, 0.35) 0%, rgba(88, 28, 135, 0.35) 100%); border: 1px solid rgba(99, 102, 241, 0.35); padding: 1.25rem 1.5rem; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+<!-- ── 1. Welcome Section ───────────────────────────────────── -->
+<div class="welcome-section">
   <div>
-    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.35rem;">
-      <span class="badge" style="background: rgba(16, 185, 129, 0.2); color: #34d399; font-weight: 700;">LIVE TELEMETRY ACTIVE</span>
-      <span style="font-size: 0.8rem; color: #94a3b8;">{{ metrics.shipments_in_transit }} In Transit • {{ metrics.total_warehouses }} Hubs • {{ metrics.active_distributors }} Distributors • {{ metrics.retailers_served }} Outlets</span>
-    </div>
-    <h3 style="font-size: 1.15rem; font-weight: 700; color: #fff; margin-bottom: 0.25rem;">FMCG Distribution Intelligence & Interactive Live Map</h3>
-    <p style="color: #cbd5e1; font-size: 0.85rem; margin: 0;">Real-time geographical tracking across Maharashtra & Gujarat distribution corridors with animated vehicle simulation and telemetry.</p>
+    <h1 class="welcome-title">Hello, {{ current_user.name if current_user else 'Operations Lead' }}</h1>
+    <p class="welcome-subtitle">Monitor your inventory, warehouse operations, and AI-powered demand insights in real time.</p>
   </div>
-  <a href="{{ url_for('inventory') }}" class="btn btn-primary" style="padding: 0.7rem 1.25rem; font-weight: 600; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.4);">
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-      <circle cx="12" cy="10" r="3"></circle>
-    </svg>
-    <span>Open Live Map & Inventory Console &rarr;</span>
-  </a>
+  <div class="welcome-actions">
+    <a href="{{ url_for('inventory') }}" class="btn btn-outline" style="background: #ffffff;">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+        <circle cx="12" cy="10" r="3"></circle>
+      </svg>
+      <span>Live Movement Map</span>
+    </a>
+    <button type="button" onclick="openModal('addProductModal')" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>+ Add Product</span>
+    </button>
+  </div>
 </div>
 
-<!-- 6-Metric KPI Cards Grid -->
-<div class="kpi-grid-6">
-  <!-- 1. Total Products -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-blue">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+<!-- ── 2. Three Pastel Summary Cards Grid ────────────────────── -->
+<div class="summary-cards-grid">
+  <!-- Card 1: Total Products (Soft Cream) -->
+  <div class="summary-card summary-card-cream">
+    <div class="summary-card-top">
+      <div class="summary-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+          <path d="m3.3 7 8.7 5 8.7-5"></path>
+          <path d="M12 22V12"></path>
         </svg>
       </div>
-      <span class="badge" style="background: rgba(59, 130, 246, 0.15); color: #60a5fa;">SKUs</span>
-    </div>
-    <div class="metric-val">{{ metrics.total_products }}</div>
-    <div class="metric-lbl">Total Products</div>
-  </div>
-
-  <!-- 2. Total Warehouses -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-cyan">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 21V9l9-6 9 6v12H3Z"></path>
+      <a href="{{ url_for('products') }}" class="circle-arrow-btn" title="View all products">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
         </svg>
-      </div>
-      <span class="badge badge-warehouse">Hubs</span>
+      </a>
     </div>
-    <div class="metric-val">{{ metrics.total_warehouses }}</div>
-    <div class="metric-lbl">Total Warehouses</div>
+    <div>
+      <div class="summary-card-val">{{ metrics.total_products }}</div>
+      <div class="summary-card-lbl">Total Products</div>
+      <div class="summary-card-sub">Active master catalog SKUs across network</div>
+    </div>
   </div>
 
-  <!-- 3. Total Retail Stores -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-purple">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
-          <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-        </svg>
-      </div>
-      <span class="badge badge-store">Outlets</span>
-    </div>
-    <div class="metric-val">{{ metrics.total_retail_stores }}</div>
-    <div class="metric-lbl">Total Retail Stores</div>
-  </div>
-
-  <!-- 4. Total Inventory Value (₹) -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-purple">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Card 2: Total Inventory Value (Soft Pastel Blue) -->
+  <div class="summary-card summary-card-blue">
+    <div class="summary-card-top">
+      <div class="summary-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="M6 3h12"></path>
           <path d="M6 8h12"></path>
           <path d="m6 13 8.5 8"></path>
           <path d="M6 13h3a4 4 0 0 0 0-8"></path>
         </svg>
       </div>
-      <span class="badge" style="background: rgba(139, 92, 246, 0.15); color: #c084fc;">Capital</span>
+      <a href="{{ url_for('reports') }}" class="circle-arrow-btn" title="View financial valuation report">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
+        </svg>
+      </a>
     </div>
-    <div class="metric-val">₹{{ "{:,.2f}".format(metrics.total_inventory_value) }}</div>
-    <div class="metric-lbl">Total Inventory Value</div>
+    <div>
+      <div class="summary-card-val">₹{{ "{:,.2f}".format(metrics.total_inventory_value) }}</div>
+      <div class="summary-card-lbl">Total Inventory Value</div>
+      <div class="summary-card-sub">Combined assets across warehouses & outlets</div>
+    </div>
   </div>
 
-  <!-- 5. Low-Stock Products -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-amber">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+  <!-- Card 3: Low-Stock Products / Low-Stock Outlets (Soft Lavender) -->
+  <div class="summary-card summary-card-lavender">
+    <div class="summary-card-top">
+      <div class="summary-card-icon">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
           <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
           <line x1="12" y1="9" x2="12" y2="13"></line>
+          <line x1="12" y1="17" x2="12.01" y2="17"></line>
         </svg>
       </div>
-      <span class="badge {% if metrics.low_stock_products > 0 %}status-low{% else %}status-healthy{% endif %}">
-        {% if metrics.low_stock_products > 0 %}Attention{% else %}Safe{% endif %}
-      </span>
-    </div>
-    <div class="metric-val" style="color: {% if metrics.low_stock_products > 0 %}#fbbf24{% else %}#34d399{% endif %};">
-      {{ metrics.low_stock_products }}
-    </div>
-    <div class="metric-lbl">Low-Stock Outlets</div>
-  </div>
-
-  <!-- 6. Predicted Demand -->
-  <div class="metric-card">
-    <div class="metric-top-row">
-      <div class="metric-icon icon-cyan">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"></polyline>
-          <polyline points="16 7 22 7 22 13"></polyline>
+      <a href="#inventoryAnalyticsSection" class="circle-arrow-btn" title="Jump to low stock analytics">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="7" y1="17" x2="17" y2="7"></line>
+          <polyline points="7 7 17 7 17 17"></polyline>
         </svg>
-      </div>
-      <span class="badge" style="background: rgba(6, 182, 212, 0.15); color: #38bdf8;">7-Day Run</span>
+      </a>
     </div>
-    <div class="metric-val">{{ "{:,}".format(metrics.predicted_demand) }}</div>
-    <div class="metric-lbl">Predicted Demand (Units)</div>
-  </div>
-</div>
-
-<!-- Charts Row: Inventory Distribution & Stock Status Overview -->
-<div class="charts-grid-main">
-  <!-- Chart 1: Inventory Valuation by Category -->
-  <div class="card chart-card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">Product Inventory Distribution</h3>
-        <p class="card-subtitle">Capital allocated across product categories across all warehouses & stores (₹)</p>
+    <div>
+      <div class="summary-card-val" style="color: {% if metrics.low_stock_products > 0 %}#9333ea{% else %}#059669{% endif %};">
+        {{ metrics.low_stock_products }}
       </div>
-    </div>
-    <div class="chart-canvas-wrap" style="height: 280px;">
-      <canvas id="categoryChart"></canvas>
-    </div>
-  </div>
-
-  <!-- Chart 2: Stock Status Overview -->
-  <div class="card chart-card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">Stock Status Overview</h3>
-        <p class="card-subtitle">Retail store inventory health distribution</p>
-      </div>
-    </div>
-    <div class="chart-canvas-wrap" style="height: 230px;">
-      <canvas id="statusChart"></canvas>
-    </div>
-    <div style="display: flex; justify-content: space-around; margin-top: 1rem; padding-top: 0.85rem; border-top: 1px solid var(--border-subtle); font-size: 0.8rem;">
-      <div>
-        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #34d399; margin-right: 4px;"></span>
-        <span style="color: var(--text-muted);">Healthy:</span> <strong style="color: #34d399;">{{ metrics.status_counts.Healthy }}</strong>
-      </div>
-      <div>
-        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #fbbf24; margin-right: 4px;"></span>
-        <span style="color: var(--text-muted);">Low Stock:</span> <strong style="color: #fbbf24;">{{ metrics.status_counts['Low Stock'] }}</strong>
-      </div>
-      <div>
-        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #f87171; margin-right: 4px;"></span>
-        <span style="color: var(--text-muted);">Critical:</span> <strong style="color: #f87171;">{{ metrics.status_counts.Critical }}</strong>
-      </div>
+      <div class="summary-card-lbl">Low-Stock Products</div>
+      <div class="summary-card-sub">Low-Stock Outlets requiring priority restocking</div>
     </div>
   </div>
 </div>
 
-<!-- Operational Tables Row: Immediate Restocking Deficits & Recent Stock Transfers -->
-<div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1.25rem; margin-bottom: 1.75rem;">
-  <!-- Deficit Items at Retail Outlets -->
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">Store Replenishment Alerts</h3>
-        <p class="card-subtitle">Retail outlets currently breaching safety stock thresholds</p>
+<!-- ── 3. Main Two-Column Layout ────────────────────────────── -->
+<div class="dashboard-grid-layout">
+  
+  <!-- LEFT COLUMN: Inventory Overview Chart & Location Performance -->
+  <div style="display: flex; flex-direction: column; gap: 1.75rem;">
+    
+    <!-- Large Card: Inventory Overview -->
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 class="card-title">Inventory Overview</h3>
+          <p class="card-subtitle">Real-time stock balance across warehouses and retail stores</p>
+        </div>
+        
+        <!-- Period Filter Tabs: Day, Week, Month, Year -->
+        <div class="period-filter-tabs">
+          <button type="button" class="period-tab-btn" data-period="day" onclick="switchInventoryOverviewPeriod('day')">Day</button>
+          <button type="button" class="period-tab-btn active" data-period="week" onclick="switchInventoryOverviewPeriod('week')">Week</button>
+          <button type="button" class="period-tab-btn" data-period="month" onclick="switchInventoryOverviewPeriod('month')">Month</button>
+          <button type="button" class="period-tab-btn" data-period="year" onclick="switchInventoryOverviewPeriod('year')">Year</button>
+        </div>
       </div>
-      <a href="{{ url_for('predictions') }}" class="btn btn-outline btn-sm">Predict & Sourcing &rarr;</a>
+
+      <!-- Overview Stock Summary Metrics -->
+      <div style="display: flex; gap: 1rem; margin-bottom: 1.25rem; flex-wrap: wrap;">
+        <div style="padding: 0.6rem 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 12px; display: flex; align-items: center; gap: 0.65rem;">
+          <span style="font-size: 0.78rem; color: var(--text-muted); font-weight: 600;">Total Stock:</span>
+          <span style="font-size: 0.95rem; font-weight: 800; color: var(--text-dark);">{{ "{:,}".format(metrics.warehouse_stock + metrics.retail_stock) }} units</span>
+        </div>
+        <div style="padding: 0.6rem 1rem; background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 12px; display: flex; align-items: center; gap: 0.65rem;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #8b5cf6;"></span>
+          <span style="font-size: 0.78rem; color: #6b21a8; font-weight: 600;">Warehouses:</span>
+          <span style="font-size: 0.95rem; font-weight: 800; color: #6b21a8;">{{ "{:,}".format(metrics.warehouse_stock) }}</span>
+        </div>
+        <div style="padding: 0.6rem 1rem; background: #f0f7ff; border: 1px solid #dbeafe; border-radius: 12px; display: flex; align-items: center; gap: 0.65rem;">
+          <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #3b82f6;"></span>
+          <span style="font-size: 0.78rem; color: #1e40af; font-weight: 600;">Retail Stores:</span>
+          <span style="font-size: 0.95rem; font-weight: 800; color: #1e40af;">{{ "{:,}".format(metrics.retail_stock) }}</span>
+        </div>
+      </div>
+
+      <!-- Chart.js Clean Rounded Bar Chart Canvas -->
+      <div class="chart-canvas-wrap" style="height: 270px;">
+        <canvas id="inventoryOverviewChart"></canvas>
+      </div>
+
+      <!-- Stock Movement & Velocity Trends Summary -->
+      <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 1.5rem; padding-top: 1.25rem; border-top: 1px solid var(--border-subtle);">
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Daily Retail Outflow</div>
+          <div style="font-size: 1.15rem; font-weight: 700; color: var(--text-dark); margin-top: 2px;">{{ metrics.total_daily_velocity }} units/day</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Shipments In Transit</div>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #3b82f6; margin-top: 2px;">{{ metrics.shipments_in_transit }} moving</div>
+        </div>
+        <div>
+          <div style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">Deliveries Completed</div>
+          <div style="font-size: 1.15rem; font-weight: 700; color: #059669; margin-top: 2px;">{{ metrics.delivered_shipments }} fulfilled</div>
+        </div>
+      </div>
     </div>
 
-    <div class="table-responsive">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Store</th>
-            <th>Product / SKU</th>
-            <th>On Hand</th>
-            <th>Velocity</th>
-            <th>Projected</th>
-            <th>Needed</th>
-            <th>Status</th>
-            <th>Action</th>
+    <!-- Location Performance Section: 3 Cards -->
+    <div>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <h4 style="font-size: 1.05rem; font-weight: 700; color: var(--text-dark);">Location Performance</h4>
+        <span style="font-size: 0.8rem; color: var(--text-muted);">{{ metrics.total_locations }} operational nodes</span>
+      </div>
+
+      <div class="location-performance-grid">
+        <!-- 1. Warehouses -->
+        <div class="loc-perf-card">
+          <div class="loc-perf-top">
+            <div class="loc-perf-icon loc-perf-icon-wh">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21V9l9-6 9 6v12H3Z"></path>
+                <path d="M9 21v-6a3 3 0 0 1 6 0v6"></path>
+              </svg>
+            </div>
+            <span class="badge badge-warehouse">Hubs</span>
+          </div>
+          <div class="loc-perf-title">Total Warehouses</div>
+          <div class="loc-perf-count">{{ metrics.total_warehouses }}</div>
+          <div class="loc-perf-stat">{{ "{:,}".format(metrics.warehouse_stock) }} stored units</div>
+          <div style="font-size: 0.74rem; color: {% if metrics.warehouse_low_stock > 0 %}#d97706{% else %}#059669{% endif %}; margin-top: 2px;">
+            {{ metrics.warehouse_low_stock }} low-stock items
+          </div>
+          <a href="{{ url_for('warehouses') }}" class="loc-perf-action">View Warehouses &rarr;</a>
+        </div>
+
+        <!-- 2. Retail Stores -->
+        <div class="loc-perf-card">
+          <div class="loc-perf-top">
+            <div class="loc-perf-icon loc-perf-icon-st">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+              </svg>
+            </div>
+            <span class="badge badge-store">Outlets</span>
+          </div>
+          <div class="loc-perf-title">Total Retail Stores</div>
+          <div class="loc-perf-count">{{ metrics.total_retail_stores }}</div>
+          <div class="loc-perf-stat">{{ "{:,}".format(metrics.retail_stock) }} stored units</div>
+          <div style="font-size: 0.74rem; color: {% if metrics.retail_low_stock > 0 %}#d97706{% else %}#059669{% endif %}; margin-top: 2px;">
+            {{ metrics.retail_low_stock }} stores needing stock
+          </div>
+          <a href="{{ url_for('retail_stores') }}" class="loc-perf-action">View Stores &rarr;</a>
+        </div>
+
+        <!-- 3. Total Facilities & Hubs -->
+        <div class="loc-perf-card">
+          <div class="loc-perf-top">
+            <div class="loc-perf-icon loc-perf-icon-tot">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </div>
+            <span class="badge" style="background: #ecfdf5; color: #059669;">Network</span>
+          </div>
+          <div class="loc-perf-title">Total Facilities</div>
+          <div class="loc-perf-count">{{ metrics.total_locations }}</div>
+          <div class="loc-perf-stat">Active geographical nodes</div>
+          <div style="font-size: 0.74rem; color: #059669; margin-top: 2px;">
+            GPS telemetry enabled
+          </div>
+          <a href="{{ url_for('inventory') }}" class="loc-perf-action">Open Live Map &rarr;</a>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- RIGHT COLUMN: AI Insights Panel -->
+  <div class="ai-insights-panel">
+    
+    <!-- AI Card 1: Demand Forecast -->
+    <div class="insight-card">
+      <div class="insight-header">
+        <div class="insight-icon-box icon-purple-soft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+        </div>
+        <div>
+          <h4 class="insight-title">Demand Forecast</h4>
+          <span style="font-size: 0.74rem; color: var(--text-muted);">AI velocity projection</span>
+        </div>
+      </div>
+
+      <div style="padding: 0.75rem 0.95rem; background: #faf5ff; border: 1px solid #f3e8ff; border-radius: 12px; margin-bottom: 0.85rem;">
+        <div style="font-size: 0.72rem; font-weight: 700; color: #7c3aed; text-transform: uppercase; letter-spacing: 0.04em;">Predicted Demand</div>
+        <div style="font-size: 1.45rem; font-weight: 800; color: #581c87; margin-top: 2px;">
+          {{ "{:,}".format(metrics.predicted_demand) }} <span style="font-size: 0.82rem; font-weight: 600;">units / 7 days</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for item in forecast_items %}
+          <div class="insight-item">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--text-dark);">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">{{ item.product_name }}</span>
+              <span style="color: #6366f1; font-family: var(--font-mono); font-size: 0.78rem;">{{ item.units_sold_per_day }}/day</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+              <span>{{ item.location_name }}</span>
+              <span>Stock: <strong>{{ item.current_stock }}</strong> units</span>
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 1rem;">
+            No forecast velocity recorded yet.
+          </div>
+        {% endfor %}
+      </div>
+
+      <a href="{{ url_for('predictions') }}" class="insight-link">Launch AI Demand Simulator &rarr;</a>
+    </div>
+
+    <!-- AI Card 2: Stock Risk Alerts -->
+    <div class="insight-card">
+      <div class="insight-header">
+        <div class="insight-icon-box icon-amber-soft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+            <line x1="12" y1="9" x2="12" y2="13"></line>
+            <line x1="12" y1="17" x2="12.01" y2="17"></line>
+          </svg>
+        </div>
+        <div>
+          <h4 class="insight-title">Stock Risk Alerts</h4>
+          <span style="font-size: 0.74rem; color: var(--text-muted);">Threshold breaches & safety stock</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for item in risk_items %}
+          <div class="insight-item" style="border-left: 3px solid {% if item.status == 'Critical' %}#ef4444{% else %}#f59e0b{% endif %};">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--text-dark);">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 170px;">{{ item.product_name }}</span>
+              <span class="badge {{ item.status_badge }}">{{ item.status }}</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+              {{ item.location_name }} • <strong>{{ item.current_stock }}</strong> units on hand (Min: {{ item.min_stock_level }})
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; color: #059669; font-size: 0.82rem; padding: 0.85rem; background: #ecfdf5; border-radius: 10px;">
+            ✓ All stores currently have healthy safety stock.
+          </div>
+        {% endfor %}
+      </div>
+
+      <a href="#inventoryAnalyticsSection" class="insight-link">Review Restock Queue &rarr;</a>
+    </div>
+
+    <!-- AI Card 3: Smart Restocking Suggestions -->
+    <div class="insight-card">
+      <div class="insight-header">
+        <div class="insight-icon-box icon-emerald-soft">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M16 3h5v5"></path>
+            <path d="M8 21H3v-5"></path>
+            <path d="M21 3l-7.5 7.5"></path>
+            <path d="M3 21l7.5-7.5"></path>
+          </svg>
+        </div>
+        <div>
+          <h4 class="insight-title">Smart Restocking Suggestions</h4>
+          <span style="font-size: 0.74rem; color: var(--text-muted);">Automated warehouse matching</span>
+        </div>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 0.5rem;">
+        {% for s in restock_suggestions %}
+          <div class="insight-item">
+            <div style="display: flex; justify-content: space-between; align-items: center; font-weight: 600; color: var(--text-dark);">
+              <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px;">{{ s.item.product_name }}</span>
+              <span style="color: #059669; font-weight: 700; font-family: var(--font-mono); font-size: 0.78rem;">+{{ s.item.recommended_replenishment }}</span>
+            </div>
+            <div style="font-size: 0.72rem; color: var(--text-muted); margin-top: 3px;">
+              Target: <strong>{{ s.item.location_name }}</strong>
+            </div>
+            <div style="font-size: 0.72rem; color: #2563eb; margin-top: 2px;">
+              {% if s.warehouse_suggestion %}
+                Source: <strong>{{ s.warehouse_suggestion.warehouse_name }}</strong> ({{ s.warehouse_suggestion.available_stock }} avail.)
+              {% else %}
+                Source: Regional Master Hub
+              {% endif %}
+            </div>
+          </div>
+        {% else %}
+          <div style="text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 0.85rem;">
+            No immediate replenishments required.
+          </div>
+        {% endfor %}
+      </div>
+
+      <a href="{{ url_for('transfers') }}" class="insight-link">Dispatch Stock Transfer &rarr;</a>
+    </div>
+
+    <!-- Quick Live FMCG Map Callout -->
+    <div style="padding: 1.25rem; background: linear-gradient(135deg, #eff6ff 0%, #faf5ff 100%); border: 1px solid #dbeafe; border-radius: 18px;">
+      <div style="display: flex; align-items: center; gap: 0.65rem; margin-bottom: 0.35rem;">
+        <span style="width: 8px; height: 8px; border-radius: 50%; background: #10b981;"></span>
+        <span style="font-size: 0.75rem; font-weight: 700; color: #1e40af;">FMCG TELEMETRY ACTIVE</span>
+      </div>
+      <h5 style="font-size: 0.92rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.25rem;">Interactive Geographical Map</h5>
+      <p style="font-size: 0.76rem; color: var(--text-muted); margin-bottom: 0.85rem;">Track real-time delivery trucks moving along Western India corridors.</p>
+      <a href="{{ url_for('inventory') }}" class="btn btn-primary btn-sm" style="width: 100%;">
+        <span>Open Interactive Map &rarr;</span>
+      </a>
+    </div>
+
+  </div>
+
+</div>
+
+<!-- ── 4. Full-Width Inventory Analytics Table ───────────────── -->
+<div class="card" id="inventoryAnalyticsSection" style="margin-top: 1.75rem;">
+  <div class="card-header">
+    <div>
+      <h3 class="card-title">Inventory Analytics</h3>
+      <p class="card-subtitle">Comprehensive SKU stock levels, velocity, and restocking requirements across all facilities</p>
+    </div>
+
+    <!-- Search & Status Filter Controls -->
+    <div style="display: flex; gap: 0.75rem; align-items: center; flex-wrap: wrap;">
+      <!-- Table Search -->
+      <div style="position: relative; width: 260px;">
+        <input 
+          type="text" 
+          id="analyticsSearchInput" 
+          class="form-control" 
+          placeholder="Filter SKU or location..." 
+          style="padding: 0.45rem 0.85rem; font-size: 0.82rem; border-radius: var(--radius-pill);"
+          oninput="filterAnalyticsTable()" 
+        />
+      </div>
+
+      <!-- Status Dropdown -->
+      <select 
+        id="analyticsStatusFilter" 
+        class="form-control" 
+        style="width: 150px; padding: 0.45rem 0.85rem; font-size: 0.82rem; border-radius: var(--radius-pill);"
+        onchange="filterAnalyticsTable()"
+      >
+        <option value="">All Statuses</option>
+        <option value="Healthy">Healthy</option>
+        <option value="Low Stock">Low Stock</option>
+        <option value="Critical">Critical</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="table-responsive">
+    <table class="data-table" id="analyticsTable">
+      <thead>
+        <tr>
+          <th>Product Name</th>
+          <th>SKU</th>
+          <th>Location</th>
+          <th>Type</th>
+          <th>Current Stock</th>
+          <th>Predicted Demand</th>
+          <th>Recommended Restock</th>
+          <th>Stock Status</th>
+          <th style="text-align: right;">Action</th>
+        </tr>
+      </thead>
+      <tbody id="analyticsTableBody">
+        {% for item in inventory_analytics %}
+          <tr data-status="{{ item.status }}" data-search="{{ item.product_name|lower }} {{ item.product_sku|lower }} {{ item.location_name|lower }}">
+            <td>
+              <div style="font-weight: 600; color: var(--text-dark);">{{ item.product_name }}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">₹{{ "{:,.2f}".format(item.product_price or item.price or 0) }} / unit</div>
+            </td>
+            <td>
+              <span style="font-family: var(--font-mono); font-size: 0.76rem; font-weight: 600; background: #f1f5f9; padding: 0.2rem 0.5rem; border-radius: 6px;">
+                {{ item.product_sku }}
+              </span>
+            </td>
+            <td>
+              <div style="font-weight: 600; color: var(--text-dark);">{{ item.location_name }}</div>
+              <div style="font-size: 0.72rem; color: var(--text-muted);">{{ item.location_city or item.city or '' }}</div>
+            </td>
+            <td>
+              {% if item.location_type == 'Warehouse' %}
+                <span class="badge badge-warehouse">Warehouse</span>
+              {% else %}
+                <span class="badge badge-store">Retail Store</span>
+              {% endif %}
+            </td>
+            <td>
+              <span style="font-family: var(--font-mono); font-weight: 700; font-size: 0.88rem; color: var(--text-dark);">
+                {{ item.current_stock }}
+              </span>
+            </td>
+            <td>
+              <span style="font-family: var(--font-mono); color: #6366f1; font-weight: 600;">
+                {{ item.predicted_demand }}
+              </span>
+              {% if item.units_sold_per_day %}
+                <span style="font-size: 0.7rem; color: var(--text-muted);">({{ item.units_sold_per_day }}/d)</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if item.recommended_replenishment > 0 %}
+                <span style="font-family: var(--font-mono); color: #d97706; font-weight: 700;">
+                  +{{ item.recommended_replenishment }}
+                </span>
+              {% else %}
+                <span style="color: #059669; font-size: 0.78rem;">0 (Adequate)</span>
+              {% endif %}
+            </td>
+            <td>
+              <span class="badge {{ item.status_badge }}">{{ item.status }}</span>
+            </td>
+            <td style="text-align: right;">
+              <a href="{{ url_for('transfers') }}?sku={{ item.product_sku }}" class="btn btn-outline btn-sm" style="padding: 0.25rem 0.65rem; font-size: 0.74rem;">
+                Transfer
+              </a>
+            </td>
           </tr>
-        </thead>
-        <tbody>
-          {% for item in metrics.deficit_items %}
-            <tr>
-              <td style="font-weight: 600; color: #fff;">{{ item.store_name }}</td>
-              <td>
-                <div style="font-weight: 600; color: #cbd5e1;">{{ item.product_name }}</div>
-                <div style="font-size: 0.72rem; color: var(--text-dim); font-family: 'JetBrains Mono', monospace;">{{ item.product_sku }}</div>
-              </td>
-              <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700;">{{ item.current_stock }}</td>
-              <td style="font-family: 'JetBrains Mono', monospace; color: #94a3b8;">{{ item.units_sold_per_day }}/d</td>
-              <td style="font-family: 'JetBrains Mono', monospace; font-weight: 700; color: {% if item.projected_stock < 0 %}#f87171{% else %}#fbbf24{% endif %};">
-                {{ item.projected_stock }}
-              </td>
-              <td style="font-family: 'JetBrains Mono', monospace; color: #c084fc; font-weight: 700;">
-                +{{ item.recommended_replenishment }}
-              </td>
-              <td>
-                <span class="badge {{ item.status_badge }}">{{ item.status }}</span>
-              </td>
-              <td>
-                <a href="{{ url_for('transfers') }}" class="btn btn-primary btn-sm" style="padding: 0.25rem 0.55rem; font-size: 0.72rem;">Transfer</a>
-              </td>
-            </tr>
-          {% else %}
-            <tr>
-              <td colspan="8" style="text-align: center; padding: 2rem; color: var(--text-muted);">
-                All retail outlets are fully stocked and healthy!
-              </td>
-            </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+        {% else %}
+          <tr id="emptyTableRow">
+            <td colspan="9" style="text-align: center; padding: 3rem 1rem; color: var(--text-muted);">
+              No inventory records found. Click "+ Add Product" to allocate stock.
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
+</div>
 
-  <!-- Recent Stock Transfers -->
-  <div class="card">
-    <div class="card-header">
-      <div>
-        <h3 class="card-title">Recent Stock Transfers</h3>
-        <p class="card-subtitle">Latest inter-facility movements</p>
+<!-- ── 5. Add Product Modal Dialog ───────────────────────────── -->
+<div class="modal-backdrop" id="addProductModal">
+  <div class="modal-box" style="max-width: 620px;">
+    <div class="modal-header">
+      <div style="display: flex; align-items: center; gap: 0.65rem;">
+        <div style="width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, #0f172a 0%, #3b82f6 100%); color: #fff; display: flex; align-items: center; justify-content: center;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+        </div>
+        <div>
+          <h3 style="font-size: 1.15rem; font-weight: 700; color: var(--text-dark); margin: 0;">Add Product SKU</h3>
+          <p style="font-size: 0.8rem; color: var(--text-muted); margin: 0;">Create master catalog product with initial stock allocation</p>
+        </div>
       </div>
-      <a href="{{ url_for('transfers') }}" class="btn btn-outline btn-sm">All Transfers &rarr;</a>
+      <button type="button" class="modal-close-btn" onclick="closeModal('addProductModal')">&times;</button>
     </div>
 
-    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
-      {% for t in metrics.recent_transfers %}
-        <div style="padding: 0.85rem; background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-subtle); border-radius: var(--radius-md);">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.35rem;">
-            <span style="font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; color: #38bdf8;">{{ t.transfer_code }}</span>
-            <span style="font-size: 0.74rem; color: var(--text-dim);">{{ t.created_at[:16] }}</span>
+    <form method="POST" action="{{ url_for('add_product') }}">
+      <input type="hidden" name="redirect_to" value="dashboard" />
+
+      <div style="display: grid; grid-template-columns: 1.2fr 0.8fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="prodName">Product Name *</label>
+          <input type="text" id="prodName" name="name" class="form-control" placeholder="e.g. Pure cow milk pouch 500ml" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prodSku">SKU (Unique Code) *</label>
+          <input type="text" id="prodSku" name="sku" class="form-control" placeholder="e.g. DAIRY-MILK-500" required style="text-transform: uppercase;" />
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="prodCategory">Category *</label>
+          <input type="text" id="prodCategory" name="category" class="form-control" placeholder="e.g. Dairy & Essentials" required list="categorySuggestions" />
+          <datalist id="categorySuggestions">
+            <option value="Dairy & Fresh Food" />
+            <option value="Snacks & Confectionery" />
+            <option value="Personal Care & Hygiene" />
+            <option value="Healthcare & Pharma" />
+            <option value="Household Essentials" />
+          </datalist>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prodPrice">Unit Price (₹) *</label>
+          <input type="number" step="0.01" min="0" id="prodPrice" name="price" class="form-control" placeholder="32.00" required />
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="prodMinStock">Min Stock Level *</label>
+          <input type="number" min="0" id="prodMinStock" name="min_stock_level" class="form-control" placeholder="50" required />
+        </div>
+      </div>
+
+      <div style="padding: 1rem; background: #f8fafc; border: 1px solid var(--border-light); border-radius: 14px; margin-bottom: 1.25rem;">
+        <div style="font-size: 0.78rem; font-weight: 700; color: var(--text-dark); margin-bottom: 0.75rem; display: flex; align-items: center; gap: 0.35rem;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span>Initial Location Stock Allocation (Optional)</span>
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1.4fr 0.8fr 0.8fr; gap: 0.75rem;">
+          <div>
+            <label class="form-label" style="font-size: 0.75rem;" for="prodLocation">Initial Location</label>
+            <select id="prodLocation" name="location_id" class="form-control" style="font-size: 0.82rem;">
+              <option value="">-- None (Allocate Later) --</option>
+              {% for loc in all_locations %}
+                <option value="{{ loc.id }}">{{ loc.name }} ({{ loc.type }})</option>
+              {% endfor %}
+            </select>
           </div>
-          <div style="font-size: 0.86rem; font-weight: 600; color: #fff;">{{ t.product_name }}</div>
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 0.35rem; font-size: 0.78rem; color: var(--text-muted);">
-            <div>{{ t.source_code }} &rarr; {{ t.dest_code }}</div>
-            <div style="font-weight: 700; color: #34d399;">{{ t.quantity }} units</div>
+          <div>
+            <label class="form-label" style="font-size: 0.75rem;" for="prodInitialStock">Initial Stock</label>
+            <input type="number" min="0" id="prodInitialStock" name="initial_stock" class="form-control" placeholder="100" style="font-size: 0.82rem;" />
+          </div>
+          <div>
+            <label class="form-label" style="font-size: 0.75rem;" for="prodDailySales">Daily Sales</label>
+            <input type="number" min="0" id="prodDailySales" name="units_sold_per_day" class="form-control" placeholder="15" style="font-size: 0.82rem;" />
           </div>
         </div>
-      {% else %}
-        <div style="text-align: center; padding: 2.5rem 1rem; color: var(--text-muted);">
-          No transfers recorded yet.
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="prodDesc">Description (Optional)</label>
+        <textarea id="prodDesc" name="description" class="form-control" rows="2" placeholder="Product packaging, temperature controls, or supplier details..."></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 1.5rem; pt-3;">
+        <a href="{{ url_for('predictions') }}" class="btn btn-outline btn-sm">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+          </svg>
+          <span>Predict Demand</span>
+        </a>
+
+        <div style="display: flex; gap: 0.65rem;">
+          <button type="button" class="btn btn-outline" onclick="closeModal('addProductModal')">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save Product</button>
         </div>
-      {% endfor %}
-    </div>
+      </div>
+    </form>
   </div>
 </div>
 {% endblock %}
@@ -278,8 +634,8 @@
 {% block scripts %}
 <script>
   document.addEventListener('DOMContentLoaded', () => {
-    if (typeof initDashboardCharts === 'function') {
-      initDashboardCharts();
+    if (typeof initInventoryOverviewChart === 'function') {
+      initInventoryOverviewChart();
     }
   });
 </script>

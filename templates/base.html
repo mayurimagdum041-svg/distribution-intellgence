@@ -10,7 +10,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet" />
   
-  <!-- Main Stylesheet -->
+  <!-- Main Stylesheet (Pastel Canvas + White Dashboard Panel) -->
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   
   <!-- Leaflet.js Interactive Map CDN -->
@@ -23,251 +23,332 @@
   {% block head %}{% endblock %}
 </head>
 <body>
-  <!-- Ambient background glow elements -->
-  <div class="ambient-glow-top"></div>
-  <div class="ambient-glow-bottom"></div>
-
-  <div class="app-shell">
-    <!-- Sidebar Navigation -->
-    <aside class="sidebar" id="appSidebar">
-      <!-- Brand Header -->
-      <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
-        <div class="brand-icon-box">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
-            <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
-            <line x1="12" y1="22.08" x2="12" y2="12"></line>
-          </svg>
-        </div>
-        <div>
-          <div class="brand-title">
-            <span>OptiStock</span>
-            <span class="brand-pill">AI</span>
+  <!-- Soft pastel gradient canvas container -->
+  <div class="app-viewport">
+    <!-- Large White Dashboard Panel with Rounded Corners -->
+    <div class="app-dashboard-frame">
+      
+      <!-- White Sidebar with Dark Navy Rounded Active Pill -->
+      <aside class="sidebar" id="appSidebar">
+        <!-- Brand Header -->
+        <a href="{{ url_for('dashboard') }}" class="sidebar-brand">
+          <div class="brand-icon-box">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+              <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+              <line x1="12" y1="22.08" x2="12" y2="12"></line>
+            </svg>
           </div>
-        </div>
-      </a>
-
-      <!-- Navigation Menu -->
-      <nav class="sidebar-nav">
-        <div class="nav-label">Core Operations</div>
-
-        <!-- 1. Dashboard -->
-        <a href="{{ url_for('dashboard') }}" class="nav-item {% if page == 'dashboard' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <rect x="3" y="3" width="7" height="7"></rect>
-              <rect x="14" y="3" width="7" height="7"></rect>
-              <rect x="14" y="14" width="7" height="7"></rect>
-              <rect x="3" y="14" width="7" height="7"></rect>
-            </svg>
-          </span>
-          <span>Dashboard</span>
-        </a>
-
-        <!-- 2. Products -->
-        <a href="{{ url_for('products') }}" class="nav-item {% if page == 'products' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m7.5 4.27 9 5.15"></path>
-              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
-              <path d="m3.3 7 8.7 5 8.7-5"></path>
-              <path d="M12 22V12"></path>
-            </svg>
-          </span>
-          <span>Products</span>
-        </a>
-
-        <!-- 3. Warehouses -->
-        <a href="{{ url_for('warehouses') }}" class="nav-item {% if page == 'warehouses' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M3 21V9l9-6 9 6v12H3Z"></path>
-              <path d="M9 21v-6a3 3 0 0 1 6 0v6"></path>
-            </svg>
-          </span>
-          <span>Warehouses</span>
-        </a>
-
-        <!-- 4. Retail Stores -->
-        <a href="{{ url_for('retail_stores') }}" class="nav-item {% if page == 'retail_stores' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
-              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
-              <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"></path>
-              <path d="M2 7h20"></path>
-            </svg>
-          </span>
-          <span>Retail Stores</span>
-        </a>
-
-        <div class="nav-label" style="margin-top: 0.85rem;">Inventory & Distribution</div>
-
-        <!-- 5. Locations & Inventory -->
-        <a href="{{ url_for('inventory') }}" class="nav-item {% if page == 'inventory' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
-              <circle cx="12" cy="10" r="3"></circle>
-            </svg>
-          </span>
-          <span>Locations & Inventory</span>
-        </a>
-
-        <!-- 6. Stock Transfers -->
-        <a href="{{ url_for('transfers') }}" class="nav-item {% if page == 'transfers' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polyline points="17 1 21 5 17 9"></polyline>
-              <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
-              <polyline points="7 23 3 19 7 15"></polyline>
-              <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
-            </svg>
-          </span>
-          <span>Stock Transfers</span>
-        </a>
-
-        <!-- 7. AI Predictions -->
-        <a href="{{ url_for('predictions') }}" class="nav-item {% if page == 'predictions' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
-            </svg>
-          </span>
-          <span>AI Predictions</span>
-        </a>
-
-        <!-- 8. Reports -->
-        <a href="{{ url_for('reports') }}" class="nav-item {% if page == 'reports' %}active{% endif %}">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
-              <polyline points="14 2 14 8 20 8"></polyline>
-              <line x1="16" y1="13" x2="8" y2="13"></line>
-              <line x1="16" y1="17" x2="8" y2="17"></line>
-              <polyline points="10 9 9 9 8 9"></polyline>
-            </svg>
-          </span>
-          <span>Reports</span>
-        </a>
-
-        <div class="nav-label" style="margin-top: 0.85rem;">Session</div>
-
-        <!-- 9. Logout -->
-        <a href="{{ url_for('logout') }}" class="nav-item" style="color: #f87171;">
-          <span class="nav-icon">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
-          </span>
-          <span>Logout</span>
-        </a>
-      </nav>
-
-      <!-- Sidebar User Profile Footer -->
-      <div class="sidebar-footer">
-        <div class="user-mini-card">
-          <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
-            <div class="user-avatar-circle">
-              {% if current_user and current_user.name %}
-                {{ current_user.name[:2].upper() }}
-              {% else %}
-                AI
-              {% endif %}
+          <div>
+            <div class="brand-title">
+              <span>OptiStock</span>
+              <span class="brand-pill">AI</span>
             </div>
-            <div style="min-width: 0;">
-              <div class="user-meta-name" title="{{ current_user.name if current_user else 'User' }}">
-                {{ current_user.name if current_user else 'User' }}
-              </div>
-              <div class="user-meta-email" title="{{ current_user.email if current_user else '' }}">
-                {{ current_user.email if current_user else '' }}
-              </div>
-            </div>
+            <div class="brand-sub">Smart Demand Platform</div>
           </div>
-          <a href="{{ url_for('logout') }}" class="logout-icon-btn" title="Sign out">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
-              <polyline points="16 17 21 12 16 7"></polyline>
-              <line x1="21" y1="12" x2="9" y2="12"></line>
-            </svg>
+        </a>
+
+        <!-- Navigation Menu -->
+        <nav class="sidebar-nav">
+          <div class="nav-label">Main Menu</div>
+
+          <!-- 1. Dashboard -->
+          <a href="{{ url_for('dashboard') }}" class="nav-item {% if page == 'dashboard' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="3" y="3" width="7" height="7"></rect>
+                <rect x="14" y="3" width="7" height="7"></rect>
+                <rect x="14" y="14" width="7" height="7"></rect>
+                <rect x="3" y="14" width="7" height="7"></rect>
+              </svg>
+            </span>
+            <span>Dashboard</span>
           </a>
+
+          <!-- 2. Products -->
+          <a href="{{ url_for('products') }}" class="nav-item {% if page == 'products' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m7.5 4.27 9 5.15"></path>
+                <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+                <path d="m3.3 7 8.7 5 8.7-5"></path>
+                <path d="M12 22V12"></path>
+              </svg>
+            </span>
+            <span>Products</span>
+          </a>
+
+          <!-- 3. Warehouses -->
+          <a href="{{ url_for('warehouses') }}" class="nav-item {% if page == 'warehouses' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M3 21V9l9-6 9 6v12H3Z"></path>
+                <path d="M9 21v-6a3 3 0 0 1 6 0v6"></path>
+              </svg>
+            </span>
+            <span>Warehouses</span>
+          </a>
+
+          <!-- 4. Retail Stores -->
+          <a href="{{ url_for('retail_stores') }}" class="nav-item {% if page == 'retail_stores' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="m2 7 4.41-4.41A2 2 0 0 1 7.83 2h8.34a2 2 0 0 1 1.42.59L22 7"></path>
+                <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8"></path>
+                <path d="M15 22v-4a2 2 0 0 0-2-2h-2a2 2 0 0 0-2 2v4"></path>
+                <path d="M2 7h20"></path>
+              </svg>
+            </span>
+            <span>Retail Stores</span>
+          </a>
+
+          <div class="nav-label" style="margin-top: 0.75rem;">Intelligence</div>
+
+          <!-- 5. Locations & Inventory -->
+          <a href="{{ url_for('inventory') }}" class="nav-item {% if page == 'inventory' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+                <circle cx="12" cy="10" r="3"></circle>
+              </svg>
+            </span>
+            <span>Locations & Inventory</span>
+          </a>
+
+          <!-- 6. Stock Transfers -->
+          <a href="{{ url_for('transfers') }}" class="nav-item {% if page == 'transfers' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="17 1 21 5 17 9"></polyline>
+                <path d="M3 11V9a4 4 0 0 1 4-4h14"></path>
+                <polyline points="7 23 3 19 7 15"></polyline>
+                <path d="M21 13v2a4 4 0 0 1-4 4H3"></path>
+              </svg>
+            </span>
+            <span>Stock Transfers</span>
+          </a>
+
+          <!-- 7. AI Predictions -->
+          <a href="{{ url_for('predictions') }}" class="nav-item {% if page == 'predictions' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon>
+              </svg>
+            </span>
+            <span>AI Predictions</span>
+          </a>
+
+          <!-- 8. Reports -->
+          <a href="{{ url_for('reports') }}" class="nav-item {% if page == 'reports' %}active{% endif %}">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                <polyline points="14 2 14 8 20 8"></polyline>
+                <line x1="16" y1="13" x2="8" y2="13"></line>
+                <line x1="16" y1="17" x2="8" y2="17"></line>
+                <polyline points="10 9 9 9 8 9"></polyline>
+              </svg>
+            </span>
+            <span>Reports</span>
+          </a>
+
+          <!-- 9. Settings -->
+          <button type="button" class="nav-item" onclick="openModal('settingsModal')">
+            <span class="nav-icon">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="12" cy="12" r="3"></circle>
+                <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+              </svg>
+            </span>
+            <span>Settings</span>
+          </button>
+        </nav>
+
+        <!-- Sidebar User Profile Footer -->
+        <div class="sidebar-footer">
+          <div class="user-mini-card">
+            <div style="display: flex; align-items: center; gap: 0.65rem; min-width: 0;">
+              <div class="user-avatar-circle">
+                {% if current_user and current_user.name %}
+                  {{ current_user.name[:2].upper() }}
+                {% else %}
+                  AI
+                {% endif %}
+              </div>
+              <div style="min-width: 0;">
+                <div class="user-meta-name" title="{{ current_user.name if current_user else 'User' }}">
+                  {{ current_user.name if current_user else 'User' }}
+                </div>
+                <div class="user-meta-email" title="{{ current_user.email if current_user else '' }}">
+                  {{ current_user.email if current_user else '' }}
+                </div>
+              </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="logout-icon-btn" title="Sign out">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+            </a>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Main Content Panel Area -->
+      <div class="main-wrapper">
+        <!-- Clean Spacious Top Navigation Bar -->
+        <header class="topbar">
+          <div class="topbar-left">
+            <h1 class="page-title" style="display:none;" id="headerTitle">{% block header_title %}OptiStock AI{% endblock %}</h1>
+            <button class="mobile-toggle" id="sidebarToggle" aria-label="Toggle Navigation">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="3" y1="12" x2="21" y2="12"></line>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <line x1="3" y1="18" x2="21" y2="18"></line>
+              </svg>
+            </button>
+            <div class="topbar-search-box">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="globalSearchInput" class="topbar-search-input" placeholder="Search products, warehouses, or locations..." oninput="handleGlobalSearch(this.value)" />
+            </div>
+          </div>
+
+          <div class="topbar-right">
+            <!-- Notification with Badge -->
+            <button type="button" class="topbar-action-btn" title="System Notifications" onclick="toggleNotifications()">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
+                <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
+              </svg>
+              <span class="notification-badge-dot"></span>
+            </button>
+
+            <!-- User Avatar & Profile Menu -->
+            <div class="user-profile-pill">
+              <div class="user-avatar-circle">
+                {% if current_user and current_user.name %}
+                  {{ current_user.name[:2].upper() }}
+                {% else %}
+                  OP
+                {% endif %}
+              </div>
+              <div class="user-meta-details">
+                <span class="user-meta-name">{{ current_user.name if current_user else 'Operations Lead' }}</span>
+                <span class="user-meta-role">Supply Chain Lead</span>
+              </div>
+            </div>
+
+            {% block topbar_actions %}{% endblock %}
+          </div>
+        </header>
+
+        <!-- Content Area -->
+        <main class="content-body">
+          <!-- Flash Messages -->
+          {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+              <div class="flash-container">
+                {% for category, message in messages %}
+                  <div class="alert alert-{{ category if category != 'error' else 'error' }}">
+                    <div style="display: flex; align-items: center; gap: 0.65rem;">
+                      {% if category == 'success' %}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
+                          <polyline points="22 4 12 14.01 9 11.01"></polyline>
+                        </svg>
+                      {% elif category == 'error' %}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="15" y1="9" x2="9" y2="15"></line>
+                          <line x1="9" y1="9" x2="15" y2="15"></line>
+                        </svg>
+                      {% elif category == 'warning' %}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
+                          <line x1="12" y1="9" x2="12" y2="13"></line>
+                          <line x1="12" y1="17" x2="12.01" y2="17"></line>
+                        </svg>
+                      {% else %}
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                          <circle cx="12" cy="12" r="10"></circle>
+                          <line x1="12" y1="16" x2="12" y2="12"></line>
+                          <line x1="12" y1="8" x2="12.01" y2="8"></line>
+                        </svg>
+                      {% endif %}
+                      <span>{{ message }}</span>
+                    </div>
+                    <button type="button" class="btn-close-alert" onclick="this.parentElement.remove();">&times;</button>
+                  </div>
+                {% endfor %}
+              </div>
+            {% endif %}
+          {% endwith %}
+
+          <!-- Main Page Content Block -->
+          {% block content %}{% endblock %}
+        </main>
+      </div>
+    </div>
+  </div>
+
+  <!-- Settings Modal Dialog -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-box" style="max-width: 540px;">
+      <div class="modal-header">
+        <div style="display: flex; align-items: center; gap: 0.65rem;">
+          <div class="metric-icon icon-purple" style="width: 36px; height: 36px; border-radius: 10px; background: #faf5ff; color: #7c3aed; display: flex; align-items: center; justify-content: center;">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="3"></circle>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"></path>
+            </svg>
+          </div>
+          <div>
+            <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin: 0;">System Settings & Preferences</h3>
+            <p style="font-size: 0.8rem; color: #64748b; margin: 0;">Workspace configuration & automated alerts</p>
+          </div>
+        </div>
+        <button type="button" class="modal-close-btn" onclick="closeModal('settingsModal')">&times;</button>
+      </div>
+
+      <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;">
+        <div style="padding: 1rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 14px;">
+          <div style="font-size: 0.72rem; font-weight: 700; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem;">Signed In Operator</div>
+          <div style="font-weight: 700; color: #0f172a; font-size: 0.95rem;">{{ current_user.name if current_user else 'Operations Manager' }}</div>
+          <div style="font-size: 0.82rem; color: #64748b;">{{ current_user.email if current_user else 'demo@optistock.ai' }}</div>
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+              <div style="font-weight: 600; color: #0f172a; font-size: 0.88rem;">Real-time Telemetry Updates</div>
+              <div style="font-size: 0.76rem; color: #64748b;">Poll active vehicle movements and road routes</div>
+            </div>
+            <input type="checkbox" checked style="accent-color: #0f172a; width: 18px; height: 18px;" />
+          </div>
+
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0; border-bottom: 1px solid #f1f5f9;">
+            <div>
+              <div style="font-weight: 600; color: #0f172a; font-size: 0.88rem;">Automated Safety Stock Alerts</div>
+              <div style="font-size: 0.76rem; color: #64748b;">Notify when stores approach safety stock thresholds</div>
+            </div>
+            <input type="checkbox" checked style="accent-color: #0f172a; width: 18px; height: 18px;" />
+          </div>
+        </div>
+
+        <div style="padding: 1rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 14px; display: flex; justify-content: space-between; align-items: center;">
+          <div>
+            <div style="font-weight: 700; color: #92400e; font-size: 0.86rem;">FMCG Demonstration Network</div>
+            <div style="font-size: 0.76rem; color: #b45309;">Reset sample corridor data without touching user records</div>
+          </div>
+          <form method="POST" action="{{ url_for('api_reset_demo') }}" style="margin: 0;">
+            <button type="submit" class="btn btn-outline btn-sm" style="background: #ffffff; border-color: #f59e0b; color: #92400e;">Reset Baseline</button>
+          </form>
         </div>
       </div>
-    </aside>
-
-    <!-- Main Content Wrapper -->
-    <div class="main-wrapper">
-      <!-- Topbar Header -->
-      <header class="topbar">
-        <div class="topbar-left">
-          <button class="mobile-toggle" id="sidebarToggle" aria-label="Toggle Navigation">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <line x1="3" y1="12" x2="21" y2="12"></line>
-              <line x1="3" y1="6" x2="21" y2="6"></line>
-              <line x1="3" y1="18" x2="21" y2="18"></line>
-            </svg>
-          </button>
-          <div>
-            <h1 class="page-title">{% block header_title %}OptiStock AI{% endblock %}</h1>
-          </div>
-        </div>
-
-        <div class="topbar-right">
-          <div class="topbar-badge">
-            <span class="pulse-dot"></span>
-            <span>Intelligent Engine Active</span>
-          </div>
-          {% block topbar_actions %}{% endblock %}
-        </div>
-      </header>
-
-      <!-- Content Area -->
-      <main class="content-body">
-        <!-- Flash Messages -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            <div class="flash-container">
-              {% for category, message in messages %}
-                <div class="alert alert-{{ category if category != 'error' else 'error' }}">
-                  <div style="display: flex; align-items: center; gap: 0.65rem;">
-                    {% if category == 'success' %}
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path>
-                        <polyline points="22 4 12 14.01 9 11.01"></polyline>
-                      </svg>
-                    {% elif category == 'error' %}
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="15" y1="9" x2="9" y2="15"></line>
-                        <line x1="9" y1="9" x2="15" y2="15"></line>
-                      </svg>
-                    {% elif category == 'warning' %}
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"></path>
-                        <line x1="12" y1="9" x2="12" y2="13"></line>
-                        <line x1="12" y1="17" x2="12.01" y2="17"></line>
-                      </svg>
-                    {% else %}
-                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="10"></circle>
-                        <line x1="12" y1="16" x2="12" y2="12"></line>
-                        <line x1="12" y1="8" x2="12.01" y2="8"></line>
-                      </svg>
-                    {% endif %}
-                    <span>{{ message }}</span>
-                  </div>
-                  <button type="button" class="btn-close-alert" onclick="this.parentElement.remove();">&times;</button>
-                </div>
-              {% endfor %}
-            </div>
-          {% endif %}
-        {% endwith %}
-
-        <!-- Main Page Content Block -->
-        {% block content %}{% endblock %}
-      </main>
     </div>
   </div>
 

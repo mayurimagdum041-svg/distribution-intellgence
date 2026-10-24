@@ -21,6 +21,13 @@ def run_fmcg_tests():
     demo_user = database.get_user_by_email('demo@optistock.ai')
     assert demo_user is not None
     user_id = demo_user['id']
+
+    # Clean up test artifact from prior test run if present to ensure idempotent test runs
+    conn = database.get_db()
+    conn.execute("DELETE FROM locations WHERE code = 'DIS-AUR-01' AND user_id = ?", (user_id,))
+    conn.commit()
+    conn.close()
+
     print("[PASS] FMCG Test 1: Authenticated with Demo Account")
 
     # 2. Test GET /inventory Console page

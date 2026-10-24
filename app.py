@@ -489,7 +489,40 @@ def dashboard():
     metrics = database.get_fmcg_dashboard_metrics(user_id)
     recent_shipments = database.get_shipments(user_id)[:5]
     alerts = database.get_smart_alerts(user_id)
-    return render_template("dashboard.html", metrics=metrics, recent_shipments=recent_shipments, alerts=alerts, page="dashboard")
+    inventory_analytics = database.get_all_inventory_records(user_id)
+    all_locations = database.get_locations(user_id)
+    all_products = database.get_user_products(user_id)
+
+    # Top forecast items with non-zero daily velocity
+    forecast_items = [item for item in inventory_analytics if item.get("units_sold_per_day", 0) > 0][:4]
+    if not forecast_items:
+        forecast_items = inventory_analytics[:4]
+
+    # Critical & Low stock risk items
+    risk_items = [item for item in inventory_analytics if item.get("status") in ("Critical", "Low Stock")][:4]
+
+    # Restock suggestions with warehouse sourcing recommendation
+    restock_suggestions = []
+    for item in risk_items[:3]:
+        wh_suggestion = database.find_suggested_warehouse(user_id, item["product_id"], item["recommended_replenishment"])
+        restock_suggestions.append({
+            "item": item,
+            "warehouse_suggestion": wh_suggestion
+        })
+
+    return render_template(
+        "dashboard.html",
+        metrics=metrics,
+        recent_shipments=recent_shipments,
+        alerts=alerts,
+        inventory_analytics=inventory_analytics,
+        all_locations=all_locations,
+        all_products=all_products,
+        forecast_items=forecast_items,
+        risk_items=risk_items,
+        restock_suggestions=restock_suggestions,
+        page="dashboard"
+    )
 
 
 @app.route("/products", methods=["GET"])
@@ -522,20 +555,36 @@ def add_product():
     price = request.form.get("price", "0").strip()
     min_stock_level = request.form.get("min_stock_level", "0").strip()
     description = request.form.get("description", "").strip()
+    redirect_target = request.form.get("redirect_to", "products")
+
+    # Optional initial location stock allocation
+    location_id = request.form.get("location_id")
+    initial_stock = request.form.get("initial_stock")
+    units_sold_per_day = request.form.get("units_sold_per_day", "0")
 
     try:
         price_val = float(price)
         min_stock_val = int(min_stock_level)
     except ValueError:
         flash("Invalid numerical values.", "error")
-        return redirect(url_for("products"))
+        return redirect(url_for(redirect_target if redirect_target in ("dashboard", "products") else "products"))
 
     new_id = database.add_product(user_id, name, sku, category, price_val, min_stock_val, description)
     if new_id:
-        flash(f"Product '{name}' ({sku}) registered!", "success")
+        # If location and stock provided, allocate immediately
+        if location_id and initial_stock:
+            try:
+                l_id = int(location_id)
+                stock_val = int(initial_stock)
+                vel_val = int(units_sold_per_day) if units_sold_per_day else 0
+                database.set_inventory_stock(user_id, new_id, l_id, stock_val, vel_val)
+            except (ValueError, TypeError):
+                pass
+        flash(f"Product '{name}' ({sku}) registered successfully!", "success")
     else:
         flash(f"Failed to add product. SKU '{sku}' may already exist.", "error")
-    return redirect(url_for("products"))
+
+    return redirect(url_for(redirect_target if redirect_target in ("dashboard", "products") else "products"))
 
 
 @app.route("/products/edit/<int:product_id>", methods=["POST"])
