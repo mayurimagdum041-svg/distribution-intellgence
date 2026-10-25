@@ -996,6 +996,173 @@ def api_distribution_plan():
     return jsonify({"success": True, "plan": plan})
 
 
+# ─────────────────────────────────────────────────────────────
+# EXPIRED, SPOILED & DAMAGED PRODUCTS ROUTES
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/expired-spoiled", methods=["GET"])
+@login_required
+def expired_spoiled():
+    """
+    Renders the Expired & Spoiled Products management dashboard:
+    - Summary metrics (Affected products, Affected units, Estimated loss, status counts)
+    - Records table with filtering by status, reason, facility, and search
+    - Modal forms for recording new incidents and transitioning disposition status
+    """
+    user_id = session["user_id"]
+    status_filter = request.args.get("status", "All")
+    reason_filter = request.args.get("reason", "All")
+    location_filter = request.args.get("location_id", "All")
+    search_query = request.args.get("q", "").strip()
+
+    records = database.get_spoilage_records(
+        user_id=user_id,
+        status=status_filter,
+        reason=reason_filter,
+        location_id=location_filter,
+        search=search_query
+    )
+    metrics = database.get_spoilage_metrics(user_id)
+    products = database.get_products_by_user(user_id)
+    locations = database.get_locations_by_user(user_id)
+
+    filters = {
+        "status": status_filter,
+        "reason": reason_filter,
+        "location_id": location_filter,
+        "search": search_query
+    }
+
+    return render_template(
+        "expired_spoiled.html",
+        page="expired_spoiled",
+        records=records,
+        metrics=metrics,
+        products=products,
+        locations=locations,
+        filters=filters
+    )
+
+
+@app.route("/expired-spoiled/record", methods=["POST"])
+@login_required
+def record_spoilage_incident():
+    """Records an incident of expired, spoiled, or damaged inventory."""
+    user_id = session["user_id"]
+    product_id = request.form.get("product_id")
+    location_id = request.form.get("location_id")
+    quantity = request.form.get("quantity")
+    reason = request.form.get("reason", "Expired")
+    expiry_date = request.form.get("expiry_date", "").strip() or None
+    unit_price = request.form.get("unit_price")
+    status = request.form.get("status", "Pending Disposal")
+    notes = request.form.get("notes", "").strip()
+
+    if not product_id or not location_id or not quantity:
+        flash("Product, facility location, and quantity are mandatory fields.", "error")
+        return redirect(url_for("expired_spoiled"))
+
+    try:
+        p_id = int(product_id)
+        l_id = int(location_id)
+        qty = int(quantity)
+        u_price = float(unit_price) if unit_price and unit_price.strip() else None
+    except (ValueError, TypeError):
+        flash("Invalid numerical values provided.", "error")
+        return redirect(url_for("expired_spoiled"))
+
+    success, msg, rec_id = database.record_spoilage(
+        user_id=user_id,
+        product_id=p_id,
+        location_id=l_id,
+        quantity=qty,
+        reason=reason,
+        expiry_date=expiry_date,
+        unit_price=u_price,
+        notes=notes,
+        status=status
+    )
+
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+
+    return redirect(url_for("expired_spoiled"))
+
+
+@app.route("/expired-spoiled/update-status", methods=["POST"])
+@login_required
+def update_spoilage_incident_status():
+    """Updates disposition status (Pending Disposal -> Disposed or Returned)."""
+    user_id = session["user_id"]
+    record_id = request.form.get("record_id")
+    new_status = request.form.get("status")
+    notes = request.form.get("notes", "").strip()
+
+    if not record_id or not new_status:
+        flash("Missing incident record identifier or status parameter.", "error")
+        return redirect(url_for("expired_spoiled"))
+
+    try:
+        r_id = int(record_id)
+    except (ValueError, TypeError):
+        flash("Invalid record identifier.", "error")
+        return redirect(url_for("expired_spoiled"))
+
+    success, msg = database.update_spoilage_status(user_id, r_id, new_status, notes=notes)
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+
+    return redirect(url_for("expired_spoiled"))
+
+
+@app.route("/expired-spoiled/delete", methods=["POST"])
+@login_required
+def delete_spoilage_incident():
+    """Deletes or rolls back a spoilage incident record."""
+    user_id = session["user_id"]
+    record_id = request.form.get("record_id")
+    restore_stock = request.form.get("restore_stock") in ("1", "true", "on", True)
+
+    try:
+        r_id = int(record_id)
+    except (ValueError, TypeError):
+        flash("Invalid incident record identifier.", "error")
+        return redirect(url_for("expired_spoiled"))
+
+    success, msg = database.delete_spoilage_record(user_id, r_id, restore_stock=restore_stock)
+    if success:
+        flash(msg, "success")
+    else:
+        flash(msg, "error")
+
+    return redirect(url_for("expired_spoiled"))
+
+
+@app.route("/api/product-stock-at-location", methods=["GET"])
+@login_required
+def api_product_stock_at_location():
+    """Returns available on-hand stock and unit pricing for selected location & product."""
+    user_id = session["user_id"]
+    product_id = request.args.get("product_id")
+    location_id = request.args.get("location_id")
+
+    if not product_id or not location_id:
+        return jsonify({"success": False, "error": "Missing product_id or location_id."}), 400
+
+    try:
+        p_id = int(product_id)
+        l_id = int(location_id)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Invalid numerical parameters."}), 400
+
+    info = database.get_product_stock_at_location(user_id, p_id, l_id)
+    return jsonify({"success": True, "data": info})
+
+
 
 if __name__ == "__main__":
     app.run(host="127.0.0.1", port=5000, debug=True)

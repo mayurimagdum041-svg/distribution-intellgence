@@ -1,0 +1,906 @@
+{% extends "base.html" %}
+
+{% block title %}Expired & Spoiled Products — OptiStock AI{% endblock %}
+{% block header_title %}Expired & Spoiled Products Tracking{% endblock %}
+
+{% block topbar_actions %}
+<div style="display: flex; gap: 0.65rem; align-items: center;">
+  <button type="button" onclick="openRecordSpoilageModal()" class="btn btn-primary btn-sm" style="display: flex; align-items: center; gap: 0.45rem;">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <line x1="12" y1="5" x2="12" y2="19"></line>
+      <line x1="5" y1="12" x2="19" y2="12"></line>
+    </svg>
+    <span>+ Record Spoilage Incident</span>
+  </button>
+</div>
+{% endblock %}
+
+{% block content %}
+<!-- ── 1. Page Header & Introduction ────────────────────────── -->
+<div class="welcome-section" style="margin-bottom: 1.5rem;">
+  <div>
+    <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.25rem;">
+      <h1 class="welcome-title" style="margin-bottom: 0;">Expired &amp; Spoiled Products</h1>
+      <span class="badge" style="background: rgba(244, 63, 94, 0.12); color: #e11d48; font-weight: 700; border: 1px solid rgba(244, 63, 94, 0.25); font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 9999px;">
+        Waste &amp; Quality Management
+      </span>
+    </div>
+    <p class="welcome-subtitle">
+      Record expired, spoiled, and damaged inventory across facilities. Units are atomically deducted to protect sellable stock availability and demand fulfillment pipelines.
+    </p>
+  </div>
+  <div class="welcome-actions">
+    <button type="button" onclick="openRecordSpoilageModal()" class="btn btn-primary">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <line x1="5" y1="12" x2="19" y2="12"></line>
+      </svg>
+      <span>+ Record Incident</span>
+    </button>
+  </div>
+</div>
+
+<!-- ── 2. Three Pastel Summary Cards ────────────────────────── -->
+<div class="summary-cards-grid" style="margin-bottom: 1.75rem;">
+  <!-- Card 1: Total Affected Products (Soft Cream) -->
+  <div class="summary-card summary-card-cream">
+    <div class="summary-card-top">
+      <div class="summary-card-icon" style="color: #d97706;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+          <path d="m3.3 7 8.7 5 8.7-5"></path>
+          <path d="M12 22V12"></path>
+          <line x1="12" y1="8" x2="12" y2="12"></line>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(217, 119, 6, 0.12); color: #b45309; font-size: 0.72rem; font-weight: 700;">
+        {{ metrics.total_incidents }} Incident{% if metrics.total_incidents != 1 %}s{% endif %}
+      </span>
+    </div>
+    <div>
+      <div class="summary-card-val">{{ metrics.total_affected_products }}</div>
+      <div class="summary-card-lbl">Total Affected Products</div>
+      <div class="summary-card-sub">Unique catalog SKUs with recorded spoilage/damage</div>
+    </div>
+  </div>
+
+  <!-- Card 2: Affected Inventory Units (Soft Pastel Blue) -->
+  <div class="summary-card summary-card-blue">
+    <div class="summary-card-top">
+      <div class="summary-card-icon" style="color: #2563eb;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"></path>
+          <path d="m7.5 4.27 9 5.15"></path>
+          <polyline points="3.29 7 12 12 20.71 7"></polyline>
+          <line x1="12" y1="22" x2="12" y2="12"></line>
+          <line x1="19" y1="13" x2="19" y2="17" stroke="#ef4444" stroke-width="2.5"></line>
+          <circle cx="19" cy="20" r="0.9" fill="#ef4444"></circle>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(37, 99, 235, 0.12); color: #1d4ed8; font-size: 0.72rem; font-weight: 700;">
+        Deducted Stock
+      </span>
+    </div>
+    <div>
+      <div class="summary-card-val">{{ "{:,}".format(metrics.total_affected_units) }}</div>
+      <div class="summary-card-lbl">Affected Quantity (Units)</div>
+      <div class="summary-card-sub">Permanently deducted from active sellable inventory</div>
+    </div>
+  </div>
+
+  <!-- Card 3: Total Estimated Loss (Soft Pastel Lavender) -->
+  <div class="summary-card summary-card-lavender">
+    <div class="summary-card-top">
+      <div class="summary-card-icon" style="color: #9333ea;">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M6 3h12"></path>
+          <path d="M6 8h12"></path>
+          <path d="m6 13 8.5 8"></path>
+          <path d="M6 13h3a4 4 0 0 0 0-8"></path>
+        </svg>
+      </div>
+      <span class="badge" style="background: rgba(147, 51, 234, 0.12); color: #7e22ce; font-size: 0.72rem; font-weight: 700;">
+        ₹{{ "{:,.0f}".format(metrics.pending_loss) }} Pending
+      </span>
+    </div>
+    <div>
+      <div class="summary-card-val">₹{{ "{:,.2f}".format(metrics.total_loss_value) }}</div>
+      <div class="summary-card-lbl">Total Estimated Financial Loss</div>
+      <div class="summary-card-sub">Valuation impact across warehouses &amp; retail stores</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── 3. Quick Status Filter Pills ─────────────────────────── -->
+<div style="display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem;">
+  <span style="font-size: 0.8rem; font-weight: 700; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em;">Filter By Status:</span>
+
+  <a href="{{ url_for('expired_spoiled', status='All', reason=filters.reason, location_id=filters.location_id, q=filters.search) }}"
+     class="status-pill {% if filters.status == 'All' %}active{% endif %}">
+    <span>All Incidents</span>
+    <span class="pill-count">{{ metrics.total_incidents }}</span>
+  </a>
+
+  <a href="{{ url_for('expired_spoiled', status='Pending Disposal', reason=filters.reason, location_id=filters.location_id, q=filters.search) }}"
+     class="status-pill {% if filters.status == 'Pending Disposal' %}active-pending{% endif %}">
+    <span class="status-dot dot-pending"></span>
+    <span>Pending Disposal</span>
+    <span class="pill-count">{{ metrics.pending_count }}</span>
+  </a>
+
+  <a href="{{ url_for('expired_spoiled', status='Disposed', reason=filters.reason, location_id=filters.location_id, q=filters.search) }}"
+     class="status-pill {% if filters.status == 'Disposed' %}active-disposed{% endif %}">
+    <span class="status-dot dot-disposed"></span>
+    <span>Disposed</span>
+    <span class="pill-count">{{ metrics.disposed_count }}</span>
+  </a>
+
+  <a href="{{ url_for('expired_spoiled', status='Returned', reason=filters.reason, location_id=filters.location_id, q=filters.search) }}"
+     class="status-pill {% if filters.status == 'Returned' %}active-returned{% endif %}">
+    <span class="status-dot dot-returned"></span>
+    <span>Returned to Vendor</span>
+    <span class="pill-count">{{ metrics.returned_count }}</span>
+  </a>
+</div>
+
+<!-- ── 4. Main Records Container & Filter Toolbar ───────────── -->
+<div class="card" style="padding: 1.5rem;">
+  <div class="card-header" style="flex-wrap: wrap; gap: 1rem; margin-bottom: 1.25rem;">
+    <div>
+      <h3 class="card-title">Spoiled &amp; Expired Inventory Register</h3>
+      <p class="card-subtitle">Comprehensive ledger of quarantined, expired, and disposed inventory batches</p>
+    </div>
+    <div style="font-size: 0.82rem; color: #64748b; background: #f8fafc; padding: 0.4rem 0.85rem; border-radius: 10px; border: 1px solid #e2e8f0;">
+      Showing <strong>{{ records | length }}</strong> record{% if records | length != 1 %}s{% endif %}
+    </div>
+  </div>
+
+  <!-- Search & Dropdown Filter Bar -->
+  <form method="GET" action="{{ url_for('expired_spoiled') }}" id="spoilageFilterForm" style="display: grid; grid-template-columns: 2fr 1fr 1fr 1fr auto; gap: 0.75rem; align-items: center; margin-bottom: 1.25rem; background: #f8fafc; padding: 0.85rem; border-radius: 14px; border: 1px solid #e2e8f0;">
+    <!-- Keyword Search -->
+    <div style="position: relative;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%);">
+        <circle cx="11" cy="11" r="8"></circle>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+      </svg>
+      <input
+        type="text"
+        name="q"
+        value="{{ filters.search }}"
+        class="form-control"
+        placeholder="Search product, SKU, facility, or SPL code..."
+        style="padding-left: 2.3rem; font-size: 0.84rem;"
+      />
+    </div>
+
+    <!-- Status Dropdown -->
+    <div>
+      <select name="status" class="form-control" style="font-size: 0.84rem;">
+        <option value="All" {% if filters.status == 'All' %}selected{% endif %}>All Statuses</option>
+        <option value="Pending Disposal" {% if filters.status == 'Pending Disposal' %}selected{% endif %}>Pending Disposal</option>
+        <option value="Disposed" {% if filters.status == 'Disposed' %}selected{% endif %}>Disposed</option>
+        <option value="Returned" {% if filters.status == 'Returned' %}selected{% endif %}>Returned</option>
+      </select>
+    </div>
+
+    <!-- Reason Dropdown -->
+    <div>
+      <select name="reason" class="form-control" style="font-size: 0.84rem;">
+        <option value="All" {% if filters.reason == 'All' %}selected{% endif %}>All Reasons</option>
+        <option value="Expired" {% if filters.reason == 'Expired' %}selected{% endif %}>Expired</option>
+        <option value="Temperature Abuse / Spoilage" {% if filters.reason == 'Temperature Abuse / Spoilage' %}selected{% endif %}>Temperature Spoilage</option>
+        <option value="Damaged in Transit" {% if filters.reason == 'Damaged in Transit' %}selected{% endif %}>Damaged in Transit</option>
+        <option value="Packaging Breach" {% if filters.reason == 'Packaging Breach' %}selected{% endif %}>Packaging Breach</option>
+        <option value="Quality Rejection" {% if filters.reason == 'Quality Rejection' %}selected{% endif %}>Quality Rejection</option>
+        <option value="Other Damage" {% if filters.reason == 'Other Damage' %}selected{% endif %}>Other Damage</option>
+      </select>
+    </div>
+
+    <!-- Facility Location Dropdown -->
+    <div>
+      <select name="location_id" class="form-control" style="font-size: 0.84rem;">
+        <option value="All" {% if filters.location_id == 'All' %}selected{% endif %}>All Facilities</option>
+        {% for loc in locations %}
+          <option value="{{ loc.id }}" {% if filters.location_id == loc.id|string %}selected{% endif %}>
+            [{{ loc.type }}] {{ loc.name }}
+          </option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <!-- Actions -->
+    <div style="display: flex; gap: 0.45rem;">
+      <button type="submit" class="btn btn-primary btn-sm" style="padding: 0.55rem 0.95rem; font-size: 0.82rem;">
+        Filter
+      </button>
+      {% if filters.search or filters.status != 'All' or filters.reason != 'All' or filters.location_id != 'All' %}
+        <a href="{{ url_for('expired_spoiled') }}" class="btn btn-outline btn-sm" style="padding: 0.55rem 0.75rem; font-size: 0.82rem;" title="Clear filters">
+          Reset
+        </a>
+      {% endif %}
+    </div>
+  </form>
+
+  <!-- Records Table -->
+  <div class="table-responsive">
+    <table class="data-table" id="spoilageTable">
+      <thead>
+        <tr>
+          <th>Incident Code</th>
+          <th>Product &amp; SKU</th>
+          <th>Facility Location</th>
+          <th style="text-align: right;">Quantity</th>
+          <th>Reason</th>
+          <th>Expiry Date</th>
+          <th style="text-align: right;">Estimated Loss</th>
+          <th>Status</th>
+          <th style="text-align: center;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% if records %}
+          {% for r in records %}
+            <tr>
+              <!-- Incident Code & Date -->
+              <td>
+                <div style="font-weight: 700; color: #0f172a; font-family: monospace; font-size: 0.88rem;">{{ r.record_code }}</div>
+                <div style="font-size: 0.73rem; color: #94a3b8;">{{ r.created_at[:16] if r.created_at else 'Just now' }}</div>
+              </td>
+
+              <!-- Product & SKU -->
+              <td>
+                <div style="font-weight: 600; color: #0f172a; font-size: 0.88rem;">{{ r.product_name }}</div>
+                <div style="display: flex; gap: 0.4rem; align-items: center; margin-top: 0.15rem;">
+                  <span class="badge" style="background: #f1f5f9; color: #475569; font-size: 0.69rem; font-family: monospace;">{{ r.product_sku }}</span>
+                  <span style="font-size: 0.72rem; color: #94a3b8;">{{ r.product_category }}</span>
+                </div>
+              </td>
+
+              <!-- Facility Location -->
+              <td>
+                <div style="font-weight: 600; color: #0f172a; font-size: 0.86rem;">{{ r.location_name }}</div>
+                <div style="display: flex; gap: 0.35rem; align-items: center; margin-top: 0.15rem;">
+                  <span class="badge badge-{% if r.location_type == 'Warehouse' %}warehouse{% elif r.location_type == 'Distributor' %}store{% else %}store{% endif %}" style="font-size: 0.68rem; padding: 0.15rem 0.45rem;">
+                    {{ r.location_type }}
+                  </span>
+                  <span style="font-size: 0.72rem; color: #64748b;">{{ r.location_city }}</span>
+                </div>
+              </td>
+
+              <!-- Affected Units -->
+              <td style="text-align: right;">
+                <div style="font-weight: 800; color: #b91c1c; font-size: 0.96rem;">
+                  {{ "{:,}".format(r.quantity) }}
+                </div>
+                <div style="font-size: 0.71rem; color: #94a3b8;">units deducted</div>
+              </td>
+
+              <!-- Reason Badge -->
+              <td>
+                {% if r.reason == 'Expired' %}
+                  <span class="badge" style="background: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; font-weight: 600;">
+                    Expired
+                  </span>
+                {% elif r.reason == 'Temperature Abuse / Spoilage' %}
+                  <span class="badge" style="background: #ffedd5; color: #c2410c; border: 1px solid #fed7aa; font-weight: 600;">
+                    Temp Spoilage
+                  </span>
+                {% elif r.reason == 'Damaged in Transit' %}
+                  <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-weight: 600;">
+                    Transit Damage
+                  </span>
+                {% elif r.reason == 'Packaging Breach' %}
+                  <span class="badge" style="background: #e0e7ff; color: #4338ca; border: 1px solid #c7d2fe; font-weight: 600;">
+                    Packaging Breach
+                  </span>
+                {% elif r.reason == 'Quality Rejection' %}
+                  <span class="badge" style="background: #fce7f3; color: #be185d; border: 1px solid #fbcfe8; font-weight: 600;">
+                    Quality Rejection
+                  </span>
+                {% else %}
+                  <span class="badge" style="background: #f1f5f9; color: #475569; border: 1px solid #e2e8f0; font-weight: 600;">
+                    {{ r.reason }}
+                  </span>
+                {% endif %}
+                {% if r.notes %}
+                  <div style="font-size: 0.72rem; color: #64748b; margin-top: 0.25rem; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="{{ r.notes }}">
+                    {{ r.notes }}
+                  </div>
+                {% endif %}
+              </td>
+
+              <!-- Expiry Date -->
+              <td>
+                {% if r.expiry_date %}
+                  <div style="font-weight: 600; font-size: 0.85rem; color: #0f172a;">{{ r.expiry_date }}</div>
+                {% else %}
+                  <span style="color: #94a3b8; font-size: 0.8rem;">—</span>
+                {% endif %}
+              </td>
+
+              <!-- Estimated Loss -->
+              <td style="text-align: right;">
+                <div style="font-weight: 800; color: #0f172a; font-size: 0.95rem;">
+                  ₹{{ "{:,.2f}".format(r.estimated_loss) }}
+                </div>
+                <div style="font-size: 0.71rem; color: #94a3b8;">@ ₹{{ "{:,.2f}".format(r.unit_price) }}/unit</div>
+              </td>
+
+              <!-- Status Badge -->
+              <td>
+                {% if r.status == 'Pending Disposal' %}
+                  <span class="badge" style="background: #fef3c7; color: #b45309; border: 1px solid #fde68a; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #d97706;"></span>
+                    Pending Disposal
+                  </span>
+                {% elif r.status == 'Disposed' %}
+                  <span class="badge" style="background: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #16a34a;"></span>
+                    Disposed
+                  </span>
+                {% elif r.status == 'Returned' %}
+                  <span class="badge" style="background: #f3e8ff; color: #7e22ce; border: 1px solid #e9d5ff; font-weight: 700; display: inline-flex; align-items: center; gap: 0.35rem;">
+                    <span style="width: 6px; height: 6px; border-radius: 50%; background: #9333ea;"></span>
+                    Returned
+                  </span>
+                {% else %}
+                  <span class="badge" style="background: #f1f5f9; color: #475569;">{{ r.status }}</span>
+                {% endif %}
+              </td>
+
+              <!-- Action Buttons -->
+              <td style="text-align: center;">
+                <div style="display: inline-flex; gap: 0.35rem; align-items: center;">
+                  <!-- Update Status Trigger -->
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    style="padding: 0.35rem 0.55rem; font-size: 0.74rem;"
+                    onclick="openUpdateStatusModal('{{ r.id }}', '{{ r.record_code }}', '{{ r.status }}', '{{ r.product_name | escape }}', '{{ r.quantity }}')"
+                    title="Change disposition status"
+                  >
+                    Update
+                  </button>
+
+                  <!-- Direct Fast Actions if Pending -->
+                  {% if r.status == 'Pending Disposal' %}
+                    <form method="POST" action="{{ url_for('update_spoilage_incident_status') }}" style="margin: 0; display: inline;">
+                      <input type="hidden" name="record_id" value="{{ r.id }}" />
+                      <input type="hidden" name="status" value="Disposed" />
+                      <input type="hidden" name="notes" value="Quick action: physically disposed of quarantined batch." />
+                      <button type="submit" class="btn btn-outline btn-sm" style="padding: 0.35rem 0.55rem; font-size: 0.74rem; color: #16a34a; border-color: #bbf7d0;" title="Mark as Disposed">
+                        ✓ Disposed
+                      </button>
+                    </form>
+                  {% endif %}
+
+                  <!-- Delete / Rollback -->
+                  <button
+                    type="button"
+                    class="btn btn-outline btn-sm"
+                    style="padding: 0.35rem 0.45rem; color: #ef4444; border-color: #fecaca;"
+                    onclick="openDeleteModal('{{ r.id }}', '{{ r.record_code }}', '{{ r.product_name | escape }}', '{{ r.quantity }}')"
+                    title="Delete incident"
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"></polyline>
+                      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                    </svg>
+                  </button>
+                </div>
+              </td>
+            </tr>
+          {% endfor %}
+        {% else %}
+          <tr>
+            <td colspan="9" style="text-align: center; padding: 3rem 1.5rem;">
+              <div style="max-width: 420px; margin: 0 auto;">
+                <div style="width: 54px; height: 54px; border-radius: 16px; background: #fef2f2; color: #ef4444; display: flex; align-items: center; justify-content: center; margin: 0 auto 1rem;">
+                  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 10V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l2-1.14"></path>
+                    <path d="m7.5 4.27 9 5.15"></path>
+                    <line x1="12" y1="22" x2="12" y2="12"></line>
+                  </svg>
+                </div>
+                <h4 style="font-size: 1.05rem; font-weight: 700; color: #0f172a; margin-bottom: 0.35rem;">No Spoilage Records Found</h4>
+                <p style="font-size: 0.84rem; color: #64748b; margin-bottom: 1.25rem;">
+                  {% if filters.search or filters.status != 'All' or filters.reason != 'All' or filters.location_id != 'All' %}
+                    No records match the current filter criteria. Try resetting filters or searching with another keyword.
+                  {% else %}
+                    No expired, spoiled, or damaged inventory incidents have been recorded yet. Your active sellable stock is in prime condition!
+                  {% endif %}
+                </p>
+                {% if filters.search or filters.status != 'All' or filters.reason != 'All' or filters.location_id != 'All' %}
+                  <a href="{{ url_for('expired_spoiled') }}" class="btn btn-outline btn-sm">Clear Filters</a>
+                {% else %}
+                  <button type="button" onclick="openRecordSpoilageModal()" class="btn btn-primary btn-sm">+ Record First Spoilage Incident</button>
+                {% endif %}
+              </div>
+            </td>
+          </tr>
+        {% endif %}
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ── 5. Analytics & Waste Breakdown ───────────────────────── -->
+{% if metrics.by_reason or metrics.top_locations %}
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-top: 1.75rem;">
+  <!-- Reasons Breakdown Card -->
+  <div class="card" style="padding: 1.5rem;">
+    <div class="card-header" style="margin-bottom: 1rem;">
+      <div>
+        <h4 class="card-title" style="font-size: 1rem;">Waste Distribution by Root Cause</h4>
+        <p class="card-subtitle">Financial loss and unit volume by recorded rejection reason</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+      {% for item in metrics.by_reason %}
+        <div>
+          <div style="display: flex; justify-content: space-between; font-size: 0.84rem; margin-bottom: 0.3rem;">
+            <span style="font-weight: 600; color: #0f172a;">{{ item.reason }}</span>
+            <span style="font-weight: 700; color: #b91c1c;">₹{{ "{:,.2f}".format(item.loss) }} <span style="font-weight: 400; color: #64748b;">({{ item.units }} units)</span></span>
+          </div>
+          {% set pct = (item.loss / metrics.total_loss_value * 100) if metrics.total_loss_value > 0 else 0 %}
+          <div style="height: 7px; background: #f1f5f9; border-radius: 9999px; overflow: hidden;">
+            <div style="height: 100%; width: {{ pct }}%; background: linear-gradient(90deg, #f43f5e, #fb7185); border-radius: 9999px;"></div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- Facility Losses Card -->
+  <div class="card" style="padding: 1.5rem;">
+    <div class="card-header" style="margin-bottom: 1rem;">
+      <div>
+        <h4 class="card-title" style="font-size: 1rem;">Top Facilities by Spoilage Loss</h4>
+        <p class="card-subtitle">Warehouses and outlets with highest cumulative loss value</p>
+      </div>
+    </div>
+    <div style="display: flex; flex-direction: column; gap: 0.85rem;">
+      {% for loc in metrics.top_locations %}
+        <div style="display: flex; justify-content: space-between; align-items: center; padding: 0.65rem 0.85rem; background: #f8fafc; border-radius: 12px; border: 1px solid #e2e8f0;">
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.86rem;">{{ loc.location_name }}</div>
+            <div style="font-size: 0.74rem; color: #64748b;">
+              <span class="badge badge-{% if loc.location_type == 'Warehouse' %}warehouse{% else %}store{% endif %}" style="font-size: 0.65rem; padding: 0.1rem 0.4rem;">{{ loc.location_type }}</span>
+              {{ loc.location_city }} &bull; {{ loc.units }} units damaged
+            </div>
+          </div>
+          <div style="text-align: right;">
+            <div style="font-weight: 800; color: #0f172a; font-size: 0.92rem;">₹{{ "{:,.2f}".format(loc.loss) }}</div>
+            <div style="font-size: 0.71rem; color: #64748b;">{{ loc.incidents }} incident{% if loc.incidents != 1 %}s{% endif %}</div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<!-- ── 6. Modal 1: Record Spoilage Incident ─────────────────── -->
+<div class="modal-backdrop" id="recordSpoilageModal">
+  <div class="modal-box" style="max-width: 620px;">
+    <div class="modal-header">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Record Spoilage / Damaged Inventory</h3>
+        <p style="font-size: 0.78rem; color: #64748b; margin-bottom: 0;">Units recorded will be immediately removed from active sellable inventory.</p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeModal('recordSpoilageModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('record_spoilage_incident') }}" id="spoilageForm" onsubmit="return validateSpoilageForm();">
+      <!-- Facility Selection -->
+      <div class="form-group">
+        <label class="form-label" for="spoilage_facility">
+          Facility Location <span style="color: #f87171;">*</span>
+        </label>
+        <select name="location_id" id="spoilage_facility" class="form-control" required onchange="onFacilityOrProductChanged();">
+          <option value="">-- Select Warehouse or Retail Store --</option>
+          {% for loc in locations %}
+            <option value="{{ loc.id }}">
+              [{{ loc.type }}] {{ loc.name }} ({{ loc.city }})
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Product Selection -->
+      <div class="form-group">
+        <label class="form-label" for="spoilage_product">
+          Product SKU <span style="color: #f87171;">*</span>
+        </label>
+        <select name="product_id" id="spoilage_product" class="form-control" required onchange="onFacilityOrProductChanged();">
+          <option value="">-- Choose Product / SKU --</option>
+          {% for p in products %}
+            <option value="{{ p.id }}" data-price="{{ p.price }}" data-sku="{{ p.sku }}">
+              {{ p.name }} ({{ p.sku }}) — ₹{{ p.price }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Dynamic Stock Availability Indicator -->
+      <div id="stockAvailabilityCard" style="display: none; padding: 0.75rem 0.95rem; background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 12px; margin-bottom: 1rem;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 0.5rem;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+            </svg>
+            <span style="font-size: 0.82rem; color: #1e40af; font-weight: 600;">Current Sellable Stock on Hand:</span>
+          </div>
+          <span id="stockBadge" style="font-weight: 800; font-size: 0.95rem; color: #1d4ed8;">0 units</span>
+        </div>
+      </div>
+
+      <!-- Quantity & Unit Price -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="spoilage_qty">
+            Affected Quantity <span style="color: #f87171;">*</span>
+          </label>
+          <input
+            type="number"
+            id="spoilage_qty"
+            name="quantity"
+            class="form-control"
+            min="1"
+            step="1"
+            placeholder="e.g. 10"
+            required
+            oninput="recalcEstimatedLoss();"
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spoilage_price">
+            Unit Cost / Price (₹) <span style="color: #f87171;">*</span>
+          </label>
+          <input
+            type="number"
+            id="spoilage_price"
+            name="unit_price"
+            class="form-control"
+            min="0"
+            step="0.01"
+            placeholder="e.g. 54.00"
+            required
+            oninput="recalcEstimatedLoss();"
+          />
+        </div>
+      </div>
+
+      <!-- Estimated Loss Calculation Badge -->
+      <div style="display: flex; justify-content: space-between; align-items: center; background: #fff1f2; border: 1px solid #fecdd3; padding: 0.65rem 0.95rem; border-radius: 12px; margin-bottom: 1rem;">
+        <span style="font-size: 0.82rem; font-weight: 600; color: #9f1239;">Calculated Financial Loss:</span>
+        <span id="calculatedLossDisplay" style="font-size: 1rem; font-weight: 800; color: #e11d48;">₹0.00</span>
+      </div>
+
+      <!-- Reason & Expiry Date -->
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <div class="form-group">
+          <label class="form-label" for="spoilage_reason">
+            Reason / Defect Category <span style="color: #f87171;">*</span>
+          </label>
+          <select name="reason" id="spoilage_reason" class="form-control" required>
+            <option value="Expired">Expired (Shelf-Life Exceeded)</option>
+            <option value="Temperature Abuse / Spoilage">Temperature Abuse / Cold Chain Break</option>
+            <option value="Damaged in Transit">Damaged in Transit</option>
+            <option value="Packaging Breach">Packaging Breach / Seal Leakage</option>
+            <option value="Quality Rejection">Quality / Inspection Rejection</option>
+            <option value="Other Damage">Other Physical Damage</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="spoilage_expiry">
+            Batch Expiry Date
+          </label>
+          <input
+            type="date"
+            id="spoilage_expiry"
+            name="expiry_date"
+            class="form-control"
+          />
+        </div>
+      </div>
+
+      <!-- Initial Status -->
+      <div class="form-group">
+        <label class="form-label" for="spoilage_status">Initial Disposition Status</label>
+        <select name="status" id="spoilage_status" class="form-control">
+          <option value="Pending Disposal" selected>Pending Disposal (Quarantined in Waste Bin)</option>
+          <option value="Disposed">Disposed (Discarded / Incinerated / Dumped)</option>
+          <option value="Returned">Returned to Vendor / Reverse Logistics</option>
+        </select>
+      </div>
+
+      <!-- Notes / Inspection comments -->
+      <div class="form-group">
+        <label class="form-label" for="spoilage_notes">Notes / Inspection Observations</label>
+        <textarea
+          id="spoilage_notes"
+          name="notes"
+          class="form-control"
+          rows="2"
+          placeholder="e.g. Broken packaging seals observed during morning store audit."
+          style="resize: vertical;"
+        ></textarea>
+      </div>
+
+      <!-- Protection Notice Alert -->
+      <div style="padding: 0.75rem 0.95rem; background: #fffbeb; border: 1px solid #fde68a; border-radius: 12px; margin-bottom: 1.25rem;">
+        <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#b45309" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink: 0; margin-top: 1px;">
+            <circle cx="12" cy="12" r="10"></circle>
+            <line x1="12" y1="8" x2="12" y2="12"></line>
+            <line x1="12" y1="16" x2="12.01" y2="16"></line>
+          </svg>
+          <div style="font-size: 0.75rem; color: #92400e; line-height: 1.4;">
+            <strong>Sellable Stock Protection:</strong> Submitting will immediately deduct the entered quantity from available inventory at this facility. The affected units will not be included in sellable stock or demand replenishment algorithms.
+          </div>
+        </div>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('recordSpoilageModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary" id="submitSpoilageBtn" style="background: #e11d48; border-color: #e11d48;">
+          Record Spoilage Incident
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 7. Modal 2: Update Disposition Status ────────────────── -->
+<div class="modal-backdrop" id="updateStatusModal">
+  <div class="modal-box" style="max-width: 480px;">
+    <div class="modal-header">
+      <div>
+        <h3 style="font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 0.2rem;">Update Disposition Status</h3>
+        <p style="font-size: 0.78rem; color: #64748b; margin-bottom: 0;" id="updateModalSubtitle">Incident SPL-20261024-0001</p>
+      </div>
+      <button type="button" class="modal-close-btn" onclick="closeModal('updateStatusModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('update_spoilage_incident_status') }}">
+      <input type="hidden" name="record_id" id="update_record_id" />
+
+      <div class="form-group">
+        <label class="form-label" for="update_status_select">New Disposition Status <span style="color: #f87171;">*</span></label>
+        <select name="status" id="update_status_select" class="form-control" required>
+          <option value="Pending Disposal">Pending Disposal (Quarantined)</option>
+          <option value="Disposed">Disposed (Physically Cleared / Discarded)</option>
+          <option value="Returned">Returned to Vendor / Supplier Claim</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="update_status_notes">Additional Disposition Notes</label>
+        <textarea
+          id="update_status_notes"
+          name="notes"
+          class="form-control"
+          rows="3"
+          placeholder="e.g. Scrapped via local bio-waste contractor on Oct 25."
+        ></textarea>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem; margin-top: 1.25rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('updateStatusModal')">Cancel</button>
+        <button type="submit" class="btn btn-primary">Update Status</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- ── 8. Modal 3: Delete Spoilage Record ───────────────────── -->
+<div class="modal-backdrop" id="deleteSpoilageModal">
+  <div class="modal-box" style="max-width: 460px;">
+    <div class="modal-header">
+      <h3 style="font-size: 1.15rem; font-weight: 700; color: #b91c1c;">Confirm Record Deletion</h3>
+      <button type="button" class="modal-close-btn" onclick="closeModal('deleteSpoilageModal')">&times;</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('delete_spoilage_incident') }}">
+      <input type="hidden" name="record_id" id="delete_record_id" />
+
+      <p style="font-size: 0.88rem; color: #475569; margin-bottom: 1rem;">
+        Are you sure you want to delete incident <strong id="delete_record_code" style="color: #0f172a;"></strong>?
+      </p>
+
+      <div style="padding: 0.85rem; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; margin-bottom: 1.25rem;">
+        <label style="display: flex; align-items: flex-start; gap: 0.65rem; cursor: pointer; margin-bottom: 0;">
+          <input type="checkbox" name="restore_stock" value="1" checked style="accent-color: #0f172a; width: 17px; height: 17px; margin-top: 2px;" />
+          <div>
+            <div style="font-weight: 700; color: #0f172a; font-size: 0.84rem;">Restore Sellable Stock</div>
+            <div style="font-size: 0.76rem; color: #64748b;">Add the deducted units back to this facility's active sellable inventory balance.</div>
+          </div>
+        </label>
+      </div>
+
+      <div style="display: flex; justify-content: flex-end; gap: 0.75rem;">
+        <button type="button" class="btn btn-outline" onclick="closeModal('deleteSpoilageModal')">Cancel</button>
+        <button type="submit" class="btn btn-danger">Delete Record</button>
+      </div>
+    </form>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  /* Status Filter Pills */
+  .status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding: 0.35rem 0.85rem;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    text-decoration: none;
+    transition: all 0.2s ease;
+  }
+  .status-pill:hover {
+    background: #f8fafc;
+    border-color: #cbd5e1;
+    color: #0f172a;
+  }
+  .status-pill.active {
+    background: #0f172a;
+    border-color: #0f172a;
+    color: #ffffff;
+  }
+  .status-pill.active .pill-count {
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+  }
+  .status-pill.active-pending {
+    background: #fef3c7;
+    border-color: #fde68a;
+    color: #92400e;
+  }
+  .status-pill.active-disposed {
+    background: #dcfce7;
+    border-color: #bbf7d0;
+    color: #166534;
+  }
+  .status-pill.active-returned {
+    background: #f3e8ff;
+    border-color: #e9d5ff;
+    color: #6b21a8;
+  }
+  .status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+  }
+  .dot-pending { background: #d97706; }
+  .dot-disposed { background: #16a34a; }
+  .dot-returned { background: #9333ea; }
+  .pill-count {
+    font-size: 0.7rem;
+    padding: 0.1rem 0.4rem;
+    border-radius: 9999px;
+    background: #f1f5f9;
+    color: #64748b;
+  }
+</style>
+
+<script>
+  let currentAvailableStock = 0;
+
+  function openRecordSpoilageModal() {
+    openModal('recordSpoilageModal');
+    // Pre-populate date with today if empty
+    const expiryInput = document.getElementById('spoilage_expiry');
+    if (expiryInput && !expiryInput.value) {
+      const today = new Date().toISOString().split('T')[0];
+      expiryInput.value = today;
+    }
+  }
+
+  function openUpdateStatusModal(id, code, status, prodName, qty) {
+    document.getElementById('update_record_id').value = id;
+    document.getElementById('updateModalSubtitle').textContent = `${code} — ${prodName} (${qty} units)`;
+    document.getElementById('update_status_select').value = status;
+    document.getElementById('update_status_notes').value = '';
+    openModal('updateStatusModal');
+  }
+
+  function openDeleteModal(id, code, prodName, qty) {
+    document.getElementById('delete_record_id').value = id;
+    document.getElementById('delete_record_code').textContent = `${code} (${prodName}, ${qty} units)`;
+    openModal('deleteSpoilageModal');
+  }
+
+  async function onFacilityOrProductChanged() {
+    const locId = document.getElementById('spoilage_facility').value;
+    const prodSelect = document.getElementById('spoilage_product');
+    const prodId = prodSelect.value;
+    const selectedOption = prodSelect.options[prodSelect.selectedIndex];
+
+    // Auto set price
+    if (selectedOption && selectedOption.dataset.price) {
+      document.getElementById('spoilage_price').value = selectedOption.dataset.price;
+    }
+
+    if (!locId || !prodId) {
+      document.getElementById('stockAvailabilityCard').style.display = 'none';
+      currentAvailableStock = 0;
+      recalcEstimatedLoss();
+      return;
+    }
+
+    try {
+      const res = await fetch(`/api/product-stock-at-location?product_id=${prodId}&location_id=${locId}`);
+      const data = await res.json();
+      if (data.success) {
+        currentAvailableStock = data.data.current_stock || 0;
+        const stockBadge = document.getElementById('stockBadge');
+        stockBadge.textContent = `${currentAvailableStock.toLocaleString()} units`;
+        
+        if (currentAvailableStock <= 0) {
+          stockBadge.style.color = '#ef4444';
+          stockBadge.textContent += ' (OUT OF STOCK)';
+        } else {
+          stockBadge.style.color = '#1d4ed8';
+        }
+
+        document.getElementById('stockAvailabilityCard').style.display = 'block';
+
+        if (data.data.unit_price && !document.getElementById('spoilage_price').value) {
+          document.getElementById('spoilage_price').value = data.data.unit_price;
+        }
+
+        // Set max on quantity input
+        const qtyInput = document.getElementById('spoilage_qty');
+        if (currentAvailableStock > 0) {
+          qtyInput.setAttribute('max', currentAvailableStock);
+        } else {
+          qtyInput.removeAttribute('max');
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch location stock:", e);
+    }
+
+    recalcEstimatedLoss();
+  }
+
+  function recalcEstimatedLoss() {
+    const qty = parseFloat(document.getElementById('spoilage_qty').value) || 0;
+    const price = parseFloat(document.getElementById('spoilage_price').value) || 0;
+    const totalLoss = qty * price;
+    document.getElementById('calculatedLossDisplay').textContent = `₹${totalLoss.toLocaleString('en-IN', {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
+  }
+
+  function validateSpoilageForm() {
+    const locId = document.getElementById('spoilage_facility').value;
+    const prodId = document.getElementById('spoilage_product').value;
+    const qty = parseInt(document.getElementById('spoilage_qty').value, 10);
+
+    if (!locId || !prodId) {
+      alert("Please select both a facility location and a product SKU.");
+      return false;
+    }
+
+    if (isNaN(qty) || qty <= 0) {
+      alert("Please enter a valid positive quantity.");
+      return false;
+    }
+
+    if (currentAvailableStock > 0 && qty > currentAvailableStock) {
+      return confirm(`Warning: Entered quantity (${qty}) exceeds recorded on-hand stock (${currentAvailableStock}). Proceeding will deduct from available stock. Do you wish to continue?`);
+    }
+
+    return true;
+  }
+</script>
+{% endblock %}

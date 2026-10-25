@@ -215,6 +215,30 @@ def init_db():
         );
     """)
 
+    # 9. Expired & Spoiled Products Table (Waste Tracking & Sellable Stock Protection)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS spoilage_records (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            user_id INTEGER NOT NULL,
+            record_code TEXT NOT NULL,
+            product_id INTEGER NOT NULL,
+            location_id INTEGER NOT NULL,
+            quantity INTEGER NOT NULL,
+            reason TEXT NOT NULL, -- 'Expired', 'Temperature Abuse / Spoilage', 'Damaged in Transit', 'Packaging Breach', 'Quality Rejection'
+            expiry_date DATE,
+            unit_price REAL NOT NULL DEFAULT 0.0,
+            estimated_loss REAL NOT NULL DEFAULT 0.0,
+            status TEXT NOT NULL DEFAULT 'Pending Disposal', -- 'Pending Disposal', 'Disposed', 'Returned'
+            notes TEXT,
+            disposed_at TIMESTAMP,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (location_id) REFERENCES locations(id) ON DELETE CASCADE
+        );
+    """)
+
     conn.commit()
 
     # Seed Default Demo User if not exists
@@ -229,6 +253,36 @@ def init_db():
         )
         demo_user_id = cursor.lastrowid
         seed_fmcg_demo_data(demo_user_id, conn)
+    else:
+        demo_user_id = demo_user["id"]
+        cursor.execute("SELECT COUNT(*) FROM spoilage_records WHERE user_id = ?", (demo_user_id,))
+        if cursor.fetchone()[0] == 0:
+            # Populate spoilage demo seeds for existing demo user
+            cursor.execute("SELECT id, code FROM locations WHERE user_id = ?", (demo_user_id,))
+            loc_map = {r["code"]: r["id"] for r in cursor.fetchall()}
+            cursor.execute("SELECT id, sku FROM products WHERE user_id = ?", (demo_user_id,))
+            prod_map = {r["sku"]: r["id"] for r in cursor.fetchall()}
+
+            spoilage_seeds = [
+                ("DAIRY-MLK-01", "RET-MUM-S", 8, "Expired", "2026-10-23", 54.0, "Pending Disposal", "Exceeded 2-day pasteurisation shelf life before morning clearance."),
+                ("DAIRY-YGT-02", "RET-PUN-M", 6, "Temperature Abuse / Spoilage", "2026-10-28", 85.0, "Disposed", "Chiller compressor failure logged on display shelf #3."),
+                ("GROC-KCH-07", "WH-PUN", 15, "Damaged in Transit", "2027-04-15", 130.0, "Returned", "Pallet strap failure during highway transit; glass breakage."),
+                ("BKRY-BRD-05", "RET-SUR-R", 10, "Quality Rejection", "2026-10-24", 45.0, "Disposed", "Mold detected at delivery intake inspection; lot quarantined.")
+            ]
+
+            for idx, (sku, loc_code, sqty, sreason, sexp, sprice, sstatus, snotes) in enumerate(spoilage_seeds, start=1):
+                p_id = prod_map.get(sku)
+                l_id = loc_map.get(loc_code)
+                if p_id and l_id:
+                    s_code = f"SPL-20261024-{idx:04d}"
+                    loss = round(sqty * sprice, 2)
+                    disposed_at = "2026-10-24 16:30:00" if sstatus == "Disposed" else None
+                    cursor.execute("""
+                        INSERT OR IGNORE INTO spoilage_records (
+                            user_id, record_code, product_id, location_id, quantity,
+                            reason, expiry_date, unit_price, estimated_loss, status, notes, disposed_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """, (demo_user_id, s_code, p_id, l_id, sqty, sreason, sexp, sprice, loss, sstatus, snotes, disposed_at))
 
     conn.commit()
     conn.close()
@@ -493,6 +547,28 @@ def seed_fmcg_demo_data(user_id, conn):
             (?, 'STOCKOUT_RISK', 'WARNING', 'Low Safety Floor at Pune Market Square', 'Farm Fresh Malai Paneer below safety threshold (20 units on hand).')
     """, (user_id, user_id, user_id, user_id))
 
+    # 6. Seed Realistic FMCG Spoilage & Damaged Records
+    spoilage_seeds = [
+        ("DAIRY-MLK-01", "RET-MUM-S", 8, "Expired", "2026-10-23", 54.0, "Pending Disposal", "Exceeded 2-day pasteurisation shelf life before morning clearance."),
+        ("DAIRY-YGT-02", "RET-PUN-M", 6, "Temperature Abuse / Spoilage", "2026-10-28", 85.0, "Disposed", "Chiller compressor failure logged on display shelf #3."),
+        ("GROC-KCH-07", "WH-PUN", 15, "Damaged in Transit", "2027-04-15", 130.0, "Returned", "Pallet strap failure during highway transit; glass breakage."),
+        ("BKRY-BRD-05", "RET-SUR-R", 10, "Quality Rejection", "2026-10-24", 45.0, "Disposed", "Mold detected at delivery intake inspection; lot quarantined.")
+    ]
+
+    for idx, (sku, loc_code, sqty, sreason, sexp, sprice, sstatus, snotes) in enumerate(spoilage_seeds, start=1):
+        p_id = prod_map.get(sku)
+        l_id = loc_map.get(loc_code)
+        if p_id and l_id:
+            s_code = f"SPL-20261024-{idx:04d}"
+            loss = round(sqty * sprice, 2)
+            disposed_at = "2026-10-24 16:30:00" if sstatus == "Disposed" else None
+            cursor.execute("""
+                INSERT OR IGNORE INTO spoilage_records (
+                    user_id, record_code, product_id, location_id, quantity,
+                    reason, expiry_date, unit_price, estimated_loss, status, notes, disposed_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (user_id, s_code, p_id, l_id, sqty, sreason, sexp, sprice, loss, sstatus, snotes, disposed_at))
+
 
 def reset_demo_data(user_id):
     """Resets only DEMO records (is_demo=1) and repopulates clean demo data without touching user data."""
@@ -504,6 +580,7 @@ def reset_demo_data(user_id):
     cursor.execute("DELETE FROM locations WHERE user_id = ? AND is_demo = 1", (user_id,))
     cursor.execute("DELETE FROM products WHERE user_id = ? AND is_demo = 1", (user_id,))
     cursor.execute("DELETE FROM alerts WHERE user_id = ?", (user_id,))
+    cursor.execute("DELETE FROM spoilage_records WHERE user_id = ?", (user_id,))
 
     conn.commit()
     seed_fmcg_demo_data(user_id, conn)
@@ -2558,3 +2635,446 @@ def batch_execute_distribution_plan(user_id, min_score=75.0):
         "total_eligible": len(recs),
         "errors": errors
     }
+
+
+# ─────────────────────────────────────────────────────────────
+# EXPIRED, SPOILED & DAMAGED PRODUCTS MODULE
+# ─────────────────────────────────────────────────────────────
+
+def record_spoilage(user_id, product_id, location_id, quantity, reason, expiry_date=None, unit_price=None, notes=None, status="Pending Disposal"):
+    """
+    Records an incident of expired, spoiled, or damaged inventory:
+    1. Validates quantity > 0
+    2. Verifies facility and product exist
+    3. Checks current stock on hand at the designated facility
+    4. Atomically deducts quantity from inventory.current_stock, protecting sellable stock
+       and preventing damaged units from being allocated or shipped
+    5. Logs a SPOILAGE_DEDUCT transaction in the audit ledger
+    6. Creates the incident record in spoilage_records
+    """
+    try:
+        qty = int(quantity)
+        if qty <= 0:
+            return False, "Quantity must be greater than zero.", None
+    except (ValueError, TypeError):
+        return False, "Invalid quantity provided. Must be a positive integer.", None
+
+    valid_reasons = (
+        "Expired",
+        "Temperature Abuse / Spoilage",
+        "Damaged in Transit",
+        "Packaging Breach",
+        "Quality Rejection",
+        "Other Damage"
+    )
+    if reason not in valid_reasons:
+        # Default or fallback if custom reason passed
+        pass
+
+    valid_statuses = ("Pending Disposal", "Disposed", "Returned")
+    record_status = status if status in valid_statuses else "Pending Disposal"
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE TRANSACTION;")
+
+        # 1. Verify Product
+        cursor.execute("""
+            SELECT id, name, sku, price 
+            FROM products 
+            WHERE id = ? AND (user_id = ? OR is_demo = 1)
+        """, (product_id, user_id))
+        prod = cursor.fetchone()
+        if not prod:
+            conn.rollback()
+            conn.close()
+            return False, "Selected product does not exist or access is unauthorized.", None
+
+        # Determine price
+        if unit_price is not None:
+            try:
+                price = float(unit_price)
+                if price < 0:
+                    price = float(prod["price"])
+            except (ValueError, TypeError):
+                price = float(prod["price"])
+        else:
+            price = float(prod["price"])
+
+        # 2. Verify Facility Location
+        cursor.execute("""
+            SELECT id, name, type, city 
+            FROM locations 
+            WHERE id = ? AND (user_id = ? OR is_demo = 1)
+        """, (location_id, user_id))
+        loc = cursor.fetchone()
+        if not loc:
+            conn.rollback()
+            conn.close()
+            return False, "Selected warehouse or retail store does not exist.", None
+
+        # 3. Check Available Sellable Stock at that specific facility
+        cursor.execute("""
+            SELECT current_stock 
+            FROM inventory 
+            WHERE user_id = ? AND product_id = ? AND location_id = ?
+        """, (user_id, product_id, location_id))
+        inv_row = cursor.fetchone()
+        current_stock = inv_row["current_stock"] if inv_row else 0
+
+        if current_stock < qty:
+            conn.rollback()
+            conn.close()
+            return False, (
+                f"Insufficient sellable stock on-hand at {loc['name']}. "
+                f"Available: {current_stock} units, requested deduction: {qty} units."
+            ), None
+
+        new_stock = current_stock - qty
+
+        # 4. Atomically Deduct from inventory.current_stock
+        cursor.execute("""
+            UPDATE inventory 
+            SET current_stock = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE user_id = ? AND product_id = ? AND location_id = ?
+        """, (new_stock, user_id, product_id, location_id))
+
+        # 5. Generate Incident Code: SPL-YYYYMMDD-XXXX
+        now = datetime.now()
+        cursor.execute("SELECT COUNT(*) AS total FROM spoilage_records WHERE user_id = ?", (user_id,))
+        seq = cursor.fetchone()["total"] + 1
+        record_code = f"SPL-{now.strftime('%Y%m%d')}-{seq:04d}"
+
+        estimated_loss = round(qty * price, 2)
+        disposed_at = now.strftime("%Y-%m-%d %H:%M:%S") if record_status == "Disposed" else None
+
+        # 6. Insert Spoilage Record
+        cursor.execute("""
+            INSERT INTO spoilage_records (
+                user_id, record_code, product_id, location_id, quantity,
+                reason, expiry_date, unit_price, estimated_loss, status, notes, disposed_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, (
+            user_id, record_code, product_id, location_id, qty,
+            reason, expiry_date or None, price, estimated_loss,
+            record_status, notes.strip() if notes else None, disposed_at
+        ))
+        record_id = cursor.lastrowid
+
+        # 7. Audit Ledger Entry (SPOILAGE_DEDUCT)
+        cursor.execute("""
+            INSERT INTO inventory_transactions (
+                user_id, product_id, location_id, transaction_type, quantity, balance_after, reference
+            ) VALUES (?, ?, ?, 'SPOILAGE_DEDUCT', ?, ?, ?)
+        """, (user_id, product_id, location_id, -qty, new_stock, f"Spoilage Incident {record_code} ({reason})"))
+
+        conn.commit()
+        conn.close()
+        return True, f"Incident {record_code} recorded. {qty} units deducted from sellable stock.", record_id
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, f"Database transaction failed: {str(e)}", None
+
+
+def update_spoilage_status(user_id, record_id, new_status, notes=None):
+    """
+    Updates the disposition lifecycle status of an expired/spoiled product record:
+    'Pending Disposal' -> 'Disposed' or 'Returned'.
+    """
+    valid_statuses = ("Pending Disposal", "Disposed", "Returned")
+    if new_status not in valid_statuses:
+        return False, f"Invalid status '{new_status}'. Must be one of: {', '.join(valid_statuses)}"
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        cursor.execute("SELECT id, status, notes FROM spoilage_records WHERE id = ? AND user_id = ?", (record_id, user_id))
+        rec = cursor.fetchone()
+        if not rec:
+            conn.close()
+            return False, "Spoilage incident record not found."
+
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        disposed_at = now_str if new_status == "Disposed" else None
+
+        # Append notes if new notes provided
+        updated_notes = rec["notes"] or ""
+        if notes and notes.strip():
+            prefix = f" [{now_str}] {notes.strip()}"
+            updated_notes = (updated_notes + prefix).strip()
+
+        cursor.execute("""
+            UPDATE spoilage_records 
+            SET status = ?, disposed_at = CASE WHEN ? = 'Disposed' THEN CURRENT_TIMESTAMP ELSE disposed_at END,
+                notes = ?, updated_at = CURRENT_TIMESTAMP
+            WHERE id = ? AND user_id = ?
+        """, (new_status, new_status, updated_notes, record_id, user_id))
+
+        conn.commit()
+        conn.close()
+        return True, f"Incident status updated to '{new_status}'."
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, f"Failed to update status: {str(e)}"
+
+
+def delete_spoilage_record(user_id, record_id, restore_stock=False):
+    """
+    Deletes a spoilage incident record. Optionally restores the deducted units back
+    to sellable inventory and logs a SPOILAGE_RESTORE transaction.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE TRANSACTION;")
+        cursor.execute("""
+            SELECT id, record_code, product_id, location_id, quantity 
+            FROM spoilage_records 
+            WHERE id = ? AND user_id = ?
+        """, (record_id, user_id))
+        rec = cursor.fetchone()
+        if not rec:
+            conn.rollback()
+            conn.close()
+            return False, "Spoilage record not found."
+
+        if restore_stock:
+            # Restore stock
+            cursor.execute("""
+                SELECT current_stock FROM inventory 
+                WHERE user_id = ? AND product_id = ? AND location_id = ?
+            """, (user_id, rec["product_id"], rec["location_id"]))
+            inv_row = cursor.fetchone()
+            current_stock = inv_row["current_stock"] if inv_row else 0
+            restored_stock = current_stock + rec["quantity"]
+
+            cursor.execute("""
+                UPDATE inventory 
+                SET current_stock = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE user_id = ? AND product_id = ? AND location_id = ?
+            """, (restored_stock, user_id, rec["product_id"], rec["location_id"]))
+
+            # Audit ledger
+            cursor.execute("""
+                INSERT INTO inventory_transactions (
+                    user_id, product_id, location_id, transaction_type, quantity, balance_after, reference
+                ) VALUES (?, ?, ?, 'SPOILAGE_RESTORE', ?, ?, ?)
+            """, (user_id, rec["product_id"], rec["location_id"], rec["quantity"], restored_stock, f"Rollback Spoilage {rec['record_code']}"))
+
+        cursor.execute("DELETE FROM spoilage_records WHERE id = ? AND user_id = ?", (record_id, user_id))
+        conn.commit()
+        conn.close()
+        msg = f"Record {rec['record_code']} deleted." + (" Restored sellable stock." if restore_stock else "")
+        return True, msg
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, f"Failed to delete record: {str(e)}"
+
+
+def get_spoilage_records(user_id, status=None, reason=None, location_id=None, search=None):
+    """
+    Fetches all spoilage records for a user with joined product & location details,
+    supporting status, reason, facility filters, and keyword search.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            s.id,
+            s.user_id,
+            s.record_code,
+            s.product_id,
+            s.location_id,
+            s.quantity,
+            s.reason,
+            s.expiry_date,
+            s.unit_price,
+            s.estimated_loss,
+            s.status,
+            s.notes,
+            s.disposed_at,
+            s.created_at,
+            s.updated_at,
+            p.name AS product_name,
+            p.sku AS product_sku,
+            p.category AS product_category,
+            l.name AS location_name,
+            l.type AS location_type,
+            l.code AS location_code,
+            l.city AS location_city
+        FROM spoilage_records s
+        JOIN products p ON s.product_id = p.id
+        JOIN locations l ON s.location_id = l.id
+        WHERE s.user_id = ?
+    """
+    params = [user_id]
+
+    if status and status != "All":
+        query += " AND s.status = ?"
+        params.append(status)
+
+    if reason and reason != "All":
+        query += " AND s.reason = ?"
+        params.append(reason)
+
+    if location_id and str(location_id) != "All":
+        try:
+            loc_int = int(location_id)
+            query += " AND s.location_id = ?"
+            params.append(loc_int)
+        except ValueError:
+            pass
+
+    if search and search.strip():
+        term = f"%{search.strip()}%"
+        query += """ AND (
+            p.name LIKE ? OR 
+            p.sku LIKE ? OR 
+            l.name LIKE ? OR 
+            s.record_code LIKE ? OR 
+            s.reason LIKE ? OR 
+            s.notes LIKE ?
+        )"""
+        params.extend([term, term, term, term, term, term])
+
+    query += " ORDER BY s.created_at DESC"
+
+    cursor.execute(query, params)
+    records = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return records
+
+
+def get_spoilage_metrics(user_id):
+    """
+    Computes summary metrics for expired and spoiled products:
+    - Total affected unique products
+    - Total affected units
+    - Total financial loss value
+    - Status breakdown (Pending Disposal, Disposed, Returned)
+    - Reasons breakdown and top facility losses
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            COUNT(*) AS total_incidents,
+            COUNT(DISTINCT product_id) AS total_affected_products,
+            COALESCE(SUM(quantity), 0) AS total_affected_units,
+            COALESCE(SUM(estimated_loss), 0.0) AS total_loss_value,
+            COALESCE(SUM(CASE WHEN status = 'Pending Disposal' THEN quantity ELSE 0 END), 0) AS pending_units,
+            COALESCE(SUM(CASE WHEN status = 'Pending Disposal' THEN estimated_loss ELSE 0.0 END), 0.0) AS pending_loss,
+            COALESCE(SUM(CASE WHEN status = 'Pending Disposal' THEN 1 ELSE 0 END), 0) AS pending_count,
+            COALESCE(SUM(CASE WHEN status = 'Disposed' THEN quantity ELSE 0 END), 0) AS disposed_units,
+            COALESCE(SUM(CASE WHEN status = 'Disposed' THEN estimated_loss ELSE 0.0 END), 0.0) AS disposed_loss,
+            COALESCE(SUM(CASE WHEN status = 'Disposed' THEN 1 ELSE 0 END), 0) AS disposed_count,
+            COALESCE(SUM(CASE WHEN status = 'Returned' THEN quantity ELSE 0 END), 0) AS returned_units,
+            COALESCE(SUM(CASE WHEN status = 'Returned' THEN estimated_loss ELSE 0.0 END), 0.0) AS returned_loss,
+            COALESCE(SUM(CASE WHEN status = 'Returned' THEN 1 ELSE 0 END), 0) AS returned_count
+        FROM spoilage_records
+        WHERE user_id = ?
+    """, (user_id,))
+    row = cursor.fetchone()
+
+    # Breakdown by reason
+    cursor.execute("""
+        SELECT 
+            reason, 
+            COUNT(*) AS incidents, 
+            COALESCE(SUM(quantity), 0) AS units, 
+            ROUND(COALESCE(SUM(estimated_loss), 0.0), 2) AS loss
+        FROM spoilage_records
+        WHERE user_id = ?
+        GROUP BY reason
+        ORDER BY loss DESC
+    """, (user_id,))
+    by_reason = [dict(r) for r in cursor.fetchall()]
+
+    # Breakdown by location
+    cursor.execute("""
+        SELECT 
+            l.name AS location_name, 
+            l.type AS location_type, 
+            l.city AS location_city,
+            COUNT(s.id) AS incidents, 
+            COALESCE(SUM(s.quantity), 0) AS units, 
+            ROUND(COALESCE(SUM(s.estimated_loss), 0.0), 2) AS loss
+        FROM spoilage_records s
+        JOIN locations l ON s.location_id = l.id
+        WHERE s.user_id = ?
+        GROUP BY s.location_id
+        ORDER BY loss DESC
+        LIMIT 5
+    """, (user_id,))
+    top_locations = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+
+    return {
+        "total_incidents": row["total_incidents"] if row else 0,
+        "total_affected_products": row["total_affected_products"] if row else 0,
+        "total_affected_units": row["total_affected_units"] if row else 0,
+        "total_loss_value": round(row["total_loss_value"], 2) if row else 0.0,
+        "pending_count": row["pending_count"] if row else 0,
+        "pending_units": row["pending_units"] if row else 0,
+        "pending_loss": round(row["pending_loss"], 2) if row else 0.0,
+        "disposed_count": row["disposed_count"] if row else 0,
+        "disposed_units": row["disposed_units"] if row else 0,
+        "disposed_loss": round(row["disposed_loss"], 2) if row else 0.0,
+        "returned_count": row["returned_count"] if row else 0,
+        "returned_units": row["returned_units"] if row else 0,
+        "returned_loss": round(row["returned_loss"], 2) if row else 0.0,
+        "by_reason": by_reason,
+        "top_locations": top_locations
+    }
+
+
+def get_product_stock_at_location(user_id, product_id, location_id):
+    """
+    Returns available on-hand stock and product unit pricing for a specific facility location.
+    Used by interactive forms to validate spoilage deductions and display instant previews.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            COALESCE(i.current_stock, 0) AS current_stock,
+            p.id AS product_id,
+            p.name AS product_name,
+            p.sku AS product_sku,
+            p.price AS unit_price,
+            l.id AS location_id,
+            l.name AS location_name,
+            l.type AS location_type,
+            l.city AS location_city
+        FROM products p
+        CROSS JOIN locations l
+        LEFT JOIN inventory i ON i.product_id = p.id AND i.location_id = l.id AND i.user_id = ?
+        WHERE p.id = ? AND l.id = ? AND (p.user_id = ? OR p.is_demo = 1) AND (l.user_id = ? OR l.is_demo = 1)
+    """, (user_id, product_id, location_id, user_id, user_id))
+    row = cursor.fetchone()
+    conn.close()
+
+    if row:
+        return dict(row)
+    return {
+        "current_stock": 0,
+        "unit_price": 0.0,
+        "product_id": product_id,
+        "location_id": location_id
+    }
+
+
+# Convenience Function Aliases
+get_products_by_user = get_user_products
+get_locations_by_user = get_locations
