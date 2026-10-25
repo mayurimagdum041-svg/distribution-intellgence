@@ -1,0 +1,241 @@
+{% extends "store/store_base.html" %}
+
+{% block title %}Shop Catalog — OptiStock AI Storefront{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: #64748b; margin-bottom: 1.5rem;">
+  <a href="{{ url_for('store_index') }}" style="color: #6366f1; font-weight: 600;">Home</a>
+  <span>&rsaquo;</span>
+  <span style="color: #0f172a; font-weight: 600;">All Products</span>
+  {% if request.args.get('category') and request.args.get('category') != 'All' %}
+    <span>&rsaquo;</span>
+    <span style="color: #0f172a; font-weight: 700;">{{ request.args.get('category') }}</span>
+  {% endif %}
+  {% if request.args.get('q') %}
+    <span>&rsaquo;</span>
+    <span>Search: "{{ request.args.get('q') }}"</span>
+  {% endif %}
+</div>
+
+<!-- Layout: Sidebar Filters + Products Grid -->
+<div style="display: grid; grid-template-columns: 260px 1fr; gap: 2rem; align-items: start;">
+  <!-- Left Filter Sidebar -->
+  <aside style="background: #ffffff; border-radius: 20px; border: 1px solid var(--border-subtle); padding: 1.5rem; position: sticky; top: 100px; box-shadow: var(--shadow-sm);">
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.25rem; padding-bottom: 0.85rem; border-bottom: 1px solid var(--border-subtle);">
+      <h3 style="font-family: var(--font-display); font-size: 1.05rem; font-weight: 800; color: #0f172a;">Filters</h3>
+      <a href="{{ url_for('store_products') }}" style="font-size: 0.78rem; font-weight: 700; color: #6366f1;">Clear All</a>
+    </div>
+
+    <form method="GET" action="{{ url_for('store_products') }}" id="filterForm">
+      {% if request.args.get('q') %}
+        <input type="hidden" name="q" value="{{ request.args.get('q') }}" />
+      {% endif %}
+
+      <!-- Categories Filter -->
+      <div style="margin-bottom: 1.5rem;">
+        <label style="font-size: 0.82rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 0.75rem;">Category</label>
+        <div style="display: flex; flex-direction: column; gap: 0.5rem; font-size: 0.84rem;">
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="All" {% if not request.args.get('category') or request.args.get('category') == 'All' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>All Categories</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Fashion" {% if request.args.get('category') == 'Fashion' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Fashion &amp; Apparel</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Electronics" {% if request.args.get('category') == 'Electronics' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Electronics &amp; Gadgets</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Home & Living" {% if request.args.get('category') == 'Home & Living' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Home &amp; Living</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Perishable Dairy" {% if request.args.get('category') == 'Perishable Dairy' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Perishable Dairy</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Bakery & Snacks" {% if request.args.get('category') == 'Bakery & Snacks' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Bakery &amp; Snacks</span>
+          </label>
+          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer;">
+            <input type="radio" name="category" value="Ambient Groceries" {% if request.args.get('category') == 'Ambient Groceries' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #0f172a;" />
+            <span>Ambient Groceries</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- In Stock Filter -->
+      <div style="margin-bottom: 1.5rem; padding-bottom: 1.25rem; border-bottom: 1px solid var(--border-subtle);">
+        <label style="display: flex; align-items: center; gap: 0.6rem; cursor: pointer; font-size: 0.86rem; font-weight: 600; color: #0f172a;">
+          <input type="checkbox" name="in_stock" value="1" {% if request.args.get('in_stock') == '1' %}checked{% endif %} onchange="this.form.submit()" style="accent-color: #10b981; width: 16px; height: 16px;" />
+          <span>In Stock Only</span>
+        </label>
+      </div>
+
+      <!-- Price Range Filter -->
+      <div style="margin-bottom: 1.5rem;">
+        <label style="font-size: 0.82rem; font-weight: 700; color: #0f172a; text-transform: uppercase; letter-spacing: 0.04em; display: block; margin-bottom: 0.75rem;">Price Range (₹)</label>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-bottom: 0.75rem;">
+          <input
+            type="number"
+            name="min_price"
+            value="{{ request.args.get('min_price', '') }}"
+            placeholder="Min ₹"
+            class="store-search-input"
+            style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.45rem 0.65rem; border-radius: 8px; font-size: 0.82rem;"
+          />
+          <input
+            type="number"
+            name="max_price"
+            value="{{ request.args.get('max_price', '') }}"
+            placeholder="Max ₹"
+            class="store-search-input"
+            style="background: #f8fafc; border: 1px solid var(--border-subtle); padding: 0.45rem 0.65rem; border-radius: 8px; font-size: 0.82rem;"
+          />
+        </div>
+        <button type="submit" class="btn btn-primary btn-full btn-sm">Apply Price</button>
+      </div>
+    </form>
+  </aside>
+
+  <!-- Right: Products Catalog Grid -->
+  <div>
+    <!-- Top Bar: Result Count & Sort Options -->
+    <div style="background: #ffffff; border-radius: 16px; border: 1px solid var(--border-subtle); padding: 0.85rem 1.25rem; display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; box-shadow: var(--shadow-sm);">
+      <div style="font-size: 0.88rem; color: #64748b;">
+        Showing <strong style="color: #0f172a;">{{ products | length }}</strong> products
+      </div>
+
+      <!-- Sorting Selector -->
+      <div style="display: flex; align-items: center; gap: 0.5rem;">
+        <span style="font-size: 0.8rem; font-weight: 600; color: #64748b;">Sort By:</span>
+        <select
+          name="sort"
+          class="store-search-category"
+          style="border-right: none; font-size: 0.84rem; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 8px; padding: 0.4rem 0.75rem;"
+          onchange="location.href = updateQueryParam('sort', this.value)"
+        >
+          <option value="rating" {% if request.args.get('sort') == 'rating' %}selected{% endif %}>Highest Rated ★</option>
+          <option value="price_asc" {% if request.args.get('sort') == 'price_asc' %}selected{% endif %}>Price: Low to High</option>
+          <option value="price_desc" {% if request.args.get('sort') == 'price_desc' %}selected{% endif %}>Price: High to Low</option>
+          <option value="newest" {% if request.args.get('sort') == 'newest' %}selected{% endif %}>Newest First</option>
+          <option value="name" {% if request.args.get('sort') == 'name' %}selected{% endif %}>Name (A-Z)</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Products Grid -->
+    {% if products %}
+      <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.5rem;">
+        {% for p in products %}
+          <div class="product-card">
+            <div class="product-card-img-wrap">
+              {% if p.discount_pct and p.discount_pct > 0 %}
+                <span class="discount-badge">{{ p.discount_pct }}% OFF</span>
+              {% endif %}
+
+              <button
+                type="button"
+                class="wishlist-heart-btn"
+                title="Save to Wishlist"
+                onclick="toggleWishlist('{{ p.id }}', this, event)"
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+                </svg>
+              </button>
+
+              <a href="{{ url_for('store_product_detail', product_id=p.id) }}" style="width:100%; height:100%; display:flex; align-items:center; justify-content:center;">
+                <img
+                  src="{{ p.image_url if p.image_url else 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80' }}"
+                  alt="{{ p.name }}"
+                  class="product-card-img"
+                  loading="lazy"
+                  onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'"
+                />
+              </a>
+            </div>
+
+            <div class="product-card-body">
+              <div class="product-brand">{{ p.brand }} &bull; {{ p.category }}</div>
+              <a href="{{ url_for('store_product_detail', product_id=p.id) }}">
+                <h3 class="product-title" title="{{ p.name }}">{{ p.name }}</h3>
+              </a>
+
+              <div class="rating-badge">
+                <span>★</span>
+                <span>{{ p.rating }}</span>
+                <span style="color: #94a3b8; font-weight: 500;">({{ p.review_count }})</span>
+              </div>
+
+              <div class="price-row">
+                <span class="selling-price">₹{{ "{:,.2f}".format(p.discounted_price) }}</span>
+                {% if p.mrp > p.discounted_price %}
+                  <span class="mrp-price">₹{{ "{:,.2f}".format(p.mrp) }}</span>
+                  <span class="save-tag">Save ₹{{ "{:,.0f}".format(p.mrp - p.discounted_price) }}</span>
+                {% endif %}
+              </div>
+
+              <div class="stock-indicator">
+                {% if p.total_stock > 10 %}
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #10b981;"></span>
+                  <span class="stock-in">In Stock ({{ p.total_stock }} available)</span>
+                {% elif p.total_stock > 0 %}
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #f59e0b;"></span>
+                  <span class="stock-low">Only {{ p.total_stock }} left!</span>
+                {% else %}
+                  <span style="width: 7px; height: 7px; border-radius: 50%; background: #ef4444;"></span>
+                  <span class="stock-out">Out of Stock</span>
+                {% endif %}
+              </div>
+
+              <div style="margin-top: auto;">
+                {% if p.total_stock > 0 %}
+                  <button
+                    type="button"
+                    onclick="addToCart('{{ p.id }}', 1, event)"
+                    class="btn btn-primary btn-full btn-sm"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+                      <circle cx="8" cy="21" r="1"></circle>
+                      <circle cx="19" cy="21" r="1"></circle>
+                      <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+                    </svg>
+                    <span>Add to Cart</span>
+                  </button>
+                {% else %}
+                  <button type="button" class="btn btn-outline btn-full btn-sm" disabled style="opacity: 0.5;">
+                    Out of Stock
+                  </button>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      <div style="background: #ffffff; border-radius: 20px; border: 1px solid var(--border-subtle); padding: 4rem 2rem; text-align: center;">
+        <div style="font-size: 3rem; margin-bottom: 1rem;">🔍</div>
+        <h3 style="font-family: var(--font-display); font-size: 1.35rem; font-weight: 800; color: #0f172a; margin-bottom: 0.5rem;">No Products Found</h3>
+        <p style="font-size: 0.88rem; color: #64748b; max-width: 420px; margin: 0 auto 1.5rem auto;">
+          We couldn't find any products matching your selected category, price, or search criteria.
+        </p>
+        <a href="{{ url_for('store_products') }}" class="btn btn-primary btn-sm">Reset All Filters</a>
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function updateQueryParam(key, value) {
+    const url = new URL(window.location.href);
+    url.searchParams.set(key, value);
+    return url.toString();
+  }
+</script>
+{% endblock %}

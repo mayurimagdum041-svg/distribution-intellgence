@@ -1,0 +1,227 @@
+{% extends "store/store_base.html" %}
+
+{% block title %}My Profile — OptiStock AI Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .profile-container {
+    max-width: 900px;
+    margin: 2rem auto 4rem;
+    padding: 0 1rem;
+  }
+  .profile-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+  .profile-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+
+  .profile-grid {
+    display: grid;
+    grid-template-columns: 1fr 2fr;
+    gap: 2rem;
+  }
+  @media (max-width: 768px) {
+    .profile-grid {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .profile-card {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    padding: 1.75rem;
+    box-shadow: 0 4px 14px rgba(15, 23, 42, 0.04);
+  }
+
+  .avatar-card {
+    text-align: center;
+  }
+  .avatar-circle {
+    width: 80px;
+    height: 80px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #6366f1, #8b5cf6);
+    color: #ffffff;
+    font-size: 2rem;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 1rem;
+    box-shadow: 0 8px 20px rgba(99, 102, 241, 0.25);
+  }
+  .avatar-name {
+    font-family: var(--font-display);
+    font-size: 1.25rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .avatar-email {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin-top: 0.2rem;
+  }
+
+  .profile-stat-box {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid #f1f5f9;
+    display: flex;
+    justify-content: space-around;
+  }
+  .p-stat {
+    text-align: center;
+  }
+  .p-stat-val {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: #0f172a;
+  }
+  .p-stat-lbl {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: #64748b;
+    text-transform: uppercase;
+  }
+
+  .form-group {
+    margin-bottom: 1.25rem;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.35rem;
+  }
+  .form-control {
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-family: inherit;
+    font-size: 0.92rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="profile-container">
+
+  <div class="profile-header">
+    <div>
+      <h1>Customer Account</h1>
+      <p style="color: #64748b; font-size: 0.9rem; margin-top: 0.25rem;">
+        Manage your contact details and default delivery address.
+      </p>
+    </div>
+    <a href="{{ url_for('store_logout') }}" class="btn btn-outline btn-sm" style="background:#ffffff; color:#ef4444; border-color:#fecaca;">
+      <span>Sign Out</span>
+    </a>
+  </div>
+
+  <div class="profile-grid">
+    <!-- Left: Identity summary -->
+    <div class="profile-card avatar-card">
+      <div class="avatar-circle">
+        {{ customer.name[:1].upper() if customer.name else 'C' }}
+      </div>
+      <div class="avatar-name">{{ customer.name }}</div>
+      <div class="avatar-email">{{ customer.email }}</div>
+
+      <div class="profile-stat-box">
+        <div class="p-stat">
+          <div class="p-stat-val">{{ orders|length if orders else 0 }}</div>
+          <div class="p-stat-lbl">Orders</div>
+        </div>
+        <div class="p-stat">
+          <div class="p-stat-val">{{ wishlist_count or 0 }}</div>
+          <div class="p-stat-lbl">Wishlist</div>
+        </div>
+      </div>
+
+      <div style="margin-top: 1.5rem; text-align: left;">
+        <a href="{{ url_for('store_orders') }}" class="btn btn-outline btn-sm" style="width: 100%; justify-content: center; margin-bottom: 0.5rem; background:#ffffff;">
+          <span>📦 View Order History</span>
+        </a>
+        <a href="{{ url_for('store_wishlist') }}" class="btn btn-outline btn-sm" style="width: 100%; justify-content: center; background:#ffffff;">
+          <span>❤️ View Wishlist</span>
+        </a>
+      </div>
+    </div>
+
+    <!-- Right: Edit Details Form -->
+    <div class="profile-card">
+      <h3 style="font-family: var(--font-display); font-size: 1.15rem; font-weight: 700; color: #0f172a; margin-bottom: 1.25rem;">
+        Personal Details &amp; Shipping Address
+      </h3>
+
+      <form action="{{ url_for('store_profile') }}" method="POST">
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p_name">Full Name</label>
+            <input type="text" id="p_name" name="name" class="form-control" value="{{ customer.name }}" required />
+          </div>
+          <div class="form-group">
+            <label for="p_phone">Phone Number</label>
+            <input type="tel" id="p_phone" name="phone" class="form-control" value="{{ customer.phone or '' }}" placeholder="9876543210" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="p_email">Email Address</label>
+          <input type="email" id="p_email" class="form-control" value="{{ customer.email }}" disabled style="background:#f8fafc; color:#64748b;" />
+          <small style="font-size: 0.72rem; color: #94a3b8;">Email is linked to your order history and cannot be changed.</small>
+        </div>
+
+        <div class="form-group">
+          <label for="p_address">Delivery Address (Flat / House No. / Street)</label>
+          <input type="text" id="p_address" name="address" class="form-control" value="{{ customer.address or '' }}" placeholder="e.g. 402 Palm Grove, MG Road" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="p_city">City</label>
+            <input type="text" id="p_city" name="city" class="form-control" value="{{ customer.city or '' }}" placeholder="Mumbai" />
+          </div>
+          <div class="form-group">
+            <label for="p_pincode">Pincode</label>
+            <input type="text" id="p_pincode" name="pincode" class="form-control" value="{{ customer.pincode or '' }}" placeholder="400050" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="p_state">State</label>
+          <input type="text" id="p_state" name="state" class="form-control" value="{{ customer.state or 'Maharashtra' }}" placeholder="Maharashtra" />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="margin-top: 0.5rem; padding: 0.75rem 1.75rem;">
+          <span>Save Profile Changes</span>
+        </button>
+      </form>
+    </div>
+  </div>
+
+</div>
+{% endblock %}

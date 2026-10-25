@@ -1,0 +1,250 @@
+{% extends "store/store_base.html" %}
+
+{% block title %}{{ product.name }} — OptiStock Shop{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb -->
+<div style="display: flex; gap: 0.5rem; align-items: center; font-size: 0.8rem; color: #64748b; margin-bottom: 1.75rem;">
+  <a href="{{ url_for('store_index') }}" style="color: #6366f1; font-weight: 600;">Home</a>
+  <span>&rsaquo;</span>
+  <a href="{{ url_for('store_products', category=product.category) }}" style="color: #6366f1; font-weight: 600;">{{ product.category }}</a>
+  <span>&rsaquo;</span>
+  <span style="color: #0f172a; font-weight: 700;">{{ product.name }}</span>
+</div>
+
+<!-- Main 2-Column Product Detail Layout -->
+<div style="display: grid; grid-template-columns: 1fr 1.25fr; gap: 2.5rem; align-items: start; margin-bottom: 3rem;">
+  <!-- Left Column: Product Image & Badges -->
+  <div>
+    <div style="background: #ffffff; border-radius: 24px; border: 1px solid var(--border-subtle); padding: 1.5rem; box-shadow: var(--shadow-sm); position: relative; overflow: hidden; margin-bottom: 1rem;">
+      {% if product.discount_pct and product.discount_pct > 0 %}
+        <span class="discount-badge" style="font-size: 0.8rem; padding: 0.3rem 0.65rem;">{{ product.discount_pct }}% OFF SPECIAL</span>
+      {% endif %}
+
+      <button
+        type="button"
+        class="wishlist-heart-btn"
+        style="width: 40px; height: 40px; top: 16px; right: 16px;"
+        title="Add to Wishlist"
+        onclick="toggleWishlist('{{ product.id }}', this, event)"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+        </svg>
+      </button>
+
+      <div style="width: 100%; height: 420px; display: flex; align-items: center; justify-content: center; background: #f8fafc; border-radius: 16px; overflow: hidden;">
+        <img
+          src="{{ product.image_url if product.image_url else 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80' }}"
+          alt="{{ product.name }}"
+          style="width: 100%; height: 100%; object-fit: contain; transition: transform 0.3s ease;"
+          onerror="this.src='https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80'"
+        />
+      </div>
+    </div>
+
+    <!-- Assurance Badges -->
+    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.75rem; text-align: center;">
+      <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 0.85rem 0.5rem;">
+        <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🛡️</div>
+        <div style="font-size: 0.76rem; font-weight: 700; color: #0f172a;">100% Genuine</div>
+        <div style="font-size: 0.68rem; color: #64748b;">Direct from DC</div>
+      </div>
+      <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 0.85rem 0.5rem;">
+        <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">⚡</div>
+        <div style="font-size: 0.76rem; font-weight: 700; color: #0f172a;">Fast Dispatch</div>
+        <div style="font-size: 0.68rem; color: #64748b;">Nearest Hub</div>
+      </div>
+      <div style="background: #ffffff; border: 1px solid var(--border-subtle); border-radius: 14px; padding: 0.85rem 0.5rem;">
+        <div style="font-size: 1.25rem; margin-bottom: 0.25rem;">🔄</div>
+        <div style="font-size: 0.76rem; font-weight: 700; color: #0f172a;">Easy Return</div>
+        <div style="font-size: 0.68rem; color: #64748b;">7-Day Policy</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Right Column: Product Info, Pricing, Location Stock & Checkout -->
+  <div style="background: #ffffff; border-radius: 24px; border: 1px solid var(--border-subtle); padding: 2rem; box-shadow: var(--shadow-sm);">
+    <!-- Brand & SKU -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+      <span style="font-size: 0.82rem; font-weight: 800; color: #6366f1; text-transform: uppercase; letter-spacing: 0.05em;">
+        {{ product.brand }}
+      </span>
+      <span class="badge" style="background: #f1f5f9; color: #475569; font-family: monospace; font-size: 0.72rem; padding: 0.2rem 0.55rem; border-radius: 6px;">
+        SKU: {{ product.sku }}
+      </span>
+    </div>
+
+    <!-- Title -->
+    <h1 style="font-family: var(--font-display); font-size: 1.75rem; font-weight: 800; color: #0f172a; line-height: 1.25; margin-bottom: 0.75rem;">
+      {{ product.name }}
+    </h1>
+
+    <!-- Rating & Reviews -->
+    <div style="display: flex; align-items: center; gap: 0.75rem; margin-bottom: 1.25rem; padding-bottom: 1rem; border-bottom: 1px solid var(--border-subtle);">
+      <div class="rating-badge" style="margin-bottom: 0; font-size: 0.82rem; padding: 0.25rem 0.6rem;">
+        <span>★</span>
+        <span>{{ product.rating }}</span>
+      </div>
+      <span style="font-size: 0.82rem; color: #64748b; font-weight: 500;">
+        {{ product.review_count }} Customer Ratings &bull; Verified Purchase Reviews
+      </span>
+    </div>
+
+    <!-- Price Block -->
+    <div style="background: #f8fafc; border-radius: 16px; padding: 1.25rem; margin-bottom: 1.5rem; border: 1px solid var(--border-subtle);">
+      <div style="display: flex; align-items: baseline; gap: 0.75rem; margin-bottom: 0.25rem;">
+        <span style="font-family: var(--font-display); font-size: 2rem; font-weight: 800; color: #0f172a;">
+          ₹{{ "{:,.2f}".format(product.discounted_price) }}
+        </span>
+        {% if product.mrp > product.discounted_price %}
+          <span style="font-size: 1rem; color: #94a3b8; text-decoration: line-through;">
+            ₹{{ "{:,.2f}".format(product.mrp) }}
+          </span>
+          <span style="font-size: 0.85rem; font-weight: 800; color: #16a34a; background: #dcfce7; padding: 0.15rem 0.5rem; border-radius: 6px;">
+            Save {{ product.discount_pct }}% (₹{{ "{:,.0f}".format(product.mrp - product.discounted_price) }})
+          </span>
+        {% endif %}
+      </div>
+      <div style="font-size: 0.75rem; color: #64748b;">
+        Inclusive of all applicable taxes &bull; Free standard delivery on orders above ₹499
+      </div>
+    </div>
+
+    <!-- Description -->
+    <div style="margin-bottom: 1.5rem;">
+      <h4 style="font-size: 0.88rem; font-weight: 700; color: #0f172a; margin-bottom: 0.4rem;">Product Overview</h4>
+      <p style="font-size: 0.86rem; color: #475569; line-height: 1.6;">
+        {{ product.description }}
+      </p>
+    </div>
+
+    <!-- Specifications Table -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.85rem; background: #f8fafc; border: 1px solid var(--border-subtle); border-radius: 12px; padding: 0.85rem 1rem; margin-bottom: 1.5rem; font-size: 0.8rem;">
+      <div>
+        <span style="color: #64748b;">Category:</span>
+        <strong style="color: #0f172a; margin-left: 0.25rem;">{{ product.category }}</strong>
+      </div>
+      <div>
+        <span style="color: #64748b;">Unit Weight:</span>
+        <strong style="color: #0f172a; margin-left: 0.25rem;">{{ product.weight_kg }} kg</strong>
+      </div>
+      <div>
+        <span style="color: #64748b;">Shelf-Life:</span>
+        <strong style="color: #0f172a; margin-left: 0.25rem;">{{ product.shelf_life_days }} days</strong>
+      </div>
+      <div>
+        <span style="color: #64748b;">Fulfillment Network:</span>
+        <strong style="color: #0f172a; margin-left: 0.25rem;">Multi-Hub Connected</strong>
+      </div>
+    </div>
+
+    <!-- ── Location-Based Inventory Transparency Section ── -->
+    <div style="background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 16px; padding: 1.25rem; margin-bottom: 1.5rem;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem;">
+        <div style="display: flex; align-items: center; gap: 0.45rem;">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#2563eb" stroke-width="2.2">
+            <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+            <circle cx="12" cy="10" r="3"></circle>
+          </svg>
+          <span style="font-weight: 700; color: #1e40af; font-size: 0.88rem;">Live Location-Based Availability</span>
+        </div>
+        <span class="badge" style="background: #dbeafe; color: #1d4ed8; font-weight: 700; font-size: 0.72rem;">
+          {{ product.total_stock }} Total Network Units
+        </span>
+      </div>
+
+      <p style="font-size: 0.78rem; color: #1e3a8a; margin-bottom: 0.85rem; line-height: 1.4;">
+        OptiStock AI dynamically routes fulfillment from the nearest hub holding active inventory:
+      </p>
+
+      <!-- Facility Stock List -->
+      <div style="display: flex; flex-direction: column; gap: 0.45rem; max-height: 160px; overflow-y: auto;">
+        {% for loc in product.locations_stock %}
+          <div style="display: flex; justify-content: space-between; align-items: center; background: #ffffff; border: 1px solid #dbeafe; border-radius: 8px; padding: 0.45rem 0.75rem; font-size: 0.78rem;">
+            <div>
+              <strong style="color: #0f172a;">{{ loc.location_name }}</strong>
+              <span style="color: #64748b; margin-left: 0.35rem;">({{ loc.location_type }} &bull; {{ loc.city }})</span>
+            </div>
+            <span style="font-weight: 700; color: #15803d; background: #ecfdf5; padding: 0.1rem 0.45rem; border-radius: 4px;">
+              {{ loc.current_stock }} units ready
+            </span>
+          </div>
+        {% else %}
+          <div style="font-size: 0.8rem; color: #b91c1c; background: #fef2f2; padding: 0.5rem; border-radius: 6px;">
+            Currently depleted across all distribution centers. Automated replenishment has been queued.
+          </div>
+        {% endfor %}
+      </div>
+    </div>
+
+    <!-- Quantity & Action Buttons -->
+    {% if product.total_stock > 0 %}
+      <div style="display: flex; gap: 1rem; align-items: center; margin-bottom: 1.5rem;">
+        <span style="font-size: 0.84rem; font-weight: 600; color: #0f172a;">Quantity:</span>
+        <div style="display: flex; align-items: center; background: #f1f5f9; border-radius: 10px; border: 1px solid var(--border-subtle); overflow: hidden;">
+          <button type="button" onclick="decrementQty()" style="border: none; background: transparent; padding: 0.45rem 0.85rem; cursor: pointer; font-size: 1rem; font-weight: 700; color: #0f172a;">&minus;</button>
+          <input type="number" id="detailQtyInput" value="1" min="1" max="{{ product.total_stock }}" style="width: 45px; text-align: center; border: none; background: transparent; font-weight: 700; font-size: 0.95rem; outline: none;" />
+          <button type="button" onclick="incrementQty({{ product.total_stock }})" style="border: none; background: transparent; padding: 0.45rem 0.85rem; cursor: pointer; font-size: 1rem; font-weight: 700; color: #0f172a;">&plus;</button>
+        </div>
+        <span style="font-size: 0.76rem; color: #64748b;">(Max {{ product.total_stock }} available)</span>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+        <button
+          type="button"
+          onclick="addToCart('{{ product.id }}', parseInt(document.getElementById('detailQtyInput').value) || 1, event)"
+          class="btn btn-outline"
+          style="padding: 0.85rem; font-size: 0.95rem;"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <circle cx="8" cy="21" r="1"></circle>
+            <circle cx="19" cy="21" r="1"></circle>
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+          </svg>
+          <span>Add to Cart</span>
+        </button>
+
+        <button
+          type="button"
+          onclick="buyNow('{{ product.id }}')"
+          class="btn btn-primary"
+          style="padding: 0.85rem; font-size: 0.95rem; background: linear-gradient(135deg, #0f172a, #334155);"
+        >
+          <span>Buy Now &rarr;</span>
+        </button>
+      </div>
+    {% else %}
+      <div style="padding: 1rem; background: #fef2f2; border: 1px solid #fecaca; border-radius: 12px; text-align: center; color: #b91c1c; font-weight: 700; font-size: 0.9rem;">
+        Currently Out of Stock &bull; Warehouse Restocking In Progress
+      </div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function incrementQty(maxVal) {
+    const input = document.getElementById('detailQtyInput');
+    let val = parseInt(input.value) || 1;
+    if (val < maxVal) {
+      input.value = val + 1;
+    }
+  }
+
+  function decrementQty() {
+    const input = document.getElementById('detailQtyInput');
+    let val = parseInt(input.value) || 1;
+    if (val > 1) {
+      input.value = val - 1;
+    }
+  }
+
+  async function buyNow(productId) {
+    const qty = parseInt(document.getElementById('detailQtyInput').value) || 1;
+    await addToCart(productId, qty);
+    window.location.href = "{{ url_for('store_checkout') }}";
+  }
+</script>
+{% endblock %}

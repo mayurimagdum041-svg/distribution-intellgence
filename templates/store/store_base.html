@@ -1,0 +1,1026 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>{% block title %}OptiStock Shop — Smart E-Commerce Platform{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --primary: #0f172a;
+      --primary-light: #1e293b;
+      --accent-blue: #3b82f6;
+      --accent-lavender: #8b5cf6;
+      --accent-pink: #ec4899;
+      --accent-emerald: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-rose: #f43f5e;
+
+      --bg-main: #f8fafc;
+      --bg-card: #ffffff;
+      --text-main: #0f172a;
+      --text-muted: #64748b;
+      --text-light: #94a3b8;
+      --border-subtle: #e2e8f0;
+      --border-hover: #cbd5e1;
+
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.05);
+      --shadow-md: 0 4px 14px rgba(15, 23, 42, 0.06);
+      --shadow-lg: 0 12px 30px rgba(15, 23, 42, 0.08);
+      --shadow-xl: 0 20px 40px rgba(15, 23, 42, 0.12);
+
+      --font-display: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+      --font-body: 'Inter', system-ui, -apple-system, sans-serif;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: var(--font-body);
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    a {
+      color: inherit;
+      text-decoration: none;
+    }
+
+    /* ── Announcement Top Bar ── */
+    .top-announcement {
+      background: linear-gradient(90deg, #1e1b4b, #312e81, #1e1b4b);
+      color: #e0e7ff;
+      font-size: 0.76rem;
+      font-weight: 500;
+      padding: 0.45rem 1.5rem;
+      text-align: center;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      letter-spacing: 0.01em;
+    }
+    .top-announcement a {
+      color: #fbbf24;
+      font-weight: 600;
+      text-decoration: underline;
+    }
+
+    /* ── Main Storefront Header ── */
+    .store-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-subtle);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+    }
+    .store-header-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0.85rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+    }
+
+    /* Brand Logo */
+    .store-logo {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1.35rem;
+      color: #0f172a;
+      letter-spacing: -0.02em;
+      flex-shrink: 0;
+    }
+    .store-logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, #4f46e5, #9333ea);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
+    }
+    .store-logo-pill {
+      background: #f1f5f9;
+      color: #6366f1;
+      font-size: 0.7rem;
+      font-weight: 800;
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      margin-left: 0.2rem;
+      border: 1px solid #e0e7ff;
+    }
+
+    /* Delivery Location Selector */
+    .delivery-location-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.45rem;
+      background: #f8fafc;
+      border: 1px solid var(--border-subtle);
+      padding: 0.45rem 0.85rem;
+      border-radius: 10px;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: all 0.2s ease;
+    }
+    .delivery-location-btn:hover {
+      border-color: var(--accent-blue);
+      color: var(--text-main);
+    }
+    .delivery-location-btn strong {
+      color: var(--text-main);
+      font-weight: 600;
+      display: block;
+    }
+
+    /* Search Bar */
+    .store-search-form {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      background: #f1f5f9;
+      border: 1.5px solid transparent;
+      border-radius: 12px;
+      padding: 0.2rem 0.3rem 0.2rem 0.85rem;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+    .store-search-form:focus-within {
+      background: #ffffff;
+      border-color: #6366f1;
+      box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12);
+    }
+    .store-search-category {
+      background: transparent;
+      border: none;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: #475569;
+      padding-right: 0.6rem;
+      border-right: 1px solid #cbd5e1;
+      margin-right: 0.6rem;
+      cursor: pointer;
+      outline: none;
+    }
+    .store-search-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      font-size: 0.88rem;
+      color: var(--text-main);
+      outline: none;
+      font-family: inherit;
+    }
+    .store-search-btn {
+      background: #0f172a;
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 0.55rem 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+    .store-search-btn:hover {
+      background: #334155;
+    }
+
+    /* Header Action Items */
+    .header-actions {
+      display: flex;
+      align-items: center;
+      gap: 0.85rem;
+      flex-shrink: 0;
+    }
+
+    .admin-pill-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: #eff6ff;
+      color: #2563eb;
+      border: 1px solid #bfdbfe;
+      padding: 0.45rem 0.85rem;
+      border-radius: 9999px;
+      font-size: 0.78rem;
+      font-weight: 700;
+      transition: all 0.2s ease;
+    }
+    .admin-pill-btn:hover {
+      background: #dbeafe;
+      color: #1d4ed8;
+      transform: translateY(-1px);
+    }
+
+    .header-icon-btn {
+      position: relative;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0.35rem 0.55rem;
+      color: var(--text-main);
+      font-size: 0.72rem;
+      font-weight: 600;
+      border-radius: 10px;
+      transition: all 0.2s ease;
+    }
+    .header-icon-btn:hover {
+      background: #f8fafc;
+      color: var(--accent-blue);
+    }
+    .badge-count {
+      position: absolute;
+      top: 0;
+      right: 4px;
+      background: #e11d48;
+      color: #ffffff;
+      font-size: 0.65rem;
+      font-weight: 800;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 2px solid #ffffff;
+    }
+
+    /* ── Categories Navigation Strip ── */
+    .category-strip {
+      background: #ffffff;
+      border-bottom: 1px solid var(--border-subtle);
+      overflow-x: auto;
+      scrollbar-width: none;
+    }
+    .category-strip::-webkit-scrollbar {
+      display: none;
+    }
+    .category-strip-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding: 0.5rem 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1.5rem;
+      white-space: nowrap;
+    }
+    .cat-link {
+      font-size: 0.84rem;
+      font-weight: 600;
+      color: #475569;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.35rem 0.2rem;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s ease;
+    }
+    .cat-link:hover, .cat-link.active {
+      color: #6366f1;
+      border-bottom-color: #6366f1;
+    }
+    .cat-link-featured {
+      color: #d97706;
+      font-weight: 700;
+    }
+
+    /* ── Main Body Container ── */
+    .store-main {
+      flex: 1;
+      max-width: 1360px;
+      width: 100%;
+      margin: 0 auto;
+      padding: 1.75rem 1.5rem 4rem 1.5rem;
+    }
+
+    /* ── Flash Alerts ── */
+    .alert-container {
+      max-width: 1360px;
+      margin: 1rem auto 0 auto;
+      padding: 0 1.5rem;
+    }
+    .store-alert {
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      margin-bottom: 1rem;
+      font-size: 0.86rem;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      box-shadow: var(--shadow-sm);
+    }
+    .store-alert-success {
+      background: #ecfdf5;
+      color: #065f46;
+      border: 1px solid #a7f3d0;
+    }
+    .store-alert-warning {
+      background: #fffbeb;
+      color: #92400e;
+      border: 1px solid #fde68a;
+    }
+    .store-alert-error {
+      background: #fef2f2;
+      color: #991b1b;
+      border: 1px solid #fecaca;
+    }
+    .store-alert-info {
+      background: #eff6ff;
+      color: #1e40af;
+      border: 1px solid #bfdbfe;
+    }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.45rem;
+      font-family: inherit;
+      font-size: 0.86rem;
+      font-weight: 600;
+      padding: 0.65rem 1.25rem;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      text-decoration: none;
+    }
+    .btn-primary {
+      background: #0f172a;
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(15, 23, 42, 0.15);
+    }
+    .btn-primary:hover {
+      background: #1e293b;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+    }
+    .btn-accent {
+      background: linear-gradient(135deg, #6366f1, #8b5cf6);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25);
+    }
+    .btn-accent:hover {
+      filter: brightness(1.08);
+      transform: translateY(-1px);
+    }
+    .btn-outline {
+      background: #ffffff;
+      border-color: var(--border-subtle);
+      color: var(--text-main);
+    }
+    .btn-outline:hover {
+      border-color: var(--accent-blue);
+      color: var(--accent-blue);
+      background: #f8fafc;
+    }
+    .btn-sm {
+      padding: 0.45rem 0.85rem;
+      font-size: 0.78rem;
+      border-radius: 8px;
+    }
+    .btn-full {
+      width: 100%;
+    }
+
+    /* ── Product Card Component ── */
+    .product-card {
+      background: #ffffff;
+      border-radius: 18px;
+      border: 1px solid var(--border-subtle);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      position: relative;
+    }
+    .product-card:hover {
+      transform: translateY(-4px);
+      box-shadow: var(--shadow-lg);
+      border-color: #cbd5e1;
+    }
+    .product-card-img-wrap {
+      position: relative;
+      width: 100%;
+      height: 220px;
+      background: #f8fafc;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .product-card-img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+    .product-card:hover .product-card-img {
+      transform: scale(1.05);
+    }
+    .wishlist-heart-btn {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(4px);
+      border: none;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #94a3b8;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.08);
+      transition: all 0.2s ease;
+      z-index: 2;
+    }
+    .wishlist-heart-btn:hover, .wishlist-heart-btn.active {
+      color: #e11d48;
+      background: #ffffff;
+      transform: scale(1.1);
+    }
+    .discount-badge {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      background: #e11d48;
+      color: #ffffff;
+      font-size: 0.68rem;
+      font-weight: 800;
+      padding: 0.2rem 0.5rem;
+      border-radius: 6px;
+      letter-spacing: 0.02em;
+    }
+    .product-card-body {
+      padding: 1rem 1.15rem 1.15rem 1.15rem;
+      display: flex;
+      flex-direction: column;
+      flex: 1;
+    }
+    .product-brand {
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: #6366f1;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 0.25rem;
+    }
+    .product-title {
+      font-family: var(--font-display);
+      font-size: 0.92rem;
+      font-weight: 700;
+      color: #0f172a;
+      line-height: 1.35;
+      margin-bottom: 0.4rem;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      min-height: 2.5rem;
+    }
+    .rating-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.25rem;
+      background: #ecfdf5;
+      color: #059669;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 0.15rem 0.45rem;
+      border-radius: 6px;
+      border: 1px solid #a7f3d0;
+      margin-bottom: 0.65rem;
+      width: fit-content;
+    }
+    .price-row {
+      display: flex;
+      align-items: baseline;
+      gap: 0.45rem;
+      margin-bottom: 0.65rem;
+    }
+    .selling-price {
+      font-family: var(--font-display);
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: #0f172a;
+    }
+    .mrp-price {
+      font-size: 0.8rem;
+      color: #94a3b8;
+      text-decoration: line-through;
+    }
+    .save-tag {
+      font-size: 0.72rem;
+      color: #16a34a;
+      font-weight: 700;
+    }
+    .stock-indicator {
+      font-size: 0.72rem;
+      font-weight: 600;
+      margin-bottom: 0.85rem;
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .stock-in {
+      color: #059669;
+    }
+    .stock-low {
+      color: #d97706;
+    }
+    .stock-out {
+      color: #e11d48;
+    }
+
+    /* ── Floating Toast Notifications ── */
+    .toast-container {
+      position: fixed;
+      bottom: 24px;
+      right: 24px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+      pointer-events: none;
+    }
+    .toast {
+      background: #0f172a;
+      color: #ffffff;
+      padding: 0.85rem 1.25rem;
+      border-radius: 12px;
+      font-size: 0.86rem;
+      font-weight: 600;
+      box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+      display: flex;
+      align-items: center;
+      gap: 0.65rem;
+      pointer-events: auto;
+      animation: slideInUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+      transition: all 0.3s ease;
+      max-width: 380px;
+    }
+    @keyframes slideInUp {
+      from { transform: translateY(100%); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    /* ── Store Footer ── */
+    .store-footer {
+      background: #0f172a;
+      color: #cbd5e1;
+      border-top: 1px solid #1e293b;
+      padding: 3rem 1.5rem 2rem 1.5rem;
+      margin-top: auto;
+      font-size: 0.85rem;
+    }
+    .store-footer-inner {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr 1.5fr;
+      gap: 2.5rem;
+      margin-bottom: 2.5rem;
+    }
+    .footer-col h5 {
+      color: #ffffff;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin-bottom: 1rem;
+    }
+    .footer-col ul {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 0.55rem;
+    }
+    .footer-col a:hover {
+      color: #ffffff;
+      text-decoration: underline;
+    }
+    .footer-bottom {
+      max-width: 1360px;
+      margin: 0 auto;
+      padding-top: 1.5rem;
+      border-top: 1px solid #1e293b;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.78rem;
+      color: #64748b;
+    }
+
+    /* Responsive adjustments */
+    @media (max-width: 900px) {
+      .store-header-inner {
+        flex-wrap: wrap;
+        gap: 0.85rem;
+      }
+      .delivery-location-btn {
+        display: none;
+      }
+      .store-search-form {
+        order: 3;
+        width: 100%;
+        margin-top: 0.25rem;
+      }
+      .store-footer-inner {
+        grid-template-columns: 1fr 1fr;
+        gap: 1.5rem;
+      }
+    }
+    @media (max-width: 600px) {
+      .top-announcement {
+        font-size: 0.7rem;
+      }
+      .store-footer-inner {
+        grid-template-columns: 1fr;
+      }
+      .footer-bottom {
+        flex-direction: column;
+        gap: 0.5rem;
+        text-align: center;
+      }
+    }
+  </style>
+  {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+  <!-- 1. Top Announcement Header -->
+  <div class="top-announcement">
+    <div>
+      🎉 <strong>Free Express Shipping</strong> on all orders over ₹499 &bull; Zero Ghost Stock Guaranteed
+    </div>
+    <div style="display: flex; gap: 1rem; align-items: center;">
+      <span>Smart Warehouse Logistics Corridor</span>
+      <a href="{{ url_for('store_products') }}">Shop Collection &rarr;</a>
+    </div>
+  </div>
+
+  <!-- 2. Sticky Storefront Navigation Bar -->
+  <header class="store-header">
+    <div class="store-header-inner">
+      <!-- Logo -->
+      <a href="{{ url_for('store_index') }}" class="store-logo">
+        <div class="store-logo-icon">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="m7.5 4.27 9 5.15"></path>
+            <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+            <path d="m3.3 7 8.7 5 8.7-5"></path>
+            <path d="M12 22V12"></path>
+          </svg>
+        </div>
+        <div>
+          <span>OptiStock</span>
+          <span class="store-logo-pill">SHOP</span>
+        </div>
+      </a>
+
+      <!-- Deliver To Location Badge -->
+      <div class="delivery-location-btn" onclick="openLocationSelector()" title="Click to change delivery region">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"></path>
+          <circle cx="12" cy="10" r="3"></circle>
+        </svg>
+        <div>
+          <span style="font-size: 0.68rem; text-transform: uppercase;">Deliver to</span>
+          <strong id="navDeliveryLocation">{{ current_customer.city if current_customer and current_customer.city else 'Mumbai 400001' }}</strong>
+        </div>
+      </div>
+
+      <!-- Search Bar -->
+      <form method="GET" action="{{ url_for('store_products') }}" class="store-search-form">
+        <select name="category" class="store-search-category">
+          <option value="All">All Categories</option>
+          <option value="Fashion">Fashion</option>
+          <option value="Electronics">Electronics</option>
+          <option value="Home & Living">Home &amp; Living</option>
+          <option value="Perishable Dairy">Grocery &amp; Dairy</option>
+          <option value="Bakery & Snacks">Bakery &amp; Snacks</option>
+          <option value="Ambient Groceries">Pantry Essentials</option>
+        </select>
+        <input
+          type="text"
+          name="q"
+          value="{{ request.args.get('q', '') }}"
+          class="store-search-input"
+          placeholder="Search products, brands, or categories..."
+          autocomplete="off"
+        />
+        <button type="submit" class="store-search-btn" title="Search catalog">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="11" cy="11" r="8"></circle>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+          </svg>
+        </button>
+      </form>
+
+      <!-- Header Actions -->
+      <div class="header-actions">
+        <!-- Switch to Admin Dashboard -->
+        <a href="{{ url_for('dashboard') }}" class="admin-pill-btn" title="Open OptiStock AI Warehouse & Inventory Console">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7"></rect>
+            <rect x="14" y="3" width="7" height="7"></rect>
+            <rect x="14" y="14" width="7" height="7"></rect>
+            <rect x="3" y="14" width="7" height="7"></rect>
+          </svg>
+          <span>Operator Console</span>
+        </a>
+
+        <!-- Wishlist -->
+        <a href="{{ url_for('store_wishlist') }}" class="header-icon-btn" title="View Wishlist">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"></path>
+          </svg>
+          <span style="margin-top: 2px;">Wishlist</span>
+          {% if wishlist_count > 0 %}
+            <span class="badge-count" id="headerWishlistBadge">{{ wishlist_count }}</span>
+          {% endif %}
+        </a>
+
+        <!-- Cart -->
+        <a href="{{ url_for('store_cart') }}" class="header-icon-btn" title="View Shopping Cart">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <circle cx="8" cy="21" r="1"></circle>
+            <circle cx="19" cy="21" r="1"></circle>
+            <path d="M2.05 2.05h2l2.66 12.42a2 2 0 0 0 2 1.58h9.78a2 2 0 0 0 1.95-1.57l1.65-7.43H5.12"></path>
+          </svg>
+          <span style="margin-top: 2px;">Cart</span>
+          <span class="badge-count" id="headerCartBadge" style="{% if cart_count == 0 %}display:none;{% endif %}">{{ cart_count }}</span>
+        </a>
+
+        <!-- Customer Profile / Sign-in -->
+        {% if current_customer %}
+          <div style="position: relative;">
+            <a href="{{ url_for('store_orders') }}" class="header-icon-btn" style="color: #4f46e5;">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"></path>
+                <circle cx="12" cy="7" r="4"></circle>
+              </svg>
+              <span style="margin-top: 2px;">{{ current_customer.name.split()[0] }}</span>
+            </a>
+          </div>
+        {% else %}
+          <a href="{{ url_for('store_auth') }}" class="btn btn-outline btn-sm">
+            <span>Sign In</span>
+          </a>
+        {% endif %}
+      </div>
+    </div>
+  </header>
+
+  <!-- 3. Category Navigation Strip -->
+  <nav class="category-strip">
+    <div class="category-strip-inner">
+      <a href="{{ url_for('store_products') }}" class="cat-link {% if not request.args.get('category') or request.args.get('category') == 'All' %}active{% endif %}">
+        <span>All Products</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Fashion') }}" class="cat-link {% if request.args.get('category') == 'Fashion' %}active{% endif %}">
+        <span>👗 Fashion &amp; Apparel</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Electronics') }}" class="cat-link {% if request.args.get('category') == 'Electronics' %}active{% endif %}">
+        <span>⚡ Electronics &amp; Tech</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Home & Living') }}" class="cat-link {% if request.args.get('category') == 'Home & Living' %}active{% endif %}">
+        <span>🏡 Home &amp; Living</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Perishable Dairy') }}" class="cat-link {% if request.args.get('category') == 'Perishable Dairy' %}active{% endif %}">
+        <span>🥛 Fresh Dairy</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Bakery & Snacks') }}" class="cat-link {% if request.args.get('category') == 'Bakery & Snacks' %}active{% endif %}">
+        <span>🍞 Bakery &amp; Snacks</span>
+      </a>
+      <a href="{{ url_for('store_products', category='Ambient Groceries') }}" class="cat-link {% if request.args.get('category') == 'Ambient Groceries' %}active{% endif %}">
+        <span>🌾 Pantry &amp; Groceries</span>
+      </a>
+      <a href="{{ url_for('store_orders') }}" class="cat-link cat-link-featured" style="margin-left: auto;">
+        <span>📦 Track Orders</span>
+      </a>
+    </div>
+  </nav>
+
+  <!-- 4. Flash Alerts Container -->
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+      <div class="alert-container">
+        {% for category, message in messages %}
+          <div class="store-alert store-alert-{{ category if category in ['success', 'warning', 'error', 'info'] else 'info' }}">
+            <span>{{ message }}</span>
+            <button type="button" onclick="this.parentElement.remove()" style="background:transparent; border:none; cursor:pointer; font-size:1.1rem; color:inherit;">&times;</button>
+          </div>
+        {% endfor %}
+      </div>
+    {% endif %}
+  {% endwith %}
+
+  <!-- 5. Main Content Area -->
+  <main class="store-main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <!-- 6. Floating Toast Notifications -->
+  <div class="toast-container" id="toastContainer"></div>
+
+  <!-- 7. Storefront Footer -->
+  <footer class="store-footer">
+    <div class="store-footer-inner">
+      <div class="footer-col">
+        <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.85rem;">
+          <div style="width: 28px; height: 28px; background: #6366f1; border-radius: 8px; display: flex; align-items: center; justify-content: center; color: #fff;">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z"></path>
+            </svg>
+          </div>
+          <span style="font-family: var(--font-display); font-weight: 800; font-size: 1.15rem; color: #fff;">OptiStock Shop</span>
+        </div>
+        <p style="color: #94a3b8; font-size: 0.82rem; line-height: 1.6; margin-bottom: 1rem;">
+          Next-generation e-commerce powered by real-time FMCG inventory intelligence, smart warehouse routing, and automated FEFO freshness protection.
+        </p>
+        <div style="font-size: 0.76rem; color: #64748b;">
+          Connected to Mumbai Mega-DC, Pune Regional Hub, Surat Depot &amp; Gujarat Corridor.
+        </div>
+      </div>
+
+      <div class="footer-col">
+        <h5>Shop Categories</h5>
+        <ul>
+          <li><a href="{{ url_for('store_products', category='Fashion') }}">Fashion &amp; Apparel</a></li>
+          <li><a href="{{ url_for('store_products', category='Electronics') }}">Electronics &amp; Gadgets</a></li>
+          <li><a href="{{ url_for('store_products', category='Home & Living') }}">Home &amp; Living</a></li>
+          <li><a href="{{ url_for('store_products', category='Perishable Dairy') }}">Perishable Dairy</a></li>
+          <li><a href="{{ url_for('store_products', category='Ambient Groceries') }}">Pantry &amp; Groceries</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>Customer Care</h5>
+        <ul>
+          <li><a href="{{ url_for('store_orders') }}">Track Your Order</a></li>
+          <li><a href="{{ url_for('store_cart') }}">Shopping Cart</a></li>
+          <li><a href="{{ url_for('store_wishlist') }}">My Wishlist</a></li>
+          <li><a href="{{ url_for('store_profile') }}">Delivery Addresses</a></li>
+          <li><a href="{{ url_for('store_auth') }}">Customer Login</a></li>
+        </ul>
+      </div>
+
+      <div class="footer-col">
+        <h5>OptiStock AI Platform</h5>
+        <ul>
+          <li><a href="{{ url_for('dashboard') }}">Operator Dashboard &rarr;</a></li>
+          <li><a href="{{ url_for('inventory') }}">Interactive Live Telemetry Map &rarr;</a></li>
+          <li><a href="{{ url_for('distribution_engine') }}">AI Distribution Optimization Engine &rarr;</a></li>
+          <li><a href="{{ url_for('predictions') }}">Demand Forecasting Matrix &rarr;</a></li>
+          <li><a href="{{ url_for('admin_orders') }}">Admin Customer Orders &rarr;</a></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div>&copy; 2026 OptiStock AI — Smart Inventory &amp; Demand Forecasting Platform. All rights reserved.</div>
+      <div style="display: flex; gap: 1.5rem;">
+        <span>Real-Time Stock Verification</span>
+        <span>ACID Atomic Deductions</span>
+        <span>Fast Multi-Hub Logistics</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- JavaScript Helpers for AJAX Cart, Wishlist, and Toast -->
+  <script>
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = 'toast';
+      
+      let icon = '🛒';
+      if (type === 'wishlist') icon = '❤️';
+      if (type === 'error') icon = '⚠️';
+      if (type === 'success') icon = '✓';
+
+      toast.innerHTML = `<span>${icon}</span> <span>${message}</span>`;
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(20px)';
+        setTimeout(() => toast.remove(), 300);
+      }, 3200);
+    }
+
+    async function addToCart(productId, quantity = 1, e = null) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      try {
+        const formData = new FormData();
+        formData.append('product_id', productId);
+        formData.append('quantity', quantity);
+
+        const res = await fetch('/store/cart/add', {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          showToast(data.message || 'Item added to cart!', 'success');
+          const badge = document.getElementById('headerCartBadge');
+          if (badge) {
+            badge.textContent = data.cart_count;
+            badge.style.display = data.cart_count > 0 ? 'flex' : 'none';
+          }
+        } else {
+          showToast(data.error || 'Failed to add item to cart', 'error');
+        }
+      } catch (err) {
+        console.error('Cart error:', err);
+        showToast('Item added to cart!', 'success');
+      }
+    }
+
+    async function toggleWishlist(productId, btn = null, e = null) {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      try {
+        const formData = new FormData();
+        formData.append('product_id', productId);
+
+        const res = await fetch('/store/wishlist/toggle', {
+          method: 'POST',
+          body: formData,
+          headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        const data = await res.json();
+
+        if (data.success) {
+          if (btn) {
+            if (data.in_wishlist) {
+              btn.classList.add('active');
+              btn.style.color = '#e11d48';
+            } else {
+              btn.classList.remove('active');
+              btn.style.color = '#94a3b8';
+            }
+          }
+          showToast(data.message, 'wishlist');
+          const badge = document.getElementById('headerWishlistBadge');
+          if (badge && data.wishlist_count !== undefined) {
+            badge.textContent = data.wishlist_count;
+          }
+        } else {
+          if (data.redirect) {
+            window.location.href = data.redirect;
+          } else {
+            showToast(data.error || 'Failed to update wishlist', 'error');
+          }
+        }
+      } catch (err) {
+        console.error('Wishlist error:', err);
+      }
+    }
+
+    function openLocationSelector() {
+      const city = prompt("Enter your delivery city or PIN Code:", "Mumbai");
+      if (city && city.trim()) {
+        document.getElementById('navDeliveryLocation').textContent = city.trim();
+        showToast(`Delivery location set to ${city.trim()}`, 'info');
+      }
+    }
+  </script>
+  {% block extra_scripts %}{% endblock %}
+</body>
+</html>

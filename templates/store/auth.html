@@ -1,0 +1,263 @@
+{% extends "store/store_base.html" %}
+
+{% block title %}Customer Sign In &amp; Register — OptiStock AI Store{% endblock %}
+
+{% block extra_head %}
+<style>
+  .auth-wrapper {
+    max-width: 520px;
+    margin: 2.5rem auto 4rem;
+    padding: 0 1rem;
+  }
+  .auth-card {
+    background: #ffffff;
+    border-radius: 20px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+    overflow: hidden;
+  }
+  .auth-header {
+    background: linear-gradient(135deg, #f8faff 0%, #ede9fe 100%);
+    padding: 2rem 2rem 1.5rem;
+    text-align: center;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .auth-header h1 {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: #0f172a;
+    margin-bottom: 0.35rem;
+  }
+  .auth-header p {
+    font-size: 0.88rem;
+    color: #64748b;
+  }
+
+  .demo-login-box {
+    margin: 1.25rem 2rem 0;
+    background: #eff6ff;
+    border: 1px dashed #93c5fd;
+    border-radius: 12px;
+    padding: 0.85rem 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+  .demo-login-box-text {
+    font-size: 0.8rem;
+    color: #1e40af;
+  }
+  .demo-login-box-text strong {
+    display: block;
+    font-size: 0.86rem;
+    color: #1e3a8a;
+  }
+
+  /* Auth Tabs */
+  .auth-tabs {
+    display: flex;
+    border-bottom: 1px solid #e2e8f0;
+  }
+  .auth-tab {
+    flex: 1;
+    padding: 1rem;
+    text-align: center;
+    font-weight: 700;
+    font-size: 0.92rem;
+    color: #64748b;
+    background: #f8fafc;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  .auth-tab.active {
+    background: #ffffff;
+    color: #6366f1;
+    border-bottom: 2px solid #6366f1;
+  }
+
+  .auth-body {
+    padding: 2rem;
+  }
+  .form-group {
+    margin-bottom: 1.2rem;
+  }
+  .form-group label {
+    display: block;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #334155;
+    margin-bottom: 0.35rem;
+  }
+  .form-control {
+    width: 100%;
+    padding: 0.7rem 0.95rem;
+    border-radius: 10px;
+    border: 1px solid #cbd5e1;
+    font-family: inherit;
+    font-size: 0.92rem;
+    transition: border-color 0.15s, box-shadow 0.15s;
+  }
+  .form-control:focus {
+    outline: none;
+    border-color: #6366f1;
+    box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+  }
+
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+
+  .admin-switch-banner {
+    margin-top: 1.5rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.82rem;
+    color: #475569;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+
+  <div class="auth-card">
+    <div class="auth-header">
+      <div style="font-size: 2rem; margin-bottom: 0.35rem;">🛍️</div>
+      <h1>Customer Portal</h1>
+      <p>Sign in to view live delivery estimates, manage wishlists &amp; track orders</p>
+    </div>
+
+    <!-- 1-Click Demo Login Box -->
+    <div class="demo-login-box">
+      <div class="demo-login-box-text">
+        <strong>Instant Demo Customer Access</strong>
+        Preloaded with Mumbai address &amp; past orders
+      </div>
+      <form action="{{ url_for('store_demo_login') }}" method="POST" style="margin: 0;">
+        <button type="submit" class="btn btn-primary btn-sm" style="background: #2563eb; border-color: #2563eb; white-space: nowrap;">
+          <span>⚡ 1-Click Login</span>
+        </button>
+      </form>
+    </div>
+
+    <!-- Auth Tabs -->
+    <div class="auth-tabs">
+      <button type="button" class="auth-tab {% if active_tab != 'register' %}active{% endif %}" onclick="switchTab('login')">
+        Sign In
+      </button>
+      <button type="button" class="auth-tab {% if active_tab == 'register' %}active{% endif %}" onclick="switchTab('register')">
+        New Customer? Register
+      </button>
+    </div>
+
+    <div class="auth-body">
+      <!-- 1. Login Form -->
+      <form id="loginForm" action="{{ url_for('store_login') }}" method="POST" style="display: {% if active_tab == 'register' %}none{% else %}block{% endif %};">
+        <input type="hidden" name="next" value="{{ request.args.get('next', '') }}" />
+        
+        <div class="form-group">
+          <label for="login_email">Email Address</label>
+          <input type="email" id="login_email" name="email" class="form-control" placeholder="name@example.com" value="customer@optistock.ai" required />
+        </div>
+
+        <div class="form-group">
+          <label for="login_password">Password</label>
+          <input type="password" id="login_password" name="password" class="form-control" placeholder="••••••••" value="password123" required />
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.8rem; font-size: 0.95rem; margin-top: 0.5rem;">
+          <span>Sign In to OptiStock Store</span>
+        </button>
+      </form>
+
+      <!-- 2. Registration Form -->
+      <form id="registerForm" action="{{ url_for('store_register') }}" method="POST" style="display: {% if active_tab == 'register' %}block{% else %}none{% endif %};">
+        <div class="form-group">
+          <label for="reg_name">Full Name</label>
+          <input type="text" id="reg_name" name="name" class="form-control" placeholder="Ananya Patel" required />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg_email">Email Address</label>
+            <input type="email" id="reg_email" name="email" class="form-control" placeholder="ananya@example.com" required />
+          </div>
+          <div class="form-group">
+            <label for="reg_phone">Phone Number</label>
+            <input type="tel" id="reg_phone" name="phone" class="form-control" placeholder="9876543210" />
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="reg_password">Password</label>
+          <input type="password" id="reg_password" name="password" class="form-control" placeholder="Create a password (min 6 characters)" required />
+        </div>
+
+        <div class="form-group">
+          <label for="reg_address">Delivery Address (Street / Flat)</label>
+          <input type="text" id="reg_address" name="address" class="form-control" placeholder="Flat 402, Sunset Heights, Link Road" />
+        </div>
+
+        <div class="form-row">
+          <div class="form-group">
+            <label for="reg_city">City</label>
+            <input type="text" id="reg_city" name="city" class="form-control" placeholder="Mumbai" />
+          </div>
+          <div class="form-group">
+            <label for="reg_pincode">Pincode</label>
+            <input type="text" id="reg_pincode" name="pincode" class="form-control" placeholder="400050" />
+          </div>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 0.8rem; font-size: 0.95rem; margin-top: 0.5rem;">
+          <span>Create Customer Account</span>
+        </button>
+      </form>
+
+      <!-- Switch to Admin Console -->
+      <div class="admin-switch-banner">
+        <div>
+          <span style="font-weight: 700; color: #0f172a; display: block;">Are you an Inventory Operator?</span>
+          <span>Access warehouses, stock transfers &amp; AI forecasts</span>
+        </div>
+        <a href="{{ url_for('login') }}" class="btn btn-outline btn-sm" style="white-space: nowrap; background: #ffffff;">
+          <span>Admin Login →</span>
+        </a>
+      </div>
+    </div>
+  </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+  function switchTab(tab) {
+    const loginForm = document.getElementById('loginForm');
+    const registerForm = document.getElementById('registerForm');
+    const tabs = document.querySelectorAll('.auth-tab');
+
+    if (tab === 'login') {
+      loginForm.style.display = 'block';
+      registerForm.style.display = 'none';
+      tabs[0].classList.add('active');
+      tabs[1].classList.remove('active');
+    } else {
+      loginForm.style.display = 'none';
+      registerForm.style.display = 'block';
+      tabs[0].classList.remove('active');
+      tabs[1].classList.add('active');
+    }
+  }
+</script>
+{% endblock %}

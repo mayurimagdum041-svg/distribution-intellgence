@@ -9,7 +9,7 @@ import os
 import json
 import math
 from datetime import datetime, timedelta
-from werkzeug.security import generate_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash
 
 DB_PATH = os.environ.get("DB_PATH", os.path.join(os.path.dirname(__file__), "optistock.db"))
 if not os.access(os.path.dirname(os.path.abspath(DB_PATH)), os.W_OK):
@@ -239,6 +239,102 @@ def init_db():
         );
     """)
 
+    # 10. Customers Table (E-Commerce Storefront)
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS customers (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            email TEXT UNIQUE NOT NULL,
+            password_hash TEXT NOT NULL,
+            phone TEXT,
+            address TEXT,
+            city TEXT,
+            state TEXT,
+            pincode TEXT,
+            is_demo INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        );
+    """)
+
+    # 11. Customer Orders Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS orders (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_code TEXT UNIQUE NOT NULL,
+            customer_id INTEGER NOT NULL,
+            customer_name TEXT NOT NULL,
+            customer_email TEXT NOT NULL,
+            customer_phone TEXT,
+            shipping_address TEXT NOT NULL,
+            shipping_city TEXT NOT NULL,
+            shipping_state TEXT NOT NULL,
+            shipping_pincode TEXT NOT NULL,
+            fulfillment_location_id INTEGER,
+            total_items INTEGER NOT NULL DEFAULT 1,
+            subtotal REAL NOT NULL DEFAULT 0.0,
+            tax_amount REAL NOT NULL DEFAULT 0.0,
+            shipping_fee REAL NOT NULL DEFAULT 0.0,
+            total_amount REAL NOT NULL DEFAULT 0.0,
+            payment_method TEXT NOT NULL DEFAULT 'COD',
+            payment_status TEXT NOT NULL DEFAULT 'Pending',
+            order_status TEXT NOT NULL DEFAULT 'Placed', -- 'Placed', 'Processing', 'Shipped', 'Delivered', 'Cancelled'
+            estimated_delivery DATE,
+            tracking_notes TEXT,
+            is_demo INTEGER DEFAULT 0,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+            FOREIGN KEY (fulfillment_location_id) REFERENCES locations(id) ON DELETE SET NULL
+        );
+    """)
+
+    # 12. Order Line Items Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS order_items (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            order_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            product_name TEXT NOT NULL,
+            product_sku TEXT NOT NULL,
+            category TEXT,
+            unit_price REAL NOT NULL,
+            quantity INTEGER NOT NULL,
+            line_total REAL NOT NULL,
+            fulfillment_location_id INTEGER,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            FOREIGN KEY (fulfillment_location_id) REFERENCES locations(id) ON DELETE SET NULL
+        );
+    """)
+
+    # 13. Wishlist Table
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS wishlist (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            customer_id INTEGER NOT NULL,
+            product_id INTEGER NOT NULL,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (customer_id) REFERENCES customers(id) ON DELETE CASCADE,
+            FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+            UNIQUE(customer_id, product_id)
+        );
+    """)
+
+    # Safely ensure products table has e-commerce columns
+    cursor.execute("PRAGMA table_info(products);")
+    existing_cols = {row["name"] for row in cursor.fetchall()}
+    if "image_url" not in existing_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN image_url TEXT;")
+    if "rating" not in existing_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN rating REAL DEFAULT 4.5;")
+    if "review_count" not in existing_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN review_count INTEGER DEFAULT 64;")
+    if "discount_pct" not in existing_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN discount_pct INTEGER DEFAULT 10;")
+    if "brand" not in existing_cols:
+        cursor.execute("ALTER TABLE products ADD COLUMN brand TEXT DEFAULT 'OptiStock Select';")
+
     conn.commit()
 
     # Seed Default Demo User if not exists
@@ -284,6 +380,10 @@ def init_db():
                         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """, (demo_user_id, s_code, p_id, l_id, sqty, sreason, sexp, sprice, loss, sstatus, snotes, disposed_at))
 
+        cursor.execute("SELECT COUNT(*) FROM customers WHERE email = 'customer@optistock.ai'")
+        if cursor.fetchone()[0] == 0:
+            seed_fmcg_demo_data(demo_user_id, conn)
+
     conn.commit()
     conn.close()
 
@@ -292,24 +392,43 @@ def seed_fmcg_demo_data(user_id, conn):
     """Seeds realistic FMCG network across Maharashtra & Gujarat for demonstration."""
     cursor = conn.cursor()
 
-    # 1. FMCG Products Catalog
+    # 1. FMCG & E-Commerce Storefront Catalog (Grocery, Fashion, Electronics, Home & Living)
     fmcg_products = [
-        ("Fresh Pasteurised Milk (1L)", "DAIRY-MLK-01", "Perishable Dairy", 54.0, 50, "Cold chain fresh pasteurised whole milk", 1.0, 6),
-        ("Artisanal Greek Yogurt (400g)", "DAIRY-YGT-02", "Perishable Dairy", 85.0, 30, "Probiotic Greek yogurt tub", 0.4, 14),
-        ("Farm Fresh Malai Paneer (500g)", "DAIRY-PNR-03", "Perishable Dairy", 160.0, 25, "Vacuum packed fresh cottage cheese", 0.5, 10),
-        ("Cold-Pressed Orange Juice (1L)", "BEV-OJC-04", "Perishable Dairy", 120.0, 20, "100% pure cold pressed juice", 1.0, 21),
-        ("Whole Wheat Brown Bread (400g)", "BKRY-BRD-05", "Bakery & Snacks", 45.0, 40, "Fiber-rich whole wheat daily bread", 0.4, 7),
-        ("Digestive Fibre Biscuits (300g)", "SNK-BSC-06", "Bakery & Snacks", 60.0, 35, "Baked whole grain biscuits", 0.3, 120),
-        ("Rich Tomato Ketchup (1kg)", "GROC-KCH-07", "Bakery & Snacks", 130.0, 20, "Classic tangy tomato ketchup glass bottle", 1.0, 180),
-        ("Refined Sunflower Cooking Oil (5L)", "GROC-OIL-09", "Ambient Groceries", 690.0, 15, "Fortified sunflower oil can", 4.6, 365),
-        ("Royal Basmati Rice (5kg Bag)", "GROC-RCE-10", "Ambient Groceries", 499.0, 20, "Long grain aged premium basmati", 5.0, 365),
-        ("Advanced Laundry Detergent (2kg)", "HCARE-DTG-12", "Ambient Groceries", 280.0, 15, "Enzyme active laundry washing powder", 2.0, 365),
+        # Grocery & FMCG
+        ("Fresh Pasteurised Milk (1L)", "DAIRY-MLK-01", "Perishable Dairy", 54.0, 50, "Cold chain fresh pasteurised whole milk", 1.0, 6, "https://images.unsplash.com/photo-1550583724-b2692b85b150?w=600&auto=format&fit=crop&q=80", 4.8, 184, 5, "Amrit Dairy"),
+        ("Artisanal Greek Yogurt (400g)", "DAIRY-YGT-02", "Perishable Dairy", 85.0, 30, "Probiotic Greek yogurt tub", 0.4, 14, "https://images.unsplash.com/photo-1488477181946-6428a0291777?w=600&auto=format&fit=crop&q=80", 4.7, 128, 10, "Amrit Dairy"),
+        ("Farm Fresh Malai Paneer (500g)", "DAIRY-PNR-03", "Perishable Dairy", 160.0, 25, "Vacuum packed fresh cottage cheese", 0.5, 10, "https://images.unsplash.com/photo-1631452180519-c014fe946bc7?w=600&auto=format&fit=crop&q=80", 4.9, 210, 8, "Amrit Dairy"),
+        ("Cold-Pressed Orange Juice (1L)", "BEV-OJC-04", "Perishable Dairy", 120.0, 20, "100% pure cold pressed juice", 1.0, 21, "https://images.unsplash.com/photo-1613478223719-2ab802602423?w=600&auto=format&fit=crop&q=80", 4.6, 95, 15, "CitrusPure"),
+        ("Whole Wheat Brown Bread (400g)", "BKRY-BRD-05", "Bakery & Snacks", 45.0, 40, "Fiber-rich whole wheat daily bread", 0.4, 7, "https://images.unsplash.com/photo-1509440159596-0249088772ff?w=600&auto=format&fit=crop&q=80", 4.5, 78, 5, "DailyBake"),
+        ("Digestive Fibre Biscuits (300g)", "SNK-BSC-06", "Bakery & Snacks", 60.0, 35, "Baked whole grain biscuits", 0.3, 120, "https://images.unsplash.com/photo-1558961363-fa8fdf82db35?w=600&auto=format&fit=crop&q=80", 4.6, 110, 10, "NutriBite"),
+        ("Rich Tomato Ketchup (1kg)", "GROC-KCH-07", "Bakery & Snacks", 130.0, 20, "Classic tangy tomato ketchup glass bottle", 1.0, 180, "https://images.unsplash.com/photo-1582878826629-29b7ad1cdc43?w=600&auto=format&fit=crop&q=80", 4.7, 142, 12, "FarmSpice"),
+        ("Refined Sunflower Cooking Oil (5L)", "GROC-OIL-09", "Ambient Groceries", 690.0, 15, "Fortified sunflower oil can", 4.6, 365, "https://images.unsplash.com/photo-1474979266404-7eaacbcd87c5?w=600&auto=format&fit=crop&q=80", 4.8, 230, 8, "SunGold"),
+        ("Royal Basmati Rice (5kg Bag)", "GROC-RCE-10", "Ambient Groceries", 499.0, 20, "Long grain aged premium basmati", 5.0, 365, "https://images.unsplash.com/photo-1586201375761-83865001e31c?w=600&auto=format&fit=crop&q=80", 4.9, 310, 15, "RoyalHeritage"),
+        ("Advanced Laundry Detergent (2kg)", "HCARE-DTG-12", "Ambient Groceries", 280.0, 15, "Enzyme active laundry washing powder", 2.0, 365, "https://images.unsplash.com/photo-1583947215259-38e31be8751f?w=600&auto=format&fit=crop&q=80", 4.6, 88, 10, "PureWash"),
+
+        # Fashion & Apparel
+        ("Classic Pique Cotton Polo T-Shirt", "FASH-POLO-01", "Fashion", 799.0, 30, "100% combed cotton breathable polo shirt with ribbed collar and signature embroidery", 0.3, 730, "https://images.unsplash.com/photo-1586363104862-3a5e2ab60d99?w=600&auto=format&fit=crop&q=80", 4.7, 142, 20, "OptiStyle"),
+        ("Slim-Tapered Stretch Denim Jeans", "FASH-JNS-02", "Fashion", 1499.0, 25, "Premium indigo washed stretch denim with comfort waist and tailored fit", 0.6, 1095, "https://images.unsplash.com/photo-1542272604-780c96856592?w=600&auto=format&fit=crop&q=80", 4.6, 98, 25, "OptiStyle"),
+        ("Lightweight Breathable Running Shoes", "FASH-SNK-03", "Fashion", 2199.0, 20, "Cushioned EVA sole athletic sneakers for running, gym and all-day comfort", 0.8, 730, "https://images.unsplash.com/photo-1542291026-7eec264c27ff?w=600&auto=format&fit=crop&q=80", 4.8, 215, 15, "AeroPace"),
+        ("Pure Linen Casual Button-Down Shirt", "FASH-SHT-04", "Fashion", 1299.0, 20, "Airy pre-washed European linen shirt in pastel sky blue with curved hem", 0.3, 730, "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=600&auto=format&fit=crop&q=80", 4.5, 64, 10, "OptiStyle"),
+
+        # Electronics & Gadgets
+        ("ANC Wireless Noise-Cancelling Earbuds", "ELEC-EBD-01", "Electronics", 2499.0, 25, "Hybrid active noise cancellation, 36hr battery with wireless case, IPX5 waterproof", 0.1, 730, "https://images.unsplash.com/photo-1590658268037-6bf12165a8df?w=600&auto=format&fit=crop&q=80", 4.9, 320, 30, "AcousticAI"),
+        ("Smart AMOLED Fitness Watch with SpO2", "ELEC-WTC-02", "Electronics", 3299.0, 20, "1.43 inch AMOLED display, continuous heart rate, SpO2 sensor, 100+ sport modes", 0.15, 730, "https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80", 4.7, 186, 18, "PulseSync"),
+        ("65W GaN Fast Charger with Dual Type-C", "ELEC-CHG-03", "Electronics", 1199.0, 30, "Ultra-compact Gallium Nitride fast charger for laptops, tablets, and smartphones", 0.2, 730, "https://images.unsplash.com/photo-1583863788434-e58a36330cf0?w=600&auto=format&fit=crop&q=80", 4.8, 112, 10, "VoltCore"),
+        ("Waterproof Portable Bluetooth Speaker", "ELEC-SPK-04", "Electronics", 1799.0, 25, "16W dual stereo driver, deep bass radiator, 12h playtime, IPX7 floatable body", 0.5, 730, "https://images.unsplash.com/photo-1608043152269-423dbba4e7e1?w=600&auto=format&fit=crop&q=80", 4.6, 85, 22, "AcousticAI"),
+
+        # Home & Living
+        ("Ergonomic Cervical Memory Foam Pillow", "HOME-PLW-01", "Home & Living", 999.0, 25, "Contoured orthopedic neck support pillow with cooling gel breathable cover", 1.2, 1095, "https://images.unsplash.com/photo-1584100936595-c0654b55a2e2?w=600&auto=format&fit=crop&q=80", 4.7, 140, 15, "HavenRest"),
+        ("Double-Wall Stainless Steel Flask (1L)", "HOME-FLK-02", "Home & Living", 849.0, 30, "Vacuum insulated 24hr cold / 12hr hot leak-proof beverage travel bottle", 0.6, 1095, "https://images.unsplash.com/photo-1602143407151-7111542de6e8?w=600&auto=format&fit=crop&q=80", 4.8, 175, 12, "HydroMax"),
+        ("Ceramic Ultrasonic Aroma Diffuser", "HOME-DIF-03", "Home & Living", 1499.0, 20, "Whisper-quiet 300ml essential oil ultrasonic mist humidifier with 7 LED mood lights", 0.7, 730, "https://images.unsplash.com/photo-1608571423902-eed4a5ad8108?w=600&auto=format&fit=crop&q=80", 4.6, 92, 20, "AuraZen"),
+        ("100% Egyptian Cotton Double Bed Set", "HOME-BED-04", "Home & Living", 1999.0, 15, "400 thread count sateen weave silky king bedsheet with 2 matching pillow covers", 1.5, 1095, "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=600&auto=format&fit=crop&q=80", 4.9, 134, 15, "HavenRest"),
     ]
 
     for p in fmcg_products:
         cursor.execute("""
-            INSERT OR IGNORE INTO products (user_id, name, sku, category, price, min_stock_level, description, weight_kg, shelf_life_days, is_demo)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+            INSERT OR REPLACE INTO products (user_id, name, sku, category, price, min_stock_level, description, weight_kg, shelf_life_days, image_url, rating, review_count, discount_pct, brand, is_demo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
         """, (user_id, *p))
 
     # 2. Locations: Warehouses, Distributors, Retailers
@@ -406,6 +525,51 @@ def seed_fmcg_demo_data(user_id, conn):
 
         ("RET-SUR-R", "GROC-OIL-09", 70, 7),      # Healthy
         ("RET-SUR-R", "SNK-BSC-06", 85, 9),       # Healthy
+
+        # Stock for E-Commerce Fashion, Electronics, Home & Living
+        # Mumbai Central Mega-DC (WH-MUM)
+        ("WH-MUM", "FASH-POLO-01", 350, 0),
+        ("WH-MUM", "FASH-JNS-02", 220, 0),
+        ("WH-MUM", "FASH-SNK-03", 180, 0),
+        ("WH-MUM", "FASH-SHT-04", 190, 0),
+        ("WH-MUM", "ELEC-EBD-01", 400, 0),
+        ("WH-MUM", "ELEC-WTC-02", 250, 0),
+        ("WH-MUM", "ELEC-CHG-03", 500, 0),
+        ("WH-MUM", "ELEC-SPK-04", 210, 0),
+        ("WH-MUM", "HOME-PLW-01", 280, 0),
+        ("WH-MUM", "HOME-FLK-02", 320, 0),
+        ("WH-MUM", "HOME-DIF-03", 160, 0),
+        ("WH-MUM", "HOME-BED-04", 140, 0),
+
+        # Pune Regional Hub (WH-PUN)
+        ("WH-PUN", "FASH-POLO-01", 200, 0),
+        ("WH-PUN", "FASH-SNK-03", 120, 0),
+        ("WH-PUN", "ELEC-EBD-01", 250, 0),
+        ("WH-PUN", "ELEC-WTC-02", 150, 0),
+        ("WH-PUN", "HOME-PLW-01", 180, 0),
+        ("WH-PUN", "HOME-FLK-02", 200, 0),
+
+        # Ahmedabad Logistics Hub (WH-AHM)
+        ("WH-AHM", "FASH-JNS-02", 180, 0),
+        ("WH-AHM", "ELEC-CHG-03", 300, 0),
+        ("WH-AHM", "ELEC-SPK-04", 140, 0),
+        ("WH-AHM", "HOME-BED-04", 120, 0),
+
+        # Retail Stores (with sales velocities for demand prediction)
+        ("RET-MUM-S", "FASH-POLO-01", 35, 6),
+        ("RET-MUM-S", "ELEC-EBD-01", 25, 5),
+        ("RET-MUM-S", "HOME-FLK-02", 30, 4),
+
+        ("RET-MUM-N", "FASH-JNS-02", 28, 4),
+        ("RET-MUM-N", "ELEC-WTC-02", 18, 3),
+
+        ("RET-PUN-M", "FASH-SNK-03", 22, 4),
+        ("RET-PUN-M", "ELEC-CHG-03", 45, 8),
+        ("RET-PUN-M", "HOME-PLW-01", 20, 3),
+
+        ("RET-SUR-R", "FASH-SHT-04", 25, 4),
+        ("RET-SUR-R", "ELEC-SPK-04", 15, 3),
+        ("RET-SUR-R", "HOME-DIF-03", 14, 2),
     ]
 
     for loc_code, sku, qty, vel in stock_seeds:
@@ -569,12 +733,91 @@ def seed_fmcg_demo_data(user_id, conn):
                 ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (user_id, s_code, p_id, l_id, sqty, sreason, sexp, sprice, loss, sstatus, snotes, disposed_at))
 
+    # 7. Seed Default Demo E-Commerce Customer
+    cursor.execute("SELECT id FROM customers WHERE email = ?", ("customer@optistock.ai",))
+    demo_cust = cursor.fetchone()
+    if not demo_cust:
+        cust_pw = generate_password_hash("password123")
+        cursor.execute("""
+            INSERT INTO customers (name, email, password_hash, phone, address, city, state, pincode, is_demo)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """, (
+            "Priya Sharma", "customer@optistock.ai", cust_pw,
+            "+91 98765 43210", "Flat 402, Green Glen Heights, Marathahalli-Sarjapur Outer Ring Rd",
+            "Mumbai", "Maharashtra", "400001"
+        ))
+        cust_id = cursor.lastrowid
+    else:
+        cust_id = demo_cust["id"]
+
+    # 8. Seed Initial Realistic Customer Orders
+    cursor.execute("SELECT COUNT(*) AS total FROM orders WHERE customer_id = ?", (cust_id,))
+    if cursor.fetchone()["total"] == 0:
+        mum_wh_id = loc_map.get("WH-MUM")
+        pun_wh_id = loc_map.get("WH-PUN")
+
+        # Order 1: Delivered
+        cursor.execute("""
+            INSERT INTO orders (
+                order_code, customer_id, customer_name, customer_email, customer_phone,
+                shipping_address, shipping_city, shipping_state, shipping_pincode,
+                fulfillment_location_id, total_items, subtotal, tax_amount, shipping_fee, total_amount,
+                payment_method, payment_status, order_status, estimated_delivery, tracking_notes, is_demo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """, (
+            "OPT-20261023-0101", cust_id, "Priya Sharma", "customer@optistock.ai", "+91 98765 43210",
+            "Flat 402, Green Glen Heights, Outer Ring Rd", "Mumbai", "Maharashtra", "400001",
+            mum_wh_id, 3, 1143.0, 57.15, 0.0, 1200.15,
+            "UPI", "Paid", "Delivered", "2026-10-24", "Package delivered at security reception. OTP verified."
+        ))
+        ord1_id = cursor.lastrowid
+
+        p1_id = prod_map.get("DAIRY-YGT-02")
+        p2_id = prod_map.get("GROC-RCE-10")
+        if p1_id and p2_id:
+            cursor.execute("""
+                INSERT INTO order_items (order_id, product_id, product_name, product_sku, category, unit_price, quantity, line_total, fulfillment_location_id)
+                VALUES 
+                    (?, ?, 'Artisanal Greek Yogurt (400g)', 'DAIRY-YGT-02', 'Perishable Dairy', 85.0, 2, 170.0, ?),
+                    (?, ?, 'Royal Basmati Rice (5kg Bag)', 'GROC-RCE-10', 'Ambient Groceries', 499.0, 1, 499.0, ?)
+            """, (ord1_id, p1_id, mum_wh_id, ord1_id, p2_id, mum_wh_id))
+
+        # Order 2: Processing
+        cursor.execute("""
+            INSERT INTO orders (
+                order_code, customer_id, customer_name, customer_email, customer_phone,
+                shipping_address, shipping_city, shipping_state, shipping_pincode,
+                fulfillment_location_id, total_items, subtotal, tax_amount, shipping_fee, total_amount,
+                payment_method, payment_status, order_status, estimated_delivery, tracking_notes, is_demo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1)
+        """, (
+            "OPT-20261025-0102", cust_id, "Priya Sharma", "customer@optistock.ai", "+91 98765 43210",
+            "Flat 402, Green Glen Heights, Outer Ring Rd", "Mumbai", "Maharashtra", "400001",
+            mum_wh_id, 2, 3298.0, 164.9, 0.0, 3462.9,
+            "COD", "Pending", "Processing", "2026-10-27", "Picked and packaged at Mumbai Central Mega-DC. Awaiting courier handoff."
+        ))
+        ord2_id = cursor.lastrowid
+
+        p3_id = prod_map.get("ELEC-EBD-01")
+        p4_id = prod_map.get("FASH-POLO-01")
+        if p3_id and p4_id:
+            cursor.execute("""
+                INSERT INTO order_items (order_id, product_id, product_name, product_sku, category, unit_price, quantity, line_total, fulfillment_location_id)
+                VALUES 
+                    (?, ?, 'ANC Wireless Noise-Cancelling Earbuds', 'ELEC-EBD-01', 'Electronics', 2499.0, 1, 2499.0, ?),
+                    (?, ?, 'Classic Pique Cotton Polo T-Shirt', 'FASH-POLO-01', 'Fashion', 799.0, 1, 799.0, ?)
+            """, (ord2_id, p3_id, mum_wh_id, ord2_id, p4_id, mum_wh_id))
+
 
 def reset_demo_data(user_id):
     """Resets only DEMO records (is_demo=1) and repopulates clean demo data without touching user data."""
     conn = get_db()
     cursor = conn.cursor()
 
+    cursor.execute("DELETE FROM order_items WHERE order_id IN (SELECT id FROM orders WHERE is_demo = 1)")
+    cursor.execute("DELETE FROM orders WHERE is_demo = 1")
+    cursor.execute("DELETE FROM wishlist WHERE customer_id IN (SELECT id FROM customers WHERE is_demo = 1)")
+    cursor.execute("DELETE FROM customers WHERE is_demo = 1")
     cursor.execute("DELETE FROM shipments WHERE user_id = ? AND is_demo = 1", (user_id,))
     cursor.execute("DELETE FROM inventory WHERE user_id = ? AND is_demo = 1", (user_id,))
     cursor.execute("DELETE FROM locations WHERE user_id = ? AND is_demo = 1", (user_id,))
@@ -3078,3 +3321,793 @@ def get_product_stock_at_location(user_id, product_id, location_id):
 # Convenience Function Aliases
 get_products_by_user = get_user_products
 get_locations_by_user = get_locations
+
+
+# ─────────────────────────────────────────────────────────────
+# SMART E-COMMERCE STOREFRONT MODULE
+# ─────────────────────────────────────────────────────────────
+
+def register_customer(name, email, password, phone="", address="", city="", state="", pincode=""):
+    """Registers a new e-commerce customer."""
+    clean_email = email.strip().lower()
+    if not clean_email or "@" not in clean_email:
+        return False, "Please enter a valid email address.", None
+    if not password or len(password) < 6:
+        return False, "Password must be at least 6 characters.", None
+
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM customers WHERE LOWER(email) = ?", (clean_email,))
+    if cursor.fetchone():
+        conn.close()
+        return False, "An account with this email address already exists.", None
+
+    hashed_pw = generate_password_hash(password)
+    cursor.execute("""
+        INSERT INTO customers (name, email, password_hash, phone, address, city, state, pincode)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    """, (name.strip(), clean_email, hashed_pw, phone.strip() if phone else None,
+          address.strip() if address else None, city.strip() if city else None,
+          state.strip() if state else None, pincode.strip() if pincode else None))
+    cust_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    return True, "Registration successful!", cust_id
+
+
+def authenticate_customer(email, password):
+    """Authenticates a customer by email and password."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT * FROM customers WHERE LOWER(email) = ?", (email.strip().lower(),))
+    cust = cursor.fetchone()
+    conn.close()
+    if cust and check_password_hash(cust["password_hash"], password):
+        return dict(cust)
+    return None
+
+
+def get_customer_by_id(customer_id):
+    """Fetches customer record by ID (excluding password hash)."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, name, email, phone, address, city, state, pincode, created_at 
+        FROM customers WHERE id = ?
+    """, (customer_id,))
+    cust = cursor.fetchone()
+    conn.close()
+    return dict(cust) if cust else None
+
+
+def get_customer_by_email(email):
+    """Fetches customer record by email."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT id, name, email, phone, address, city, state, pincode, created_at 
+        FROM customers WHERE LOWER(email) = ?
+    """, (email.strip().lower(),))
+    cust = cursor.fetchone()
+    conn.close()
+    return dict(cust) if cust else None
+
+
+def update_customer_profile(customer_id, name, phone, address, city, state, pincode):
+    """Updates customer delivery address and contact info."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        UPDATE customers 
+        SET name = ?, phone = ?, address = ?, city = ?, state = ?, pincode = ?
+        WHERE id = ?
+    """, (name.strip(), phone.strip() if phone else None,
+          address.strip() if address else None, city.strip() if city else None,
+          state.strip() if state else None, pincode.strip() if pincode else None,
+          customer_id))
+    conn.commit()
+    conn.close()
+    return True, "Profile updated successfully."
+
+
+def get_store_products(category=None, search=None, sort_by=None, in_stock_only=False, min_price=None, max_price=None):
+    """
+    Returns products available in the OptiStock AI storefront with real-time network stock,
+    discounted pricing, ratings, and location availability counts.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            p.id,
+            p.user_id,
+            p.name,
+            p.sku,
+            p.category,
+            p.price,
+            p.min_stock_level,
+            p.description,
+            p.weight_kg,
+            p.shelf_life_days,
+            p.image_url,
+            COALESCE(p.rating, 4.5) AS rating,
+            COALESCE(p.review_count, 64) AS review_count,
+            COALESCE(p.discount_pct, 10) AS discount_pct,
+            COALESCE(p.brand, 'OptiStock Select') AS brand,
+            COALESCE(SUM(i.current_stock), 0) AS total_stock,
+            COUNT(DISTINCT CASE WHEN i.current_stock > 0 THEN i.location_id END) AS available_locations_count
+        FROM products p
+        LEFT JOIN inventory i ON p.id = i.product_id
+        WHERE 1=1
+    """
+    params = []
+
+    if category and category.lower() != "all":
+        query += " AND LOWER(p.category) LIKE ?"
+        params.append(f"%{category.lower()}%")
+
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        query += " AND (LOWER(p.name) LIKE ? OR LOWER(p.description) LIKE ? OR LOWER(p.brand) LIKE ? OR LOWER(p.sku) LIKE ?)"
+        params.extend([term, term, term, term])
+
+    if min_price is not None:
+        try:
+            query += " AND p.price >= ?"
+            params.append(float(min_price))
+        except (ValueError, TypeError):
+            pass
+
+    if max_price is not None:
+        try:
+            query += " AND p.price <= ?"
+            params.append(float(max_price))
+        except (ValueError, TypeError):
+            pass
+
+    query += " GROUP BY p.id"
+
+    if in_stock_only:
+        query += " HAVING total_stock > 0"
+
+    # Sorting
+    if sort_by == "price_asc":
+        query += " ORDER BY p.price ASC"
+    elif sort_by == "price_desc":
+        query += " ORDER BY p.price DESC"
+    elif sort_by == "rating":
+        query += " ORDER BY p.rating DESC, p.review_count DESC"
+    elif sort_by == "name":
+        query += " ORDER BY p.name ASC"
+    elif sort_by == "newest":
+        query += " ORDER BY p.id DESC"
+    else:
+        query += " ORDER BY p.rating DESC, p.id ASC"
+
+    cursor.execute(query, params)
+    rows = cursor.fetchall()
+    conn.close()
+
+    products = []
+    for r in rows:
+        d = dict(r)
+        price = float(d["price"])
+        discount_pct = int(d["discount_pct"])
+        mrp = round(price / (1 - (discount_pct / 100)), 2) if discount_pct > 0 else price
+        d["mrp"] = mrp
+        d["discounted_price"] = price
+        products.append(d)
+
+    return products
+
+
+def get_store_product_detail(product_id):
+    """
+    Returns single product details along with facility-by-facility stock breakdown
+    so customers can inspect real-time location inventory and delivery readiness.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute("""
+        SELECT 
+            p.*,
+            COALESCE(SUM(i.current_stock), 0) AS total_stock
+        FROM products p
+        LEFT JOIN inventory i ON p.id = i.product_id
+        WHERE p.id = ?
+        GROUP BY p.id
+    """, (product_id,))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    prod = dict(row)
+    price = float(prod["price"])
+    discount_pct = int(prod.get("discount_pct") or 10)
+    prod["mrp"] = round(price / (1 - (discount_pct / 100)), 2) if discount_pct > 0 else price
+    prod["discounted_price"] = price
+
+    # Location inventory breakdown
+    cursor.execute("""
+        SELECT 
+            l.id AS location_id,
+            l.code AS location_code,
+            l.name AS location_name,
+            l.type AS location_type,
+            l.city,
+            l.state,
+            l.pincode,
+            COALESCE(i.current_stock, 0) AS current_stock
+        FROM inventory i
+        JOIN locations l ON i.location_id = l.id
+        WHERE i.product_id = ? AND i.current_stock > 0
+        ORDER BY i.current_stock DESC
+    """, (product_id,))
+    locations_stock = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+
+    prod["locations_stock"] = locations_stock
+    return prod
+
+
+def get_store_categories():
+    """Returns distinct product categories with active product count."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT category, COUNT(*) AS product_count 
+        FROM products 
+        GROUP BY category 
+        ORDER BY product_count DESC
+    """)
+    cats = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return cats
+
+
+def get_featured_store_products(limit=8):
+    """Fetches high-rated, in-stock products for the storefront homepage."""
+    prods = get_store_products(sort_by="rating", in_stock_only=True)
+    return prods[:limit]
+
+
+# ── Wishlist Helpers ──────────────────────────────────────────
+
+def get_customer_wishlist(customer_id):
+    """Returns all products saved in customer's wishlist."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            p.*,
+            w.created_at AS added_at,
+            COALESCE(SUM(i.current_stock), 0) AS total_stock
+        FROM wishlist w
+        JOIN products p ON w.product_id = p.id
+        LEFT JOIN inventory i ON p.id = i.product_id
+        WHERE w.customer_id = ?
+        GROUP BY p.id
+        ORDER BY w.created_at DESC
+    """, (customer_id,))
+    items = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return items
+
+
+def add_to_wishlist(customer_id, product_id):
+    """Adds a product to customer's wishlist."""
+    conn = get_db()
+    cursor = conn.cursor()
+    try:
+        cursor.execute("INSERT OR IGNORE INTO wishlist (customer_id, product_id) VALUES (?, ?)", (customer_id, product_id))
+        conn.commit()
+        conn.close()
+        return True, "Added to wishlist!"
+    except Exception as e:
+        conn.close()
+        return False, str(e)
+
+
+def remove_from_wishlist(customer_id, product_id):
+    """Removes a product from customer's wishlist."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("DELETE FROM wishlist WHERE customer_id = ? AND product_id = ?", (customer_id, product_id))
+    conn.commit()
+    conn.close()
+    return True, "Removed from wishlist."
+
+
+def is_in_wishlist(customer_id, product_id):
+    """Checks if a product is in customer's wishlist."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("SELECT id FROM wishlist WHERE customer_id = ? AND product_id = ?", (customer_id, product_id))
+    found = cursor.fetchone() is not None
+    conn.close()
+    return found
+
+
+# ── E-Commerce Order Placement & Stock Validation ──────────────
+
+def find_best_fulfillment_location(product_id, quantity, shipping_city=None):
+    """
+    Selects the optimal warehouse or retail store to fulfill an e-commerce order item:
+    1. If a facility exists in shipping_city with current_stock >= quantity, use it for local dispatch.
+    2. Otherwise, select the Mega-DC or Regional Warehouse with the largest available stock.
+    3. Fallback to any location with current_stock >= quantity.
+    """
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if shipping_city and shipping_city.strip():
+        cursor.execute("""
+            SELECT l.id, l.name, l.type, l.city, i.current_stock
+            FROM inventory i
+            JOIN locations l ON i.location_id = l.id
+            WHERE i.product_id = ? AND i.current_stock >= ? AND LOWER(l.city) = LOWER(?)
+            ORDER BY i.current_stock DESC
+            LIMIT 1
+        """, (product_id, quantity, shipping_city.strip()))
+        local_row = cursor.fetchone()
+        if local_row:
+            conn.close()
+            return dict(local_row)
+
+    cursor.execute("""
+        SELECT l.id, l.name, l.type, l.city, i.current_stock
+        FROM inventory i
+        JOIN locations l ON i.location_id = l.id
+        WHERE i.product_id = ? AND i.current_stock >= ? AND l.type = 'Warehouse'
+        ORDER BY i.current_stock DESC
+        LIMIT 1
+    """, (product_id, quantity))
+    wh_row = cursor.fetchone()
+    if wh_row:
+        conn.close()
+        return dict(wh_row)
+
+    cursor.execute("""
+        SELECT l.id, l.name, l.type, l.city, i.current_stock
+        FROM inventory i
+        JOIN locations l ON i.location_id = l.id
+        WHERE i.product_id = ? AND i.current_stock >= ?
+        ORDER BY i.current_stock DESC
+        LIMIT 1
+    """, (product_id, quantity))
+    any_row = cursor.fetchone()
+    conn.close()
+    return dict(any_row) if any_row else None
+
+
+def create_customer_order(customer_id, items, shipping_info, payment_method="COD"):
+    """
+    Atomically places a customer e-commerce order:
+    1. Validates quantities > 0.
+    2. Server-side stock verification for all items against the inventory network.
+    3. Atomically inside ACID transaction (BEGIN IMMEDIATE):
+       - Deducts quantity from inventory.current_stock at the chosen fulfillment facility.
+       - Increases units_sold_per_day to immediately update demand forecasting algorithms.
+       - Logs CUSTOMER_ORDER in inventory_transactions audit ledger.
+       - Creates smart LOW_STOCK alert if current stock hits min_stock_level.
+       - Creates order header in orders.
+       - Creates line items in order_items.
+    4. Returns (True, success_msg, order_id, order_code) or (False, error_msg, None, None).
+    """
+    if not items:
+        return False, "Your shopping cart is empty.", None, None
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE TRANSACTION;")
+
+        shipping_city = shipping_info.get("city", "").strip()
+
+        # Phase 1: Pre-validation of stock for ALL items
+        validated_allocations = []
+        subtotal = 0.0
+
+        for item in items:
+            p_id = int(item["product_id"])
+            qty = int(item["quantity"])
+            if qty <= 0:
+                conn.rollback()
+                conn.close()
+                return False, "Invalid item quantity.", None, None
+
+            cursor.execute("SELECT id, user_id, name, sku, category, price, min_stock_level FROM products WHERE id = ?", (p_id,))
+            prod = cursor.fetchone()
+            if not prod:
+                conn.rollback()
+                conn.close()
+                return False, f"Product ID {p_id} not found.", None, None
+
+            loc_row = None
+            if shipping_city:
+                cursor.execute("""
+                    SELECT l.id, l.name, l.type, l.city, i.current_stock
+                    FROM inventory i
+                    JOIN locations l ON i.location_id = l.id
+                    WHERE i.product_id = ? AND i.current_stock >= ? AND LOWER(l.city) = LOWER(?)
+                    ORDER BY i.current_stock DESC LIMIT 1
+                """, (p_id, qty, shipping_city))
+                loc_row = cursor.fetchone()
+
+            if not loc_row:
+                cursor.execute("""
+                    SELECT l.id, l.name, l.type, l.city, i.current_stock
+                    FROM inventory i
+                    JOIN locations l ON i.location_id = l.id
+                    WHERE i.product_id = ? AND i.current_stock >= ? AND l.type = 'Warehouse'
+                    ORDER BY i.current_stock DESC LIMIT 1
+                """, (p_id, qty))
+                loc_row = cursor.fetchone()
+
+            if not loc_row:
+                cursor.execute("""
+                    SELECT l.id, l.name, l.type, l.city, i.current_stock
+                    FROM inventory i
+                    JOIN locations l ON i.location_id = l.id
+                    WHERE i.product_id = ? AND i.current_stock >= ?
+                    ORDER BY i.current_stock DESC LIMIT 1
+                """, (p_id, qty))
+                loc_row = cursor.fetchone()
+
+            if not loc_row:
+                cursor.execute("SELECT COALESCE(SUM(current_stock), 0) AS total FROM inventory WHERE product_id = ?", (p_id,))
+                net_stock = cursor.fetchone()["total"]
+                conn.rollback()
+                conn.close()
+                return False, (
+                    f"Insufficient stock for '{prod['name']}' ({prod['sku']}). "
+                    f"Requested: {qty} units, Available across facilities: {net_stock} units."
+                ), None, None
+
+            unit_price = float(prod["price"])
+            line_total = round(unit_price * qty, 2)
+            subtotal += line_total
+
+            validated_allocations.append({
+                "product_id": p_id,
+                "product_name": prod["name"],
+                "product_sku": prod["sku"],
+                "category": prod["category"],
+                "unit_price": unit_price,
+                "quantity": qty,
+                "line_total": line_total,
+                "location_id": loc_row["id"],
+                "location_name": loc_row["name"],
+                "current_stock": loc_row["current_stock"],
+                "min_stock_level": prod["min_stock_level"],
+                "user_id": prod["user_id"]
+            })
+
+        # Totals
+        tax_amount = round(subtotal * 0.05, 2)
+        shipping_fee = 0.0 if subtotal >= 499.0 else 49.0
+        total_amount = round(subtotal + tax_amount + shipping_fee, 2)
+        total_items = sum(a["quantity"] for a in validated_allocations)
+
+        now = datetime.now()
+        cursor.execute("SELECT COUNT(*) AS total FROM orders")
+        seq = cursor.fetchone()["total"] + 1
+        order_code = f"OPT-{now.strftime('%Y%m%d')}-{seq:04d}"
+        est_delivery = (now + timedelta(days=3)).strftime("%Y-%m-%d")
+        primary_loc_id = validated_allocations[0]["location_id"] if validated_allocations else None
+
+        # Insert Order Header
+        cursor.execute("""
+            INSERT INTO orders (
+                order_code, customer_id, customer_name, customer_email, customer_phone,
+                shipping_address, shipping_city, shipping_state, shipping_pincode,
+                fulfillment_location_id, total_items, subtotal, tax_amount, shipping_fee, total_amount,
+                payment_method, payment_status, order_status, estimated_delivery, tracking_notes, is_demo
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'Placed', ?, ?, 0)
+        """, (
+            order_code, customer_id, shipping_info.get("name", "Valued Customer"),
+            shipping_info.get("email", ""), shipping_info.get("phone", ""),
+            shipping_info.get("address", ""), shipping_city,
+            shipping_info.get("state", "Maharashtra"), shipping_info.get("pincode", ""),
+            primary_loc_id, total_items, subtotal, tax_amount, shipping_fee, total_amount,
+            payment_method, "Paid" if payment_method != "COD" else "Pending",
+            est_delivery, f"Order placed via storefront. Allocated to {validated_allocations[0]['location_name']}."
+        ))
+        order_id = cursor.lastrowid
+
+        # Insert Order Items & Deduct Stock
+        for alloc in validated_allocations:
+            p_id = alloc["product_id"]
+            l_id = alloc["location_id"]
+            qty = alloc["quantity"]
+            new_stock = alloc["current_stock"] - qty
+
+            cursor.execute("""
+                INSERT INTO order_items (
+                    order_id, product_id, product_name, product_sku, category,
+                    unit_price, quantity, line_total, fulfillment_location_id
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                order_id, p_id, alloc["product_name"], alloc["product_sku"], alloc["category"],
+                alloc["unit_price"], qty, alloc["line_total"], l_id
+            ))
+
+            cursor.execute("""
+                UPDATE inventory 
+                SET current_stock = ?, updated_at = CURRENT_TIMESTAMP 
+                WHERE product_id = ? AND location_id = ?
+            """, (new_stock, p_id, l_id))
+
+            cursor.execute("""
+                UPDATE inventory 
+                SET units_sold_per_day = units_sold_per_day + ? 
+                WHERE product_id = ? AND location_id = ?
+            """, (max(1, math.ceil(qty / 7)), p_id, l_id))
+
+            cursor.execute("""
+                INSERT INTO inventory_transactions (
+                    user_id, product_id, location_id, transaction_type, quantity, balance_after, reference
+                ) VALUES (?, ?, ?, 'CUSTOMER_ORDER', ?, ?, ?)
+            """, (alloc["user_id"], p_id, l_id, -qty, new_stock, f"E-Commerce Order {order_code}"))
+
+            if new_stock <= alloc["min_stock_level"]:
+                cursor.execute("""
+                    INSERT INTO alerts (user_id, alert_type, severity, location_id, product_id, title, message)
+                    VALUES (?, 'LOW_STOCK', 'CRITICAL', ?, ?, ?, ?)
+                """, (
+                    alloc["user_id"], l_id, p_id,
+                    f"Low Stock Alert: {alloc['product_sku']} at {alloc['location_name']}",
+                    f"Stock reduced to {new_stock} units following customer purchase {order_code}. Minimum safety stock is {alloc['min_stock_level']} units."
+                ))
+
+        conn.commit()
+        conn.close()
+        return True, f"Order {order_code} placed successfully! Thank you for shopping with OptiStock AI.", order_id, order_code
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, f"Failed to place order: {str(e)}", None, None
+
+
+# ── Customer & Admin Order Views ──────────────────────────────
+
+def get_customer_orders(customer_id):
+    """Fetches all orders placed by a specific customer with their line items."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT o.*, l.name AS fulfillment_location_name, l.city AS fulfillment_city
+        FROM orders o
+        LEFT JOIN locations l ON o.fulfillment_location_id = l.id
+        WHERE o.customer_id = ?
+        ORDER BY o.created_at DESC
+    """, (customer_id,))
+    orders = [dict(r) for r in cursor.fetchall()]
+
+    for order in orders:
+        cursor.execute("""
+            SELECT oi.*, p.image_url 
+            FROM order_items oi
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+        """, (order["id"],))
+        order["items"] = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+    return orders
+
+
+def get_order_by_id(order_id, customer_id=None):
+    """Fetches single order details. If customer_id provided, ensures customer owns the order."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    if customer_id:
+        cursor.execute("""
+            SELECT o.*, l.name AS fulfillment_location_name, l.city AS fulfillment_city, l.type AS fulfillment_type
+            FROM orders o
+            LEFT JOIN locations l ON o.fulfillment_location_id = l.id
+            WHERE o.id = ? AND o.customer_id = ?
+        """, (order_id, customer_id))
+    else:
+        cursor.execute("""
+            SELECT o.*, l.name AS fulfillment_location_name, l.city AS fulfillment_city, l.type AS fulfillment_type
+            FROM orders o
+            LEFT JOIN locations l ON o.fulfillment_location_id = l.id
+            WHERE o.id = ?
+        """, (order_id,))
+
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    order = dict(row)
+    cursor.execute("""
+        SELECT oi.*, p.image_url, p.sku
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+    """, (order_id,))
+    order["items"] = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return order
+
+
+def get_order_by_code(order_code):
+    """Fetches order by its human-readable order code."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT o.*, l.name AS fulfillment_location_name, l.city AS fulfillment_city, l.type AS fulfillment_type
+        FROM orders o
+        LEFT JOIN locations l ON o.fulfillment_location_id = l.id
+        WHERE o.order_code = ?
+    """, (order_code.strip(),))
+    row = cursor.fetchone()
+    if not row:
+        conn.close()
+        return None
+
+    order = dict(row)
+    cursor.execute("""
+        SELECT oi.*, p.image_url, p.sku
+        FROM order_items oi
+        LEFT JOIN products p ON oi.product_id = p.id
+        WHERE oi.order_id = ?
+    """, (order["id"],))
+    order["items"] = [dict(r) for r in cursor.fetchall()]
+    conn.close()
+    return order
+
+
+def get_all_orders_for_admin(status=None, search=None):
+    """Fetches all customer e-commerce orders for admin monitoring."""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    query = """
+        SELECT 
+            o.*,
+            l.name AS fulfillment_location_name,
+            l.type AS fulfillment_location_type,
+            l.city AS fulfillment_city
+        FROM orders o
+        LEFT JOIN locations l ON o.fulfillment_location_id = l.id
+        WHERE 1=1
+    """
+    params = []
+
+    if status and status != "All":
+        query += " AND o.order_status = ?"
+        params.append(status)
+
+    if search and search.strip():
+        term = f"%{search.strip().lower()}%"
+        query += """ AND (
+            LOWER(o.order_code) LIKE ? OR 
+            LOWER(o.customer_name) LIKE ? OR 
+            LOWER(o.customer_email) LIKE ? OR 
+            LOWER(o.shipping_city) LIKE ?
+        )"""
+        params.extend([term, term, term, term])
+
+    query += " ORDER BY o.created_at DESC"
+
+    cursor.execute(query, params)
+    orders = [dict(r) for r in cursor.fetchall()]
+
+    for order in orders:
+        cursor.execute("""
+            SELECT oi.*, p.image_url 
+            FROM order_items oi 
+            LEFT JOIN products p ON oi.product_id = p.id
+            WHERE oi.order_id = ?
+        """, (order["id"],))
+        order["items"] = [dict(r) for r in cursor.fetchall()]
+
+    conn.close()
+    return orders
+
+
+def get_admin_order_metrics():
+    """Calculates summary KPIs for customer orders."""
+    conn = get_db()
+    cursor = conn.cursor()
+    cursor.execute("""
+        SELECT 
+            COUNT(*) AS total_orders,
+            COALESCE(SUM(total_amount), 0.0) AS total_revenue,
+            COALESCE(SUM(CASE WHEN order_status IN ('Placed', 'Processing') THEN 1 ELSE 0 END), 0) AS pending_orders,
+            COALESCE(SUM(CASE WHEN order_status = 'Shipped' THEN 1 ELSE 0 END), 0) AS shipped_orders,
+            COALESCE(SUM(CASE WHEN order_status = 'Delivered' THEN 1 ELSE 0 END), 0) AS delivered_orders,
+            COALESCE(SUM(CASE WHEN order_status = 'Cancelled' THEN 1 ELSE 0 END), 0) AS cancelled_orders,
+            COALESCE(SUM(total_items), 0) AS total_units_sold
+        FROM orders
+    """)
+    row = cursor.fetchone()
+    conn.close()
+    return {
+        "total_orders": row["total_orders"],
+        "total_revenue": round(row["total_revenue"], 2),
+        "pending_orders": row["pending_orders"],
+        "shipped_orders": row["shipped_orders"],
+        "delivered_orders": row["delivered_orders"],
+        "cancelled_orders": row["cancelled_orders"],
+        "total_units_sold": row["total_units_sold"]
+    }
+
+
+def update_order_status(order_id, new_status, notes=None):
+    """
+    Updates lifecycle status of an e-commerce order:
+    'Placed' -> 'Processing' -> 'Shipped' -> 'Delivered' (or 'Cancelled').
+    If Cancelled, restores deducted stock and logs ORDER_CANCEL_RESTORE.
+    """
+    valid_statuses = ("Placed", "Processing", "Shipped", "Delivered", "Cancelled")
+    if new_status not in valid_statuses:
+        return False, f"Invalid order status '{new_status}'."
+
+    conn = get_db()
+    cursor = conn.cursor()
+
+    try:
+        conn.execute("BEGIN IMMEDIATE TRANSACTION;")
+        cursor.execute("SELECT * FROM orders WHERE id = ?", (order_id,))
+        order = cursor.fetchone()
+        if not order:
+            conn.rollback()
+            conn.close()
+            return False, "Order not found."
+
+        prev_status = order["order_status"]
+
+        # If transitioning to Cancelled from an active status, restore stock!
+        if new_status == "Cancelled" and prev_status != "Cancelled":
+            cursor.execute("SELECT product_id, quantity, fulfillment_location_id FROM order_items WHERE order_id = ?", (order_id,))
+            items = cursor.fetchall()
+            for it in items:
+                p_id = it["product_id"]
+                loc_id = it["fulfillment_location_id"]
+                qty = it["quantity"]
+                if loc_id:
+                    cursor.execute("""
+                        UPDATE inventory 
+                        SET current_stock = current_stock + ?, updated_at = CURRENT_TIMESTAMP 
+                        WHERE product_id = ? AND location_id = ?
+                    """, (qty, p_id, loc_id))
+
+                    cursor.execute("SELECT current_stock, user_id FROM inventory WHERE product_id = ? AND location_id = ?", (p_id, loc_id))
+                    inv_row = cursor.fetchone()
+                    if inv_row:
+                        cursor.execute("""
+                            INSERT INTO inventory_transactions (
+                                user_id, product_id, location_id, transaction_type, quantity, balance_after, reference
+                            ) VALUES (?, ?, ?, 'ORDER_CANCEL_RESTORE', ?, ?, ?)
+                        """, (inv_row["user_id"], p_id, loc_id, qty, inv_row["current_stock"], f"Cancelled Order {order['order_code']}"))
+
+        # Update order header
+        now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        updated_notes = order["tracking_notes"] or ""
+        if notes and notes.strip():
+            updated_notes = f"{updated_notes} [{now_str}] {notes.strip()}".strip()
+
+        cursor.execute("""
+            UPDATE orders 
+            SET order_status = ?, tracking_notes = ?, updated_at = CURRENT_TIMESTAMP 
+            WHERE id = ?
+        """, (new_status, updated_notes, order_id))
+
+        conn.commit()
+        conn.close()
+        return True, f"Order {order['order_code']} status updated to '{new_status}'."
+
+    except Exception as e:
+        conn.rollback()
+        conn.close()
+        return False, f"Failed to update status: {str(e)}"

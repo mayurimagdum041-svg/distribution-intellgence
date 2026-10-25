@@ -48,6 +48,37 @@ def inject_user_context():
     return {"current_user": user}
 
 
+def customer_login_required(f):
+    """Protects storefront routes requiring customer authentication."""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if "customer_id" not in session:
+            flash("Please sign in or use demo customer access to continue.", "info")
+            return redirect(url_for("store_auth", next=request.url))
+        return f(*args, **kwargs)
+    return decorated_function
+
+
+@app.context_processor
+def inject_store_context():
+    """Provides customer session and cart totals to store templates."""
+    customer = None
+    cart_count = 0
+    wishlist_count = 0
+    if "customer_id" in session:
+        customer = database.get_customer_by_id(session["customer_id"])
+        wishlist = database.get_customer_wishlist(session["customer_id"])
+        wishlist_count = len(wishlist)
+    cart = session.get("store_cart", {})
+    if isinstance(cart, dict):
+        cart_count = sum(cart.values())
+    return {
+        "current_customer": customer,
+        "cart_count": cart_count,
+        "wishlist_count": wishlist_count,
+    }
+
+
 # ─────────────────────────────────────────────────────────────
 # AUTHENTICATION ROUTES
 # ─────────────────────────────────────────────────────────────
@@ -1161,6 +1192,634 @@ def api_product_stock_at_location():
 
     info = database.get_product_stock_at_location(user_id, p_id, l_id)
     return jsonify({"success": True, "data": info})
+
+
+# ─────────────────────────────────────────────────────────────
+# CUSTOMER STOREFRONT & E-COMMERCE ROUTES
+# ─────────────────────────────────────────────────────────────
+
+def _resolve_cart_items(cart_dict):
+    """Helper to convert session cart dict {str(product_id): quantity} into full product objects."""
+    items = []
+    subtotal = 0.0
+    all_in_stock = True
+
+    if not isinstance(cart_dict, dict):
+        return items, 0.0, 0.0, 0.0, 0.0, True
+
+    for pid_str, quantity in cart_dict.items():
+        try:
+            pid = int(pid_str)
+            qty = int(quantity)
+        except (ValueError, TypeError):
+            continue
+
+        if qty <= 0:
+            continue
+
+        detail = database.get_store_product_detail(pid)
+        if not detail:
+            continue
+
+        product = detail
+        unit_price = float(product["price"])
+        line_total = unit_price * qty
+        subtotal += line_total
+        has_sufficient_stock = product["total_stock"] >= qty
+        if not has_sufficient_stock:
+            all_in_stock = False
+
+        item_dict = dict(product)
+        item_dict.update({
+            "product_id": pid,
+            "product": product,
+            "quantity": qty,
+            "unit_price": unit_price,
+            "line_total": line_total,
+            "available_stock": product["total_stock"],
+            "has_sufficient_stock": has_sufficient_stock,
+        })
+        items.append(item_dict)
+
+    tax_amount = round(subtotal * 0.05, 2)  # 5% GST
+    shipping_fee = 0.0 if (subtotal >= 499.0 or subtotal == 0.0) else 49.0
+    total_amount = round(subtotal + tax_amount + shipping_fee, 2)
+
+    return items, subtotal, tax_amount, shipping_fee, total_amount, all_in_stock
+
+
+@app.route("/store")
+@app.route("/shop")
+def store_index():
+    """Customer storefront landing page inspired by modern e-commerce SaaS."""
+    featured_products = database.get_featured_store_products(limit=8)
+    categories = database.get_store_categories()
+    return render_template(
+        "store/index.html",
+        featured_products=featured_products,
+        categories=categories,
+    )
+
+
+@app.route("/store/products")
+def store_products():
+    """Catalog browsing with multi-faceted search, category filters, and price sorting."""
+    category = request.args.get("category", "").strip() or None
+    search = request.args.get("search", "").strip() or None
+    min_price_str = request.args.get("min_price", "").strip()
+    max_price_str = request.args.get("max_price", "").strip()
+    in_stock_param = request.args.get("in_stock", "")
+    sort_by = request.args.get("sort_by", "popular").strip()
+
+    min_price = None
+    max_price = None
+    if min_price_str:
+        try:
+            min_price = float(min_price_str)
+        except ValueError:
+            pass
+    if max_price_str:
+        try:
+            max_price = float(max_price_str)
+        except ValueError:
+            pass
+
+    in_stock_only = in_stock_param in ("1", "true", "on", True)
+
+    products = database.get_store_products(
+        category=category,
+        search=search,
+        min_price=min_price,
+        max_price=max_price,
+        in_stock_only=in_stock_only,
+        sort_by=sort_by,
+    )
+    categories = database.get_store_categories()
+
+    return render_template(
+        "store/products.html",
+        products=products,
+        categories=categories,
+        current_category=category or "All",
+        current_search=search or "",
+        current_sort=sort_by,
+        current_min_price=min_price_str,
+        current_max_price=max_price_str,
+        current_in_stock=in_stock_only,
+    )
+
+
+@app.route("/store/product/<int:product_id>")
+def store_product_detail(product_id):
+    """Product detail page with live multi-facility stock visibility and delivery estimation."""
+    product = database.get_store_product_detail(product_id)
+    if not product:
+        flash("The requested product was not found in our catalog.", "error")
+        return redirect(url_for("store_products"))
+
+    is_wishlisted = False
+    if "customer_id" in session:
+        is_wishlisted = database.is_in_wishlist(session["customer_id"], product_id)
+
+    return render_template(
+        "store/product_detail.html",
+        product=product,
+        is_wishlisted=is_wishlisted,
+    )
+
+
+# ── Cart Routes ──
+
+@app.route("/store/cart")
+def store_cart():
+    """Shopping cart review page."""
+    cart_dict = session.get("store_cart", {})
+    items, subtotal, tax_amount, shipping_fee, total_amount, all_in_stock = _resolve_cart_items(cart_dict)
+
+    return render_template(
+        "store/cart.html",
+        items=items,
+        cart_items=items,
+        total_items=sum(it["quantity"] for it in items),
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        shipping_fee=shipping_fee,
+        total_amount=total_amount,
+        all_in_stock=all_in_stock,
+    )
+
+
+@app.route("/store/cart/add", methods=["POST"])
+def store_cart_add():
+    """Adds a product to customer session cart."""
+    product_id_str = str(request.form.get("product_id", "")).strip()
+    qty_str = request.form.get("quantity", "1").strip()
+
+    try:
+        product_id = int(product_id_str)
+        qty = max(1, int(qty_str))
+    except (ValueError, TypeError):
+        flash("Invalid product or quantity specified.", "error")
+        return redirect(url_for("store_products"))
+
+    detail = database.get_store_product_detail(product_id)
+    if not detail:
+        flash("Product not found.", "error")
+        return redirect(url_for("store_products"))
+
+    cart = session.get("store_cart", {})
+    current_qty = cart.get(str(product_id), 0)
+    new_qty = current_qty + qty
+
+    available = detail["total_stock"]
+    if new_qty > available:
+        flash(f"Only {available} units available in inventory for {detail['name']}.", "warning")
+        new_qty = available
+
+    cart[str(product_id)] = new_qty
+    session["store_cart"] = cart
+    session.modified = True
+
+    if request.headers.get("X-Requested-With") == "XMLHttpRequest" or "application/json" in request.headers.get("Accept", ""):
+        return jsonify({
+            "success": True,
+            "message": f"Added {detail['name']} to cart.",
+            "cart_count": sum(cart.values()),
+        })
+
+    flash(f"Added {detail['name']} to your cart.", "success")
+    return redirect(request.referrer or url_for("store_cart"))
+
+
+@app.route("/store/cart/update", methods=["POST"])
+def store_cart_update():
+    """Updates quantity of an item in the shopping cart."""
+    product_id_str = str(request.form.get("product_id", "")).strip()
+    action = request.form.get("action", "").strip()
+    qty_str = request.form.get("quantity", "").strip()
+
+    cart = session.get("store_cart", {})
+    current_qty = cart.get(product_id_str, 1)
+
+    if action == "inc":
+        qty = current_qty + 1
+    elif action == "dec":
+        qty = current_qty - 1
+    elif qty_str:
+        try:
+            qty = int(qty_str)
+        except (ValueError, TypeError):
+            qty = 1
+    else:
+        qty = current_qty
+
+    if qty <= 0:
+        cart.pop(product_id_str, None)
+        flash("Item removed from cart.", "info")
+    else:
+        try:
+            pid = int(product_id_str)
+            detail = database.get_store_product_detail(pid)
+            if detail and detail["total_stock"] < qty:
+                qty = detail["total_stock"]
+                flash(f"Quantity adjusted to available stock ({qty}).", "warning")
+        except Exception:
+            pass
+        cart[product_id_str] = qty
+
+    session["store_cart"] = cart
+    session.modified = True
+    return redirect(url_for("store_cart"))
+
+
+@app.route("/store/cart/remove", methods=["POST"])
+def store_cart_remove():
+    """Removes an item completely from the cart."""
+    product_id_str = str(request.form.get("product_id", "")).strip()
+    cart = session.get("store_cart", {})
+    if product_id_str in cart:
+        cart.pop(product_id_str)
+        session["store_cart"] = cart
+        session.modified = True
+        flash("Item removed from your cart.", "info")
+
+    return redirect(url_for("store_cart"))
+
+
+@app.route("/store/cart/clear", methods=["POST"])
+def store_cart_clear():
+    """Clears all items in the shopping cart."""
+    session["store_cart"] = {}
+    session.modified = True
+    flash("Your shopping cart has been cleared.", "info")
+    return redirect(url_for("store_cart"))
+
+
+# ── Wishlist Routes ──
+
+@app.route("/store/wishlist")
+@customer_login_required
+def store_wishlist():
+    """Saved customer wishlist products."""
+    customer_id = session["customer_id"]
+    items = database.get_customer_wishlist(customer_id)
+    return render_template("store/wishlist.html", items=items)
+
+
+@app.route("/store/wishlist/toggle", methods=["POST"])
+def store_wishlist_toggle():
+    """Toggles wishlist status for a product."""
+    if "customer_id" not in session:
+        flash("Please sign in or use demo customer access to save items to your wishlist.", "info")
+        return redirect(url_for("store_auth", next=request.referrer or url_for("store_products")))
+
+    customer_id = session["customer_id"]
+    product_id_str = request.form.get("product_id", "").strip()
+
+    try:
+        product_id = int(product_id_str)
+    except (ValueError, TypeError):
+        flash("Invalid product.", "error")
+        return redirect(url_for("store_products"))
+
+    if database.is_in_wishlist(customer_id, product_id):
+        database.remove_from_wishlist(customer_id, product_id)
+        flash("Item removed from wishlist.", "info")
+    else:
+        database.add_to_wishlist(customer_id, product_id)
+        flash("Item added to wishlist ❤️", "success")
+
+    return redirect(request.referrer or url_for("store_wishlist"))
+
+
+# ── Checkout & Order Execution ──
+
+@app.route("/store/checkout", methods=["GET"])
+@customer_login_required
+def store_checkout():
+    """Checkout review and shipping address confirmation."""
+    cart_dict = session.get("store_cart", {})
+    items, subtotal, tax_amount, shipping_fee, total_amount, all_in_stock = _resolve_cart_items(cart_dict)
+
+    if not items:
+        flash("Your cart is empty. Add products before proceeding to checkout.", "warning")
+        return redirect(url_for("store_products"))
+
+    customer = database.get_customer_by_id(session["customer_id"])
+    return render_template(
+        "store/checkout.html",
+        items=items,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        shipping_fee=shipping_fee,
+        total_amount=total_amount,
+        all_in_stock=all_in_stock,
+        customer=customer,
+    )
+
+
+@app.route("/store/checkout", methods=["POST"])
+@customer_login_required
+def store_place_order():
+    """
+    Processes customer checkout with atomic stock validation, regional inventory reservation,
+    ledger auditing, and sales run rate integration.
+    """
+    customer_id = session["customer_id"]
+    customer = database.get_customer_by_id(customer_id)
+    if not customer:
+        flash("Customer session error. Please sign in again.", "error")
+        return redirect(url_for("store_auth"))
+
+    cart_dict = session.get("store_cart", {})
+    items, subtotal, tax_amount, shipping_fee, total_amount, all_in_stock = _resolve_cart_items(cart_dict)
+
+    if not items:
+        flash("Your shopping cart is empty.", "warning")
+        return redirect(url_for("store_products"))
+
+    if not all_in_stock:
+        flash("Some items in your cart exceed available stock. Please adjust quantities.", "error")
+        return redirect(url_for("store_cart"))
+
+    # Shipping inputs
+    shipping_name = request.form.get("name", "").strip() or customer.get("name", "Valued Customer")
+    shipping_address = request.form.get("address", "").strip() or customer.get("address", "Standard Delivery")
+    shipping_city = request.form.get("city", "").strip() or customer.get("city", "Mumbai")
+    shipping_state = request.form.get("state", "").strip() or customer.get("state", "Maharashtra")
+    shipping_pincode = request.form.get("pincode", "").strip() or customer.get("pincode", "400001")
+    payment_method = request.form.get("payment_method", "Cash on Delivery (Demo)").strip()
+
+    # Format order items
+    order_items_payload = []
+    for item in items:
+        order_items_payload.append({
+            "product_id": item["product_id"],
+            "quantity": item["quantity"],
+            "unit_price": item["unit_price"],
+        })
+
+    shipping_info = {
+        "name": shipping_name,
+        "email": customer["email"],
+        "phone": customer.get("phone", "") or "",
+        "address": shipping_address,
+        "city": shipping_city,
+        "state": shipping_state,
+        "pincode": shipping_pincode,
+    }
+
+    # Call atomic transaction
+    success, msg, order_id, order_code = database.create_customer_order(
+        customer_id=customer_id,
+        items=order_items_payload,
+        shipping_info=shipping_info,
+        payment_method=payment_method,
+    )
+
+    if not success:
+        flash(f"Order placement failed: {msg}", "error")
+        return redirect(url_for("store_cart"))
+
+    # Clear shopping cart on successful checkout
+    session["store_cart"] = {}
+    session.modified = True
+
+    flash(f"Order {order_code} placed successfully! Inventory reserved and deducted.", "success")
+    return redirect(url_for("store_order_confirmation", order_code=order_code))
+
+
+@app.route("/store/order-confirmation/<order_code>")
+def store_order_confirmation(order_code):
+    """Order confirmation and post-purchase summary."""
+    order = database.get_order_by_code(order_code)
+    if not order:
+        flash("Order not found.", "error")
+        return redirect(url_for("store_products"))
+
+    return render_template("store/order_confirmation.html", order=order)
+
+
+@app.route("/store/orders")
+@customer_login_required
+def store_orders():
+    """Customer order history and delivery tracker."""
+    customer_id = session["customer_id"]
+    orders = database.get_customer_orders(customer_id)
+    return render_template("store/orders.html", orders=orders)
+
+
+# ── Customer Auth & Profile Routes ──
+
+@app.route("/store/auth")
+def store_auth():
+    """Customer sign in / register page."""
+    if "customer_id" in session:
+        return redirect(url_for("store_index"))
+    tab = request.args.get("tab", "login")
+    return render_template("store/auth.html", active_tab=tab)
+
+
+@app.route("/store/login", methods=["POST"])
+def store_login():
+    """Customer authentication."""
+    email = request.form.get("email", "").strip()
+    password = request.form.get("password", "")
+    next_url = request.form.get("next") or request.args.get("next")
+
+    customer = database.authenticate_customer(email, password)
+    if not customer:
+        flash("Invalid email or password. Please try again or use 1-Click Demo Login.", "error")
+        return redirect(url_for("store_auth", tab="login", next=next_url))
+
+    session["customer_id"] = customer["id"]
+    session["customer_name"] = customer["name"]
+    flash(f"Welcome back, {customer['name']}!", "success")
+
+    if next_url and next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect(url_for("store_index"))
+
+
+@app.route("/store/demo-login", methods=["POST"])
+def store_demo_login():
+    """Instant 1-Click login as pre-configured demo customer."""
+    demo = database.get_customer_by_email("customer@optistock.ai")
+    if not demo:
+        flash("Demo customer account not found. Please register a new account.", "error")
+        return redirect(url_for("store_auth"))
+
+    session["customer_id"] = demo["id"]
+    session["customer_name"] = demo["name"]
+    flash(f"Signed in as Demo Customer ({demo['name']}). Enjoy testing OptiStock AI!", "success")
+
+    next_url = request.args.get("next") or request.form.get("next")
+    if next_url and next_url.startswith("/"):
+        return redirect(next_url)
+    return redirect(url_for("store_index"))
+
+
+@app.route("/store/register", methods=["POST"])
+def store_register():
+    """Registers a new customer."""
+    name = request.form.get("name", "").strip()
+    email = request.form.get("email", "").strip()
+    phone = request.form.get("phone", "").strip()
+    password = request.form.get("password", "")
+    address = request.form.get("address", "").strip()
+    city = request.form.get("city", "").strip()
+    state = request.form.get("state", "Maharashtra").strip()
+    pincode = request.form.get("pincode", "").strip()
+
+    if not name or not email or not password:
+        flash("Please provide all required fields (Name, Email, Password).", "error")
+        return redirect(url_for("store_auth", tab="register"))
+
+    if len(password) < 6:
+        flash("Password must be at least 6 characters long.", "error")
+        return redirect(url_for("store_auth", tab="register"))
+
+    success, msg, cust_id = database.register_customer(
+        name=name,
+        email=email,
+        password=password,
+        phone=phone,
+        address=address,
+        city=city,
+        state=state,
+        pincode=pincode,
+    )
+
+    if not success:
+        flash(f"Registration failed: {msg}", "error")
+        return redirect(url_for("store_auth", tab="register"))
+
+    session["customer_id"] = cust_id
+    session["customer_name"] = name
+    flash(f"Welcome to OptiStock AI Store, {name}! Your customer account is ready.", "success")
+    return redirect(url_for("store_index"))
+
+
+@app.route("/store/logout")
+def store_logout():
+    """Customer sign out."""
+    session.pop("customer_id", None)
+    session.pop("customer_name", None)
+    flash("You have signed out from the customer store.", "info")
+    return redirect(url_for("store_index"))
+
+
+@app.route("/store/profile", methods=["GET", "POST"])
+@customer_login_required
+def store_profile():
+    """Customer profile and shipping address management."""
+    customer_id = session["customer_id"]
+
+    if request.method == "POST":
+        name = request.form.get("name", "").strip()
+        phone = request.form.get("phone", "").strip()
+        address = request.form.get("address", "").strip()
+        city = request.form.get("city", "").strip()
+        state = request.form.get("state", "Maharashtra").strip()
+        pincode = request.form.get("pincode", "").strip()
+
+        if not name:
+            flash("Full name cannot be blank.", "error")
+        else:
+            success, msg = database.update_customer_profile(
+                customer_id=customer_id,
+                name=name,
+                phone=phone,
+                address=address,
+                city=city,
+                state=state,
+                pincode=pincode,
+            )
+            if success:
+                session["customer_name"] = name
+                flash("Your profile and shipping details have been updated.", "success")
+            else:
+                flash(f"Update failed: {msg}", "error")
+
+    customer = database.get_customer_by_id(customer_id)
+    orders = database.get_customer_orders(customer_id)
+    return render_template("store/profile.html", customer=customer, orders=orders)
+
+
+# ── Store Stock Availability API ──
+
+@app.route("/api/store/check-stock")
+def api_store_check_stock():
+    """Live API returning multi-facility stock counts for a product."""
+    product_id_str = request.args.get("product_id", "").strip()
+    try:
+        product_id = int(product_id_str)
+    except (ValueError, TypeError):
+        return jsonify({"success": False, "error": "Invalid product ID."}), 400
+
+    detail = database.get_store_product_detail(product_id)
+    if not detail:
+        return jsonify({"success": False, "error": "Product not found."}), 404
+
+    return jsonify({
+        "success": True,
+        "product_id": product_id,
+        "name": detail["name"],
+        "total_stock": detail["total_stock"],
+        "locations": detail.get("locations_stock", []),
+    })
+
+
+# ─────────────────────────────────────────────────────────────
+# ADMIN / OPERATOR CUSTOMER ORDERS FULFILLMENT ROUTES
+# ─────────────────────────────────────────────────────────────
+
+@app.route("/orders")
+@login_required
+def admin_orders():
+    """Admin console view for all customer e-commerce orders and regional inventory impact."""
+    status_filter = request.args.get("status", "").strip()
+    if status_filter in ("All", ""):
+        status_filter = None
+
+    orders = database.get_all_orders_for_admin(status=status_filter)
+    metrics = database.get_admin_order_metrics()
+
+    return render_template(
+        "orders.html",
+        orders=orders,
+        metrics=metrics,
+        current_status=status_filter or "All",
+        page="orders",
+    )
+
+
+@app.route("/orders/<int:order_id>/status", methods=["POST"])
+@login_required
+def admin_update_order_status(order_id):
+    """
+    Updates order status (Placed -> Processing -> Shipped -> Delivered -> Cancelled).
+    If Cancelled, restores reserved inventory to the warehouse ledger.
+    """
+    new_status = request.form.get("new_status", "").strip()
+    tracking_notes = request.form.get("tracking_notes", "").strip()
+
+    if not new_status:
+        flash("Order status cannot be empty.", "error")
+        return redirect(url_for("admin_orders"))
+
+    success, msg = database.update_order_status(
+        order_id=order_id,
+        new_status=new_status,
+        notes=tracking_notes,
+    )
+
+    if success:
+        flash(f"Order #{order_id} updated: {msg}", "success")
+    else:
+        flash(f"Failed to update order #{order_id}: {msg}", "error")
+
+    return redirect(url_for("admin_orders"))
 
 
 
